@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Simulation MAR bloc</title>
+<style>
+:root{
+  --bg:#f6f8fa;--surf:#fff;--bd:#d0d7de;
+  --blue:#0969da;--blue-bg:#ddf4ff;--blue-dk:#0550ae;
+  --gbtn:#2da44e;--red:#cf222e;--red-bg:#ffebe9;
+  --yel:#9a6700;--yel-bg:#fff8c5;--green-bg:#dafbe1;
+  --text:#24292f;--t2:#57606a;--t3:#8c959f;--head:#24292f;--r:6px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --c-bloc:#eaeef2;--c-long:#d8dee4;--c-rea:#dafbe1;--c-garde:#ddf4ff;--c-repos:#f6f8fa;--c-tp:#fff8c5;--c-demi:#fbefff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+.bar{background:var(--head);padding:10px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.bar-title{color:#e6edf3;font-size:15px;font-weight:600}.bar-sub{color:#7d8590;font-size:12px}
+.bar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:var(--r);border:1px solid var(--bd);cursor:pointer;font-size:13px;font-family:var(--font);font-weight:500;background:var(--surf);color:var(--text);text-decoration:none}
+.btn:hover{background:var(--bg)}
+.btn-g{background:var(--gbtn);border-color:rgba(0,0,0,.15);color:#fff}.btn-g:hover{background:#2c974b}
+.btn-r{color:var(--red)}.btn-r:hover{background:var(--red-bg)}
+.btn-s{padding:2px 8px;font-size:12px}
+.wrap{max-width:1400px;margin:0 auto;padding:20px 16px}
+.tabs{border-bottom:1px solid var(--bd);margin-bottom:18px;display:flex;overflow-x:auto}
+.tab{padding:8px 16px;font-size:14px;color:var(--t2);cursor:pointer;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;font-family:var(--font);white-space:nowrap}
+.tab:hover{color:var(--text)}.tab.on{color:var(--text);font-weight:600;border-bottom-color:#fd8c73}
+.view{display:none}.view.on{display:block}
+h2{font-size:15px;margin:22px 0 10px}h2:first-child{margin-top:0}
+.hint{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:8px}
+.stat{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);padding:11px 13px}
+.stat-l{font-size:11px;color:var(--t2);margin-bottom:2px}.stat-v{font-size:22px;font-weight:600}.stat-s{font-size:11px;color:var(--t3);margin-top:2px}
+.stat.warn{border-color:#ff8182;background:var(--red-bg)}.stat.good{border-color:#4ac26b;background:var(--green-bg)}.stat.mid{border-color:#d4a72c;background:var(--yel-bg)}
+.ok{padding:9px 14px;border-radius:var(--r);font-size:13px;margin:12px 0;border:1px solid;line-height:1.6}
+.ok.good{background:var(--green-bg);border-color:#4ac26b;color:#1a7f37}
+.ok.bad{background:var(--red-bg);border-color:#ff8182;color:var(--red)}
+.ok.info{background:var(--yel-bg);border-color:#d4a72c;color:var(--yel)}
+.tbl-wrap{overflow:auto;border:1px solid var(--bd);border-radius:var(--r);background:var(--surf);max-height:75vh}
+table{width:100%;border-collapse:collapse}
+th{padding:6px 8px;background:var(--bg);border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);font-size:11px;font-weight:600;color:var(--t2);text-align:center;white-space:nowrap;position:sticky;top:0;z-index:2}
+td{padding:4px 6px;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);font-size:12px;text-align:center;vertical-align:middle;white-space:nowrap}
+td.l,th.l{text-align:left}
+td.b{font-weight:600}
+td.neg{color:#1a7f37;font-weight:600}td.pos{color:var(--red);font-weight:600}
+tr.we td{background:#f6f8fa;color:var(--t3)}tr.fe td{background:#fff1e5}
+td input[type=number],td input[type=text]{width:70px;padding:3px 5px;border:1px solid var(--bd);border-radius:4px;font-family:var(--font);font-size:12px}
+td input.w{width:150px}
+.k-bloc{background:var(--c-bloc)}.k-long{background:var(--c-long)}.k-rea{background:var(--c-rea)}.k-garde{background:var(--c-garde);font-weight:600}
+.k-repos{background:var(--c-repos);color:var(--t3)}.k-tp{background:var(--c-tp)}.k-demi{background:var(--c-demi);font-weight:600}.k-hb{color:var(--t3)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 22px;background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 16px}
+.form label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.form input,.form select{width:90px;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--font);font-size:13px}
+textarea{width:100%;min-height:150px;font-family:ui-monospace,monospace;font-size:12px;padding:8px;border:1px solid var(--bd);border-radius:var(--r)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.row select,.row input[type=text]{padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-family:var(--font);font-size:13px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--t2);margin:10px 0}
+.legend span{padding:1px 8px;border-radius:4px;border:1px solid var(--bd)}
+.rules{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;font-size:13px;line-height:1.7}
+.rules h3{font-size:14px;margin:12px 0 4px}.rules h3:first-child{margin-top:0}
+.rules li{margin-left:20px}
+body.locked .bar,body.locked .wrap{display:none}
+.lock{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--head);z-index:50}
+.lock-box{background:var(--surf);border-radius:10px;padding:28px 30px;text-align:center;width:320px;max-width:92vw}
+.lock-box h1{font-size:18px;margin:8px 0 4px}.lock-box p{color:var(--t2);font-size:13px;margin-bottom:16px}
+.lock-box input{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:14px;margin-bottom:10px}
+.lock-box button{width:100%;padding:8px;border:none;border-radius:var(--r);background:var(--gbtn);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.lock-err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+</style>
+</head>
+<body class="locked">
+<div class="lock" id="lock">
+  <form class="lock-box" onsubmit="unlock(event)">
+    <div style="font-size:38px">🏥</div>
+    <h1>Simulation MAR</h1>
+    <p>Bloc, réanimation, gardes</p>
+    <input type="password" id="lock-code" placeholder="Code d'accès" autocomplete="current-password" autofocus/>
+    <button type="submit">Accéder</button>
+    <div class="lock-err" id="lock-err"></div>
+  </form>
+</div>
+<div class="bar">
+  <div>
+    <div class="bar-title">🏥 Simulation MAR — bloc, réanimation, gardes</div>
+    <div class="bar-sub" id="bar-sub"></div>
+  </div>
+  <div class="bar-right">
+    <button class="btn btn-g" onclick="exportXlsx()">⬇ Excel</button>
+    <button class="btn" onclick="exportJSON()">⬇ Configuration</button>
+    <label class="btn">⬆ Importer config<input type="file" accept=".json" hidden onchange="importJSON(this.files[0]);this.value=''"/></label>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" id="tab-synthese" onclick="showTab('synthese')">📊 Synthèse</button>
+    <button class="tab" id="tab-equipe" onclick="showTab('equipe')">👨‍⚕️ Équipe</button>
+    <button class="tab" id="tab-regles" onclick="showTab('regles')">⚙️ Règles</button>
+    <button class="tab" id="tab-tableau" onclick="showTab('tableau')">📅 Tableau de service</button>
+    <button class="tab" id="tab-simu" onclick="showTab('simu')">🧪 Simulations</button>
+    <button class="tab" id="tab-consignes" onclick="showTab('consignes')">📋 Consignes</button>
+  </div>
+
+  <!-- ── SYNTHÈSE ── -->
+  <div class="view on" id="view-synthese">
+    <div class="stats" id="stats"></div>
+    <div id="checks"></div>
+    <h2>Compteurs et temps de travail par MAR (année)</h2>
+    <p class="hint">h/sem = heures par semaine de présence (congés, récupérations et jours de temps partiel retirés). Gardes sur place comptées en temps de travail effectif. Écart = h/sem avec garde − plafond.</p>
+    <div class="tbl-wrap"><table id="tbl-mar"></table></div>
+  </div>
+
+  <!-- ── ÉQUIPE ── -->
+  <div class="view" id="view-equipe">
+    <div class="row">
+      <label class="btn btn-g">⬆ Importer l'équipe (Excel)<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="importEquipe(this.files[0]);this.value=''"/></label>
+      <button class="btn" onclick="addMar()">＋ Ajouter un MAR</button>
+      <button class="btn btn-r" onclick="resetEquipe()">↺ Équipe par défaut</button>
+    </div>
+    <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
+    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation.</p>
+    <div class="tbl-wrap"><table id="tbl-equipe"></table></div>
+    <div id="equipe-tot" class="hint" style="margin-top:8px"></div>
+  </div>
+
+  <!-- ── RÈGLES ── -->
+  <div class="view" id="view-regles">
+    <h2>Gardes</h2>
+    <div class="form" id="f-gardes"></div>
+    <h2>Réanimation, hors bloc</h2>
+    <div class="form" id="f-rea"></div>
+    <h2>Congés, récupérations, plafond</h2>
+    <div class="form" id="f-params"></div>
+    <h2>Postes de bloc (1 MAR pour 2 salles)</h2>
+    <p class="hint">Heures de présence par jour. « Après 16h » = heures retirées un jour de garde (la garde commence à 16h). « Fin 18h » : poste interdit au MAR de garde, ouvre droit à la récupération des jours finis à 18h.</p>
+    <div class="tbl-wrap"><table id="tbl-postes"></table></div>
+    <h2>Année et jours fériés</h2>
+    <div class="form" id="f-annee"></div>
+    <p class="hint" style="margin-top:8px">Un férié par ligne : AAAA-MM-JJ Libellé</p>
+    <textarea id="feries" onchange="setFeries(this.value)"></textarea>
+    <div class="row"><button class="btn btn-r" onclick="resetRegles()">↺ Règles par défaut</button></div>
+  </div>
+
+  <!-- ── TABLEAU ── -->
+  <div class="view" id="view-tableau">
+    <div class="row">
+      <select id="mois" onchange="renderTableau()"></select>
+      <select id="vue" onchange="renderTableau()">
+        <option value="poste">Par poste (jours en lignes)</option>
+        <option value="mar">Par MAR (MAR en lignes)</option>
+      </select>
+    </div>
+    <div class="legend">
+      <span class="k-bloc">A-E bloc court</span><span class="k-long">F-H bloc long (18h)</span><span class="k-rea">Réa</span>
+      <span class="k-garde">G16h garde de semaine · G24h WE/férié · G nuit</span><span class="k-demi">Demi-garde jour WE</span>
+      <span class="k-repos">Repos de sécurité</span><span class="k-tp">TP temps partiel</span><span class="k-hb">HB hors bloc / consultation / congés</span>
+    </div>
+    <div class="tbl-wrap"><table id="tbl-tableau"></table></div>
+  </div>
+
+  <!-- ── SIMULATIONS ── -->
+  <div class="view" id="view-simu">
+    <h2>Comparer des scénarios</h2>
+    <p class="hint">Modifiez l'équipe ou les règles, puis enregistrez le scénario : les indicateurs sont conservés pour la comparaison. Indicateurs horaires = moyenne des MAR à temps plein qui font des gardes.</p>
+    <div class="row">
+      <input type="text" id="scen-nom" placeholder="Nom du scénario (ex. MB demi-gardes)"/>
+      <button class="btn btn-g" onclick="saveScenario()">💾 Enregistrer le scénario courant</button>
+      <button class="btn btn-r" onclick="clearScenarios()">Tout effacer</button>
+    </div>
+    <div class="tbl-wrap"><table id="tbl-scen"></table></div>
+    <h2>Effectif théorique (calcul rapide)</h2>
+    <p class="hint">Mêmes besoins et mêmes règles, seul le nombre d'ETP change (MAR à temps plein interchangeables). Séparer les valeurs par des virgules.</p>
+    <div class="row"><input type="text" id="etps" value="18,19,20,21,22,23,24" onchange="renderSimu()"/></div>
+    <div class="tbl-wrap"><table id="tbl-etp"></table></div>
+  </div>
+
+  <!-- ── CONSIGNES ── -->
+  <div class="view" id="view-consignes"><div class="rules" id="consignes"></div></div>
+</div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="bloc-mar-engine.js"></script>
+<script>
+const E = window.BlocMarEngine;
+const STORE = 'simulation_mar_cfg', SCEN = 'simulation_mar_scenarios';
+let cfg = load(), R = null;
+
+function load(){ try{ const c = JSON.parse(localStorage.getItem(STORE)||'null'); if(c) return E.mergeConfig(c); }catch(e){} return E.mergeConfig(); }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(cfg)); }catch(e){} }
+const f1 = x => (Math.round(x*10)/10).toLocaleString('fr-FR');
+const f0 = x => Math.round(x).toLocaleString('fr-FR');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function recompute(){
+  R = E.generate(cfg); save();
+  document.getElementById('bar-sub').textContent = `${cfg.annee} · ${R.equipe.length} MAR · ${f1(R.stats.synthese.etp)} ETP · ${R.postes.length} postes de bloc · ${cfg.rea.nombre} réa · ${cfg.gardes.parJour} gardes/jour`;
+  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes();
+}
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.id==='tab-'+id));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id==='view-'+id));
+  try{ localStorage.setItem(STORE+'_tab', id); }catch(e){}
+}
+
+// ── Synthèse ──
+function renderSynthese(){
+  const s = R.stats.synthese, cls = {Insuffisant:'warn',Tendu:'mid',Juste:'mid',Confortable:'good'}[s.appreciation];
+  const card = (l,v,sub,c='') => `<div class="stat ${c}"><div class="stat-l">${l}</div><div class="stat-v">${v}</div><div class="stat-s">${sub}</div></div>`;
+  document.getElementById('stats').innerHTML =
+    card('Effectif', f1(s.etp)+' ETP', `${s.nMar} MAR · ${f1(s.etpGarde)} ETP de garde`) +
+    card('MAR disponibles / jour', f1(s.marDisponiblesParJour), s.appreciation+' · consultations, hors bloc', cls) +
+    card('Gardes / ETP de garde', f1(s.gardesParEtpGarde), `${s.gardesParAn} gardes/an · ${s.demiGardes} demi-gardes WE`) +
+    card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, semaine de présence') +
+    card('h/sem avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
+    card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`);
+  const issues = E.verify(R), w = R.warnings;
+  document.getElementById('checks').innerHTML =
+    (issues.length ? `<div class="ok bad">⚠ ${issues.length} règle(s) non respectée(s) :<br/>${issues.slice(0,15).map(esc).join('<br/>')}</div>` : '<div class="ok good">✅ Toutes les règles dures sont respectées (gardes, repos de sécurité, réa, bloc long, temps partiel).</div>') +
+    (w.length ? `<div class="ok info">${w.slice(0,10).map(esc).join('<br/>')}${w.length>10?'<br/>…':''}</div>` : '');
+  const P = R.postes;
+  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>TP</th><th>HB</th><th>Dispo consult.</th><th>Récup.</th>`
+    + P.map(p=>`<th>${p.code}</th>`).join('') + `<th>h/an hors garde</th><th>h/an garde</th><th>h/sem sans</th><th>h/sem avec</th><th>Sem. max</th><th>Écart</th></tr>`;
+  R.stats.parMar.forEach(m => {
+    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.tp}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.recup)}</td>`
+      + m.postes.map(x=>`<td>${x}</td>`).join('')
+      + `<td>${f0(m.heuresSansGarde)}</td><td>${f0(m.heuresGarde)}</td><td>${f1(m.hSemSansGarde)}</td><td class="b">${f1(m.hSemAvecGarde)}</td><td>${f1(m.semaineMax)}</td><td class="${m.ecartPlafond>0?'pos':'neg'}">${m.ecartPlafond>0?'+':''}${f1(m.ecartPlafond)}</td></tr>`;
+  });
+  document.getElementById('tbl-mar').innerHTML = h;
+}
+
+// ── Équipe ──
+function renderEquipe(){
+  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th class="l">Particularité</th><th></th></tr>`;
+  cfg.equipe.forEach((m,i) => {
+    h += `<tr><td class="l"><input type="text" value="${esc(m.code)}" onchange="setM(${i},'code',this.value.trim()||'?')"/></td>
+      <td><input type="number" step="0.1" min="0" max="1" value="${m.q}" onchange="setM(${i},'q',+this.value)"/></td>
+      <td><input type="number" step="0.1" min="0" max="1" value="${m.qg}" onchange="setM(${i},'qg',+this.value)"/></td>
+      <td><input type="checkbox" ${m.we!==false?'checked':''} onchange="setM(${i},'we',this.checked)"/></td>
+      <td><input type="checkbox" ${m.demiWE?'checked':''} onchange="setM(${i},'demiWE',this.checked)"/></td>
+      <td><input type="checkbox" ${m.rea!==false?'checked':''} onchange="setM(${i},'rea',this.checked)"/></td>
+      <td class="l"><input class="w" type="text" value="${esc(m.note||'')}" onchange="setM(${i},'note',this.value)"/></td>
+      <td><button class="btn btn-s btn-r" onclick="delMar(${i})">✕</button></td></tr>`;
+  });
+  document.getElementById('tbl-equipe').innerHTML = h;
+  const s = R.stats.synthese;
+  document.getElementById('equipe-tot').textContent = `${cfg.equipe.length} MAR · ${f1(s.etp)} ETP de travail · ${f1(s.etpGarde)} ETP de garde`;
+}
+function setM(i,k,v){ cfg.equipe[i][k] = v; recompute(); }
+function delMar(i){ if(confirm('Retirer '+cfg.equipe[i].code+' ?')){ cfg.equipe.splice(i,1); recompute(); } }
+function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,note:''}); recompute(); }
+function resetEquipe(){ if(confirm("Revenir à l'équipe par défaut ?")){ cfg.equipe = E.mergeConfig().equipe; recompute(); } }
+function importEquipe(file){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const wb = XLSX.read(new Uint8Array(rd.result), {type:'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+    const eq = [];
+    rows.slice(1).forEach(r => {
+      if(!r[0] || isNaN(parseFloat(r[1]))) return;
+      const note = String(r[5]||'').trim(), n = note.toLowerCase();
+      eq.push({code:String(r[0]).trim(), q:parseFloat(r[1]), qg:isNaN(parseFloat(r[4]))?parseFloat(r[1]):parseFloat(r[4]),
+        we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), note});
+    });
+    if(!eq.length){ alert("Aucun médecin reconnu (colonnes A, B, E, F)."); return; }
+    cfg.equipe = eq; recompute(); alert(eq.length+' MAR importés.');
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+// ── Règles ──
+function field(path, label, opts={}){
+  const [o,k] = path.split('.'), v = cfg[o][k];
+  if(opts.select) return `<label>${label}<select onchange="setP('${path}',this.value)">${opts.select.map(x=>`<option ${String(x)===String(v)?'selected':''}>${x}</option>`).join('')}</select></label>`;
+  return `<label>${label}<input type="number" step="${opts.step||1}" value="${v}" onchange="setP('${path}',+this.value)"/></label>`;
+}
+function setP(path,v){ const [o,k] = path.split('.'); cfg[o][k] = v; recompute(); }
+function renderRegles(){
+  document.getElementById('f-gardes').innerHTML =
+    field('gardes.parJour','MAR de garde par jour') + field('gardes.ecartMin','Écart minimal entre 2 gardes (jours)') +
+    field('gardes.heuresSemaine','Heures d\'une garde de semaine (16h → 8h)') + field('gardes.heuresWE','Heures d\'une garde WE / férié') +
+    field('gardes.heuresNuit','Heures d\'une nuit seule (20h → 8h)') + field('gardes.heuresDemiJour','Heures d\'une demi-garde de jour WE') +
+    `<label>Week-ends de demi-gardes par MAR concerné<select onchange="setP('gardes.demiWeekends',this.value==='auto'?'auto':+this.value)">${['auto',...Array.from({length:27},(_,i)=>i)].map(x=>`<option ${String(x)===String(cfg.gardes.demiWeekends)?'selected':''}>${x}</option>`).join('')}</select></label>`;
+  document.getElementById('f-rea').innerHTML =
+    field('rea.nombre','MAR en réa par jour ouvré') + field('rea.heures','Heures de réa par jour',{step:0.5}) +
+    field('rea.apres16','Réa : heures après 16h',{step:0.5}) + field('rea.quotiteMin','Quotité minimale pour la réa',{step:0.1}) +
+    field('hb.heures','Heures d\'un jour hors bloc / consultation',{step:0.5});
+  document.getElementById('f-params').innerHTML =
+    field('params.conges','Congés par ETP (jours ouvrés)') + field('params.rtt','RTT par ETP (jours)') + field('params.formation','Formation par ETP (jours)') +
+    field('params.recupSamedi','Récupération par samedi de garde (jours)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
+    field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
+  document.getElementById('f-annee').innerHTML = `<label>Année<input type="number" value="${cfg.annee}" onchange="cfg.annee=+this.value;recompute()"/></label>`;
+  let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th></tr>`;
+  cfg.postes.forEach((p,i) => {
+    h += `<tr><td><input type="checkbox" ${p.actif!==false?'checked':''} onchange="setPoste(${i},'actif',this.checked)"/></td><td class="b">${esc(p.code)}</td><td class="l">${esc(p.bloc)}</td>
+      <td class="l"><input class="w" type="text" value="${esc(p.salles)}" onchange="setPoste(${i},'salles',this.value)"/></td>
+      ${p.heures.map((x,d)=>`<td><input type="number" step="0.5" value="${x}" onchange="setHeure(${i},${d},+this.value)"/></td>`).join('')}
+      <td><input type="number" step="0.5" value="${p.apres16}" onchange="setPoste(${i},'apres16',+this.value)"/></td>
+      <td><input type="checkbox" ${p.fin18?'checked':''} onchange="setPoste(${i},'fin18',this.checked)"/></td></tr>`;
+  });
+  document.getElementById('tbl-postes').innerHTML = h;
+  document.getElementById('feries').value = Object.entries(cfg.feries).map(([d,l])=>d+' '+l).join('\n');
+}
+function setPoste(i,k,v){ cfg.postes[i][k] = v; recompute(); }
+function setHeure(i,d,v){ cfg.postes[i].heures[d] = v; recompute(); }
+function setFeries(txt){
+  const f = {};
+  txt.split('\n').forEach(l => { const m = l.trim().match(/^(\d{4}-\d{2}-\d{2})\s*(.*)$/); if(m) f[m[1]] = m[2]||'Férié'; });
+  cfg.feries = f; recompute();
+}
+function resetRegles(){ if(confirm('Revenir aux règles par défaut (l\'équipe est conservée) ?')){ const eq = cfg.equipe; cfg = E.mergeConfig(); cfg.equipe = eq; recompute(); } }
+
+// ── Tableau de service ──
+const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+function renderMois(){
+  const sel = document.getElementById('mois'), cur = sel.value || '0';
+  sel.innerHTML = MOIS.map((m,i)=>`<option value="${i}">${m} ${cfg.annee}</option>`).join('');
+  sel.value = cur;
+}
+function kcls(code){
+  if(!code) return '';
+  if(/Demi/.test(code)) return 'k-demi';
+  if(/G16h|G24h|G nuit/.test(code)) return 'k-garde';
+  if(code==='Repos') return 'k-repos'; if(code==='TP') return 'k-tp'; if(code==='HB') return 'k-hb'; if(code==='Réa') return 'k-rea';
+  const p = R.postes.find(x=>x.code===code[0]); return p ? (p.fin18 ? 'k-long' : 'k-bloc') : '';
+}
+function renderTableau(){
+  const m = +document.getElementById('mois').value, mm = String(m+1).padStart(2,'0');
+  const jours = R.jours.filter(j => j.date.slice(5,7) === mm);
+  const nom = i => i===null||i===undefined ? '' : esc(R.equipe[i].code);
+  let h = '';
+  if(document.getElementById('vue').value === 'poste'){
+    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th><th>TP</th></tr>`;
+    jours.forEach(j => {
+      const tr = j.statut==='Week-end'?'we':j.statut==='Férié'?'fe':'';
+      const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
+      const rea = j.statut==='Ouvert' ? j.rea.map(i=>`<td class="k-rea">${nom(i)}</td>`).join('') : `<td colspan="${cfg.rea.nombre}"></td>`;
+      const g = j.garde.map(i=>nom(i)+(j.nuit.includes(i)?' (nuit)':'')).join(', ');
+      h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td><td class="k-tp">${j.tp.map(nom).join(', ')}</td></tr>`;
+    });
+  } else {
+    h = `<tr><th class="l">MAR</th>${jours.map(j=>`<th title="${j.jour}">${j.jour.slice(0,2)}<br/>${j.date.slice(8)}</th>`).join('')}</tr>`;
+    R.equipe.forEach((p,i) => {
+      h += `<tr><td class="l b">${esc(p.code)}</td>` + jours.map(j => { const c = E.codeActivite(R, E.activite(R,j,i)); return `<td class="${kcls(c)}">${esc(c).replace(' + ','<br/>')}</td>`; }).join('') + '</tr>';
+    });
+  }
+  document.getElementById('tbl-tableau').innerHTML = h;
+}
+
+// ── Simulations ──
+const INDIC = [
+  ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR dispo / jour',f1],['appreciation','Appréciation',x=>x],
+  ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
+  ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
+];
+function scenarios(){ try{ return JSON.parse(localStorage.getItem(SCEN)||'[]'); }catch(e){ return []; } }
+function saveScenario(){
+  const nom = document.getElementById('scen-nom').value.trim() || 'Scénario '+(scenarios().length+1);
+  const l = scenarios(); l.push({nom, date:new Date().toISOString().slice(0,16).replace('T',' '), s:R.stats.synthese, cfg});
+  try{ localStorage.setItem(SCEN, JSON.stringify(l)); }catch(e){ alert('Enregistrement impossible'); }
+  document.getElementById('scen-nom').value = ''; renderSimu();
+}
+function delScenario(i){ const l = scenarios(); l.splice(i,1); localStorage.setItem(SCEN, JSON.stringify(l)); renderSimu(); }
+function loadScenario(i){ if(confirm('Charger ce scénario (équipe et règles) ?')){ cfg = E.mergeConfig(scenarios()[i].cfg); recompute(); showTab('synthese'); } }
+function clearScenarios(){ if(confirm('Effacer tous les scénarios ?')){ localStorage.removeItem(SCEN); renderSimu(); } }
+function renderSimu(){
+  const l = [{nom:'▶ Courant (non enregistré)', s:R.stats.synthese}].concat(scenarios());
+  let h = `<tr><th class="l">Scénario</th>${INDIC.map(x=>`<th>${x[1]}</th>`).join('')}<th></th></tr>`;
+  l.forEach((sc,k) => {
+    h += `<tr><td class="l b">${esc(sc.nom)}${sc.date?`<br/><small style="font-weight:400;color:var(--t3)">${sc.date}</small>`:''}</td>${INDIC.map(([key,,fmt])=>`<td>${fmt(sc.s[key])}</td>`).join('')}<td>${k?`<button class="btn btn-s" onclick="loadScenario(${k-1})">Charger</button> <button class="btn btn-s btn-r" onclick="delScenario(${k-1})">✕</button>`:''}</td></tr>`;
+  });
+  document.getElementById('tbl-scen').innerHTML = h;
+  const etps = document.getElementById('etps').value.split(/[,; ]+/).map(Number).filter(x=>x>0);
+  const cur = R.stats.synthese.etp; if(!etps.some(x=>Math.abs(x-cur)<1e-6)) etps.push(Math.round(cur*10)/10);
+  etps.sort((a,b)=>a-b);
+  const sim = E.simulateETP(R, etps);
+  const rows = [['ETP','etp',f1],['Récupérations / MAR / an','recup',f1],['Jours travaillés / MAR','joursTravailles',f1],['MAR disponibles / jour','marDisponiblesParJour',f1],['Appréciation','appreciation',x=>x],
+    ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde','hSemSansGarde',f1],['h/sem avec garde','hSemAvecGarde',f1],['h/sem sur 52 sem.','hSem52',f1],['Écart au plafond','ecartPlafond',x=>(x>0?'+':'')+f1(x)]];
+  document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${k==='ecartPlafond'?(x[k]>0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
+}
+
+// ── Consignes (générées depuis les règles courantes) ──
+function renderConsignes(){
+  const g = cfg.gardes, p = cfg.params, r = cfg.rea;
+  const longs = R.postes.filter(x=>x.fin18).map(x=>x.code).join(', ');
+  document.getElementById('consignes').innerHTML = `
+  <h3>Bloc opératoire</h3><ul>
+    <li>1 MAR pour 2 salles ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR (règle appliquée par étage).</li>
+    <li>${R.postes.length} postes par jour ouvré : ${R.postes.map(x=>`<b>${x.code}</b> ${esc(x.salles)}`).join(' · ')}.</li>
+    <li>Bloc court : fin entre 13h et 16h30 ; bloc long (${longs}) : 8h-18h. Au plus ${p.blocMaxSemaine} jours de bloc par semaine et par MAR ; 2 jours consécutifs sur le même poste privilégiés.</li></ul>
+  <h3>Réanimation</h3><ul>
+    <li>${r.nombre} MAR en réanimation chaque jour ouvré, ${r.heures} h par jour (8h-16h), par semaines entières du lundi au vendredi.</li>
+    <li>Une semaine de réa n'est jamais coupée par un repos de sécurité (garde possible le vendredi seulement). Quotité minimale : ${r.quotiteMin}.</li>
+    <li>Week-ends et fériés : réa couverte par les MAR de garde.</li></ul>
+  <h3>Gardes</h3><ul>
+    <li>${g.parJour} MAR de garde par jour, au prorata de la quotité de garde ; gardes de week-end et fériés réparties entre les MAR éligibles.</li>
+    <li>En semaine : garde de 16h à 8h après la journée (${g.heuresSemaine} h) ; le MAR de garde n'est pas au bloc long (fin 18h). Week-end et fériés : ${g.heuresWE} h.</li>
+    <li>Repos de sécurité le lendemain de chaque garde pour les ${g.parJour} MAR. Au moins ${g.ecartMin} jours entre deux gardes.</li>
+    <li>Quotité de garde 0 : pas de garde. « Pas de garde de WE » : gardes de semaine uniquement.</li>
+    <li>Demi-garde de WE : le MAR concerné assure le jour (8h-20h, ${g.heuresDemiJour} h) le samedi et le dimanche d'un même week-end ; le MAR de garde ne fait alors que la nuit (20h-8h, ${g.heuresNuit} h). Nombre de week-ends : ${g.demiWeekends}.</li></ul>
+  <h3>Temps partiel, congés, récupérations</h3><ul>
+    <li>Jours de temps partiel (TP) = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos (au plus ${p.tpMaxParJour} MAR en TP le même jour).</li>
+    <li>Congés : ${p.conges} jours par ETP, formation : ${p.formation} jours, RTT : ${p.rtt} — proratisés à la quotité, posés sur des jours hors bloc.</li>
+    <li>Récupération : ${p.recupSamedi} jour par samedi de garde (ou de demi-garde) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h.</li></ul>
+  <h3>Temps de travail</h3><ul>
+    <li>Garde sur place comptée en temps de travail effectif. Repère : ${p.plafond} h par semaine en moyenne, gardes comprises (directive 2003/88/CE, à vérifier avec la réglementation applicable).</li>
+    <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li></ul>`;
+}
+
+// ── Exports ──
+function exportXlsx(){
+  const wb = XLSX.utils.book_new(), S = R.stats;
+  const syn = [['Indicateur','Valeur']].concat(INDIC.map(([k,l])=>[l, S.synthese[k]]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(syn), 'Synthèse');
+  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','TP','HB','Dispo consult.','Récup.'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond']);
+  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.tp,m.hb,Math.round(m.hbDisponible),+m.recup.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1)]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
+  const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
+  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP']);
+  const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
+    j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
+    [nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([tH].concat(tR)), 'Tableau de service');
+  const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));
+  const vR = R.jours.map(j=>[E.labelFR(j.date),j.jour].concat(R.equipe.map((p,i)=>E.codeActivite(R,E.activite(R,j,i)))));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([vH].concat(vR)), 'Par MAR');
+  const sc = scenarios();
+  if(sc.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Scénario','Date'].concat(INDIC.map(x=>x[1]))].concat(sc.map(s=>[s.nom,s.date].concat(INDIC.map(([k])=>s.s[k]))))), 'Scénarios');
+  XLSX.writeFile(wb, `simulation-MAR-${cfg.annee}.xlsx`);
+}
+function exportJSON(){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg,null,1)],{type:'application/json'}));
+  a.download = `simulation-MAR-config-${cfg.annee}.json`; a.click();
+}
+function importJSON(file){
+  const rd = new FileReader();
+  rd.onload = () => { try{ cfg = E.mergeConfig(JSON.parse(rd.result)); recompute(); }catch(e){ alert('Fichier de configuration invalide.'); } };
+  rd.readAsText(file);
+}
+
+// ── Code d'accès ──
+// Empreinte SHA-256 du code (C2026). Simple barrière d'accès côté navigateur.
+const ACCESS_HASH='a915aaedd8f48d21d3bde2e95aec2644d7348ade6f6ef5a0350073752eec13fe';
+const AUTH_KEY='simulation_mar_auth';
+async function sha256(t){
+  if(!(window.crypto&&crypto.subtle)) return null;
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function codeOk(code){ const c=String(code).trim().toUpperCase(); const h=await sha256(c); return h?h===ACCESS_HASH:c==='C'+'2026'; }
+function openApp(){ document.body.classList.remove('locked'); document.getElementById('lock').style.display='none'; }
+async function unlock(e){
+  e.preventDefault();
+  const inp=document.getElementById('lock-code');
+  if(await codeOk(inp.value)){ try{sessionStorage.setItem(AUTH_KEY,ACCESS_HASH);}catch(err){} openApp(); }
+  else{ document.getElementById('lock-err').textContent='Code incorrect — réessayez.'; inp.value=''; inp.focus(); }
+}
+try{ if(sessionStorage.getItem(AUTH_KEY)===ACCESS_HASH) openApp(); }catch(e){}
+
+recompute();
+try{ const t=localStorage.getItem(STORE+'_tab'); if(t&&document.getElementById('tab-'+t)) showTab(t); }catch(e){}
+</script>
+</body>
+</html>
