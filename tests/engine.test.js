@@ -1,0 +1,91 @@
+// Tests du moteur de simulation des MAR au bloc.
+// Lancer : node --test tests/*.test.js
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const E = require('../bloc-mar-engine.js');
+
+const R = E.generate();
+const S = R.stats;
+const idx = code => R.equipe.findIndex(m => m.code === code);
+
+test('aucune règle dure violée', () => {
+  assert.deepEqual(E.verify(R), []);
+  assert.deepEqual(R.warnings, []);
+});
+
+test('chaque jour ouvré : 8 postes, 3 réa, 2 gardes', () => {
+  R.jours.forEach(j => {
+    assert.equal(j.garde.length, 2, j.date);
+    if (j.statut === 'Ouvert') {
+      assert.equal(j.postes.filter(x => x !== null).length, 8, j.date);
+      assert.equal(j.rea.length, 3, j.date);
+    }
+  });
+});
+
+test('fériés de Monaco : bloc fermé', () => {
+  ['2027-01-27', '2027-11-19', '2027-12-08'].forEach(d => {
+    const j = R.jours.find(x => x.date === d);
+    assert.equal(j.statut, 'Férié'); assert.equal(j.postes, null);
+  });
+  assert.equal(S.synthese.joursBloc, 251);
+});
+
+test('réanimation par semaines entières', () => {
+  const byWeek = {};
+  R.jours.filter(j => j.statut === 'Ouvert').forEach(j => {
+    const k = E.addDays(j.date, -E.dow(j.date));
+    const v = j.rea.slice().sort().join(',');
+    if (byWeek[k]) assert.equal(byWeek[k], v, j.date); else byWeek[k] = v;
+  });
+});
+
+test('pas de garde de WE (MAR 01) et quotité de garde 0 (MAR 04, MAR 05)', () => {
+  R.jours.forEach(j => {
+    if (j.statut !== 'Ouvert') assert.ok(!j.garde.includes(idx('MAR 01')), j.date);
+    assert.ok(!j.garde.includes(idx('MAR 04')) && !j.garde.includes(idx('MAR 05')), j.date);
+  });
+});
+
+test('gardes au prorata de la quotité de garde', () => {
+  S.parMar.filter(m => m.qg > 0).forEach(m => {
+    assert.ok(Math.abs(m.gardes / m.qg - 730 / S.synthese.etpGarde) <= 1.5, `${m.code} : ${m.gardes}`);
+  });
+});
+
+test('demi-gardes de WE : jour samedi + dimanche, nuit seule pour le MAR de garde', () => {
+  const mb = idx('MAR 05');
+  const jours = R.jours.filter(j => j.demi.includes(mb));
+  assert.ok(jours.length >= 2 && jours.length % 2 === 0);
+  jours.forEach(j => {
+    assert.ok(['Samedi', 'Dimanche'].includes(j.jour), j.date);
+    assert.equal(j.nuit.length, 1);
+    assert.ok(j.garde.includes(j.nuit[0]));
+  });
+  assert.equal(S.parMar[mb].demi, jours.length);
+  assert.equal(S.parMar[mb].gardes, 0);
+});
+
+test('temps partiel : jours TP au prorata', () => {
+  S.parMar.filter(m => m.q < 1).forEach(m => {
+    assert.ok(Math.abs(m.tp - (1 - m.q) * 251) <= 5, `${m.code} : ${m.tp}`);
+  });
+});
+
+test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures', () => {
+  const sim = E.simulateETP(R, [18, 20, 24]);
+  assert.ok(sim[0].marDisponiblesParJour < sim[1].marDisponiblesParJour);
+  assert.ok(sim[1].marDisponiblesParJour < sim[2].marDisponiblesParJour);
+  assert.ok(sim[0].hSemAvecGarde > sim[2].hSemAvecGarde);
+  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '2.5');
+});
+
+test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
+  const cfg = E.mergeConfig();
+  cfg.gardes.parJour = 1;
+  cfg.equipe.forEach(m => { m.demiWE = false; });
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  assert.equal(r.stats.synthese.gardesParAn, 365);
+  assert.equal(r.stats.synthese.demiGardes, 0);
+});
