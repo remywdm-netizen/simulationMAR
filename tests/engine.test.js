@@ -161,3 +161,13 @@ test('maternité : 1 MAR détaché en journée, hors bloc et hors réa', () => {
   assert.ok(s.marDisponiblesParJour < S.synthese.marDisponiblesParJour);
   assert.equal(S.synthese.materniteTotal, 0);                              // option désactivée par défaut
 });
+
+test('effectif pour 48 h : charge répartie', () => {
+  const s = S.synthese;
+  assert.ok(s.etpPlafondCharge > 21.1 && s.etpPlafondCharge <= 22, String(s.etpPlafondCharge));
+  assert.ok(s.etpPlafondConsult > 30, String(s.etpPlafondConsult));
+  const sim = E.simulateETP(R, [s.etpPlafondCharge - 0.1, s.etpPlafondCharge]);
+  assert.ok(sim[0].hSemAvecGardeCharge > 48 && sim[1].hSemAvecGardeCharge <= 48);
+  const cfg = E.mergeConfig(); cfg.maternite.actif = true;
+  assert.ok(E.generate(cfg).stats.synthese.etpPlafondCharge > s.etpPlafondCharge);
+});

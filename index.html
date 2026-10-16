@@ -188,7 +188,9 @@ body.locked .bar,body.locked .wrap{display:none}
     </div>
     <div class="tbl-wrap"><table id="tbl-fin"></table></div>
     <h2>Effectif théorique (calcul rapide)</h2>
-    <p class="hint">Mêmes besoins et mêmes règles, seul le nombre d'ETP change (MAR à temps plein interchangeables). Séparer les valeurs par des virgules.</p>
+    <p class="hint">Mêmes besoins et mêmes règles, seul le nombre d'ETP change (MAR à temps plein interchangeables). Séparer les valeurs par des virgules.<br/>
+    « h/sem avec garde » : toute la capacité en plus est travaillée en consultation (8 h/jour). « Charge actuelle répartie » : bloc, réa, maternité, consultations nécessaires, formation et gardes sont partagés entre plus de MAR.</p>
+    <div id="etp-plafond" class="ok info"></div>
     <div class="row"><input type="text" id="etps" value="18,19,20,21,22,23,24" onchange="renderSimu()"/></div>
     <div class="tbl-wrap"><table id="tbl-etp"></table></div>
   </div>
@@ -236,6 +238,7 @@ function renderSynthese(){
     card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, semaine de présence') +
     card('h/sem avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
     card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`) +
+    card(`ETP pour ${s.plafond} h / semaine`, s.etpPlafondCharge ? f1(s.etpPlafondCharge)+' ETP' : '> 80', `${s.etpPlafondCharge ? (s.etpPlafondCharge-s.etp>=0?'+':'')+f1(s.etpPlafondCharge-s.etp)+' par rapport à l\'équipe · ' : ''}charge actuelle répartie ; ${s.etpPlafondConsult ? f1(s.etpPlafondConsult) : '> 80'} si la capacité en plus va en consultations`, s.etpPlafondCharge && s.etpPlafondCharge <= s.etp ? 'good' : 'mid') +
     card('Absences (jours ouvrés / an)', f0(s.absencesTotal), `${f1(s.absentsParJour)} MAR absents / jour · congés ${f0(s.congesTotal+s.rttTotal)} · formation ${f0(s.formationTotal)} · récup. ${f0(s.recupSamedisTotal+s.recupFin18Total)} · TP ${f0(s.tpTotal)}`) +
     card('Un temps plein', f1(s.congesTempsPlein + s.recupTempsPlein)+' j', `${s.congesTempsPlein} j de congés + ${f1(s.recupTempsPlein)} j de récupération (+ ${cfg.params.formation} j de formation)`) +
     card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré · ${f1(s.dureeMoyenne)} min en moyenne · ${f1(s.consultParJourMar)} par journée`) +
@@ -397,7 +400,7 @@ const INDIC = [
   ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR dispo / jour',f1],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
-  ['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
+  ['etpPlafondCharge','ETP pour le plafond',x=>x?f1(x):'> 80'],['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
   ['consultationsParAn','Consultations / an',f0],['marConsultNecessaires','MAR consult. nécessaires / j',f1],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
 ];
@@ -422,11 +425,13 @@ function renderSimu(){
   const etps = document.getElementById('etps').value.split(/[,; ]+/).map(Number).filter(x=>x>0);
   const cur = R.stats.synthese.etp; if(!etps.some(x=>Math.abs(x-cur)<1e-6)) etps.push(Math.round(cur*10)/10);
   etps.sort((a,b)=>a-b);
-  const sim = E.simulateETP(R, etps);
+  const sim = E.simulateETP(R, etps), sy = R.stats.synthese;
+  document.getElementById('etp-plafond').innerHTML = `Effectif pour ${sy.plafond} h par semaine de présence (temps plein, gardes comprises) : <b>${sy.etpPlafondCharge ? f1(sy.etpPlafondCharge) : '> 80'} ETP</b> si la charge actuelle est répartie (équipe : ${f1(sy.etp)} ETP) ; ${sy.etpPlafondConsult ? f1(sy.etpPlafondConsult) : '> 80'} ETP si la capacité en plus est travaillée en consultation.`;
   const rows = [['ETP','etp',f1],['Récupérations / MAR / an','recup',f1],['Jours travaillés / MAR','joursTravailles',f1],['MAR disponibles / jour','marDisponiblesParJour',f1],['Appréciation','appreciation',x=>x],
     ['MAR nécessaires en consultation / jour','marConsultNecessaires',f1],['Marge consultations (MAR / jour)','margeConsult',x=>(x>=0?'+':'')+f1(x)],['MAR consultation : fourchette haute','marConsultMax',f1],['Marge au pire (créneaux longs maxi)','margeConsultPire',x=>(x>=0?'+':'')+f1(x)],
-    ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde','hSemSansGarde',f1],['h/sem avec garde','hSemAvecGarde',f1],['h/sem sur 52 sem.','hSem52',f1],['Écart au plafond','ecartPlafond',x=>(x>0?'+':'')+f1(x)]];
-  document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${k==='ecartPlafond'?(x[k]>0?'pos':'neg'):(k==='margeConsult'||k==='margeConsultPire')?(x[k]<0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
+    ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde','hSemSansGarde',f1],['h/sem avec garde','hSemAvecGarde',f1],['h/sem sur 52 sem.','hSem52',f1],['Écart au plafond','ecartPlafond',x=>(x>0?'+':'')+f1(x)],
+    ['h/sem avec garde — charge actuelle répartie','hSemAvecGardeCharge',f1],['Écart au plafond — charge répartie','ecartPlafondCharge',x=>(x>0?'+':'')+f1(x)]];
+  document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${(k==='ecartPlafond'||k==='ecartPlafondCharge')?(x[k]>0?'pos':'neg'):(k==='margeConsult'||k==='margeConsultPire')?(x[k]<0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
 }
 
 function heuresTempsPlein(){
@@ -480,7 +485,8 @@ function renderConsignes(){
     <li>Récupération : ${p.recupSamedi} jour par samedi de garde, la moitié pour une demi-garde (jour 8h-20h ou nuit seule) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h.</li></ul>
   <h3>Temps de travail</h3><ul>
     <li>Garde sur place comptée en temps de travail effectif. Repère : ${p.plafond} h par semaine en moyenne, gardes comprises (directive 2003/88/CE, à vérifier avec la réglementation applicable).</li>
-    <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li></ul>
+    <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li>
+    <li>Effectif pour ${cfg.params.plafond} h par semaine (temps plein, gardes comprises) : ${R.stats.synthese.etpPlafondCharge ? f1(R.stats.synthese.etpPlafondCharge) : '> 80'} ETP si la charge actuelle est répartie entre plus de MAR.</li></ul>
   <h3>Consultations</h3><ul>
     <li>${f0(cfg.consultations.parAn)} consultations par an, soit ${f1(R.stats.synthese.consultationsParJour)} par jour ouvré, assurées par les MAR disponibles (ni bloc, ni réa, ni repos, congés, récupération ou formation).</li>
     <li>Journée de consultation : ${cfg.consultations.heuresJour} h. Créneaux de ${cfg.consultations.minCourtes} min pour ${f0(cfg.consultations.courtes)} consultations, de ${cfg.consultations.minLonguesMin} à ${cfg.consultations.minLonguesMax} min pour les autres (moyenne retenue ${cfg.consultations.minLongues} min).</li>

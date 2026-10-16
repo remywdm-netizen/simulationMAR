@@ -55,6 +55,8 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
 - h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de temps partiel).
+- Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : **22 ETP** avec les règles par défaut
+  (23 avec la maternité, 21 sans la récupération des jours finis à 18h).
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).
 
