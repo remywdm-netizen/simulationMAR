@@ -37,7 +37,7 @@ chk('Chaque jour : 2 gardes, repos = gardes de la veille, 8 postes, 3 réa, cons
 let gapMin = 99; P.forEach((m,i) => { const ks = r.jours.map((j,k)=>j.garde.includes(i)?k:-1).filter(k=>k>=0); for (let t=1;t<ks.length;t++) gapMin=Math.min(gapMin,ks[t]-ks[t-1]); });
 chk('Écart minimal entre deux gardes ≥ 5 jours', gapMin >= 5, 'min ' + gapMin);
 // réa par semaines entières, sans repos dans la semaine
-let reaKo = 0; const wk = {}; open.forEach(j => { const m = E.addDays(j.date, -dow(j.date)); const v = [j.rea[0], j.recupRea.length ? j.recupRea[0] : j.rea[1], j.rea[2]].join(); if (wk[m] && wk[m] !== v) reaKo++; wk[m] = v; });
+let reaKo = 0; const wk = {}; open.forEach(j => { const m = E.addDays(j.date, -dow(j.date)); const v = [j.rea[0], j.reaPrioritaire, j.rea[2]].join(); if (wk[m] && wk[m] !== v) reaKo++; wk[m] = v; });
 chk('Réa par semaines entières', !reaKo, reaKo + ' ruptures');
 // demi-gardes
 const dj = r.jours.filter(j => j.demi.length);
@@ -111,8 +111,8 @@ const sem = {}; open.forEach(j => { sem[E.addDays(j.date, -dow(j.date))] = j.rea
 const r1 = Object.values(sem);
 chk('Réa 1 assurée par le groupe dédié (5 MAR), semaines entières', g1.length === 5 && r1.every(i => g1.includes(i)) && open.every(j => !j.rea.slice(2).some(i => g1.includes(i))));
 const ws = {}; open.forEach(j => { (ws[E.addDays(j.date, -dow(j.date))] ||= []).push(j); }); const wl = Object.values(ws);
-let r2ko = 0; wl.forEach((w, n) => { if (!n) return; const p1 = wl[n-1][0].rea[0]; w.forEach(j => { if ((j.recupRea.length ? j.recupRea[0] : j.rea[1]) !== p1) r2ko++; }); });
-chk('Réa 2 = MAR de la Réa 1 de la semaine précédente (2 semaines enchaînées)', !r2ko, r2ko + ' écarts');
+let r2ko = 0, r2t = 0, r2n = 0; wl.forEach((w, n) => { if (!n) return; const p1 = wl[n-1][0].rea[0]; w.forEach(j => { r2n++; if (j.reaPrioritaire !== p1) r2ko++; if (j.rea[1] === p1) r2t++; }); });
+chk('Réa 2 = MAR de la Réa 1 de la semaine précédente, prioritaire (semaine non obligatoire)', !r2ko && r2t / r2n > 0.8, `${r2t}/${r2n} jours tenus par lui`);
 chk('Pas de jour de récupération propre au groupe Réa 1', PM.every(m => m.recupRea === 0) && open.every(j => j.rea.length === 3));
 const parG = g1.map(i => r1.filter(x => x === i).length);
 chk('Réa 1 : rotation équilibrée dans le groupe', Math.max(...parG) - Math.min(...parG) <= 1, parG.join(' / ') + ' semaines');
