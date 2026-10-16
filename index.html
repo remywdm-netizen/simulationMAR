@@ -69,6 +69,13 @@ body.locked .bar,body.locked .wrap{display:none}
 .lock-box input{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:14px;margin-bottom:10px}
 .lock-box button{width:100%;padding:8px;border:none;border-radius:var(--r);background:var(--gbtn);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
 .lock-err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+.org{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+.org-sec{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.org-sec h3{font-size:13px;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--bd)}
+.org-sec table td{white-space:normal;text-align:left;font-size:12px}
+.org-sec table td.v{text-align:right;font-weight:600;white-space:nowrap;width:1%}
+.org-sec table td.d{color:var(--t2);font-size:11px}
+@media print{.bar,.tabs,.noprint{display:none!important}.view{display:none!important}#view-organisation{display:block!important}body{background:#fff}.org{grid-template-columns:1fr 1fr}.org-sec{break-inside:avoid}}
 </style>
 </head>
 <body class="locked">
@@ -101,6 +108,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <button class="tab" id="tab-regles" onclick="showTab('regles')">⚙️ Règles</button>
     <button class="tab" id="tab-tableau" onclick="showTab('tableau')">📅 Tableau de service</button>
     <button class="tab" id="tab-simu" onclick="showTab('simu')">🧪 Simulations</button>
+    <button class="tab" id="tab-organisation" onclick="showTab('organisation')">🗂️ Organisation</button>
     <button class="tab" id="tab-consignes" onclick="showTab('consignes')">📋 Consignes</button>
   </div>
 
@@ -144,7 +152,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <p class="hint">Le chiffre d'affaires est réparti en parts égales. Parts de chaque MAR : colonne « Parts » de l'onglet Équipe (vide = au prorata de la quotité de travail).</p>
     <div class="form" id="f-finance"></div>
     <h2>Consultations d'anesthésie</h2>
-    <p class="hint">Poste fixe : chaque jour ouvré, un nombre fixe de MAR est en consultation, au prorata de la quotité, parmi les MAR cochés « Consult. » dans l'équipe.</p>
+    <p class="hint">Chaque jour ouvré, le minimum de MAR est en consultation ; un MAR de plus (jusqu'au maximum) est ajouté juste le nombre de jours nécessaire pour atteindre le volume annuel, répartis régulièrement sur l'année. Affectation au prorata de la quotité parmi les MAR cochés « Consult. » dans l'équipe.</p>
     <div class="form" id="f-consult"></div>
     <h2>Postes de bloc (1 MAR pour 2 salles)</h2>
     <p class="hint">Heures de présence par jour. « Après 16h » = heures retirées un jour de garde (la garde commence à 16h). « Fin 18h » : poste interdit au MAR de garde, ouvre droit à la récupération des jours finis à 18h.</p>
@@ -199,6 +207,10 @@ body.locked .bar,body.locked .wrap{display:none}
   </div>
 
   <!-- ── CONSIGNES ── -->
+  <div class="view" id="view-organisation">
+    <div class="row noprint"><button class="btn" onclick="window.print()">🖨 Imprimer</button><span class="hint" style="margin:0">Synthèse de l'organisation calculée sur l'année avec l'équipe et les règles courantes. Moyennes « temps plein » = MAR à temps plein qui font des gardes.</span></div>
+    <div class="org" id="org"></div>
+  </div>
   <div class="view" id="view-consignes"><div class="rules" id="consignes"></div></div>
 </div>
 
@@ -222,7 +234,7 @@ function recompute(){ clearTimeout(recomputeTimer); recomputeTimer = setTimeout(
 function recomputeNow(){
   R = E.generate(cfg); save();
   document.getElementById('bar-sub').textContent = `${cfg.annee} · ${R.equipe.length} MAR · ${f1(R.stats.synthese.etp)} ETP · ${R.postes.length} postes de bloc · ${cfg.rea.nombre} réa · ${cfg.gardes.parJour} gardes/jour`;
-  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes();
+  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes(); renderOrganisation();
 }
 function showTab(id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.id==='tab-'+id));
@@ -245,8 +257,8 @@ function renderSynthese(){
     card('Absences (jours ouvrés / an)', f0(s.absencesTotal), `${f1(s.absentsParJour)} MAR absents / jour · congés ${f0(s.congesTotal+s.rttTotal)} · formation ${f0(s.formationTotal)} · récup. ${f0(s.recupSamedisTotal+s.recupFin18Total)} · TP ${f0(s.tpTotal)}`) +
     card('Un temps plein', f1(s.congesTempsPlein + s.recupTempsPlein)+' j', `${s.congesTempsPlein} j de congés + ${f1(s.recupTempsPlein)} j de récupération (+ ${cfg.params.formation} j de formation)`) +
     card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré · CA ${f0(s.caParConsultation)} € par consultation`) +
-    card('Capacité de consultation', f0(s.capaciteConsultAn)+' / an', `${cfg.consultations.marParJour} MAR × ${cfg.consultations.parMarJour} = ${f0(s.capaciteConsultJour)} par jour · couverture ${f0(s.couvertureConsult*100)} %`, s.couvertureConsult < 1 ? 'warn' : 'good') +
-    card('MAR nécessaires en consultation', f1(s.marConsultNecessaires)+' / jour', `pour ${cfg.consultations.marParJour} postés · marge ${s.margeConsult>=0?'+':''}${f1(s.margeConsult)} MAR / jour`, s.margeConsult < 0 ? 'warn' : 'good') +
+    card('MAR en consultation', f1(s.marConsultMoyen)+' / jour', `${cfg.consultations.marMin} par jour, ${cfg.consultations.marMax} sur ${s.joursConsultMax} jours · besoin ${f1(s.marConsultNecessaires)} à ${cfg.consultations.parMarJour} consultations par MAR`) +
+    card('Capacité de consultation', f0(s.capaciteConsultAn)+' / an', `${f1(s.capaciteConsultJour)} par jour · couverture ${f0(s.couvertureConsult*100)} %`, s.couvertureConsult < 0.999 ? 'warn' : 'good') +
     card('Valeur de la part', eur(s.valeurPart), `CA ${eur(s.ca)} ÷ ${f1(s.nombreParts)} parts`) +
     card('Revenu d\'un temps plein', eur(s.revenuTempsPlein), `${f1(s.euroHeure)} €/h gardes comprises · ${f1(s.euroHeureHorsGarde)} €/h hors garde`);
   const issues = E.verify(R), w = R.warnings;
@@ -343,7 +355,7 @@ function renderRegles(){
   document.getElementById('f-finance').innerHTML =
     field('finance.ca','Chiffre d\'affaires annuel (€)',{step:10000}) + field('finance.parts','Nombre de parts',{step:0.5});
   document.getElementById('f-consult').innerHTML =
-    field('consultations.parAn','Consultations par an (besoin)',{step:100}) + field('consultations.marParJour','MAR en consultation par jour ouvré') +
+    field('consultations.parAn','Consultations par an (besoin)',{step:100}) + field('consultations.marMin','MAR en consultation par jour (minimum)') + field('consultations.marMax','MAR en consultation par jour (maximum)') +
     field('consultations.parMarJour','Consultations par MAR et par jour') + field('consultations.heuresJour','Heures d\'une journée de consultation',{step:0.5});
   document.getElementById('f-annee').innerHTML = `<label>Année<input type="number" value="${cfg.annee}" onchange="cfg.annee=+this.value;recompute()"/></label>`;
   let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th></tr>`;
@@ -387,13 +399,13 @@ function renderTableau(){
   const nom = i => i===null||i===undefined ? '' : esc(R.equipe[i].code);
   let h = '';
   if(document.getElementById('vue').value === 'poste'){
-    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}<th colspan="${cfg.consultations.marParJour}">Consultation</th>${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th><th title="MAR sans poste ce jour-là">Sans poste</th><th title="MAR libres après les absences moyennes">Libres</th></tr>`;
+    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}<th colspan="${cfg.consultations.marMax}">Consultation</th>${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th><th title="MAR sans poste ce jour-là">Sans poste</th><th title="MAR libres après les absences moyennes">Libres</th></tr>`;
     jours.forEach(j => {
       const tr = j.statut==='Week-end'?'we':j.statut==='Férié'?'fe':'';
       const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
       const rea = j.statut==='Ouvert' ? j.rea.map(i=>`<td class="k-rea">${nom(i)}</td>`).join('') : `<td colspan="${cfg.rea.nombre}"></td>`;
       const g = j.garde.map(i=>nom(i)+(j.nuit.includes(i)?' (nuit)':'')).join(', ');
-      const csn = cfg.consultations.marParJour, cs = j.statut==='Ouvert' ? Array.from({length:csn},(_,k)=>`<td class="k-cs">${nom((j.consultation||[])[k])}</td>`).join('') : `<td colspan="${csn}"></td>`;
+      const csn = cfg.consultations.marMax, cs = j.statut==='Ouvert' ? Array.from({length:csn},(_,k)=>`<td class="k-cs">${nom((j.consultation||[])[k])}</td>`).join('') : `<td colspan="${csn}"></td>`;
       const mat = cfg.maternite.actif ? `<td class="${j.maternite.length?'k-mat':''}">${j.maternite.map(nom).join(', ')}</td>` : '';
       h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}${cs}${mat}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td>${cfg.params.recupDansSemaineBloc?`<td class="${(j.recup||[]).length?'k-rc':''}">${(j.recup||[]).map(nom).join(', ')}</td>`:''}<td class="k-tp">${j.tp.map(nom).join(', ')}</td>${(()=>{const c=R.stats.parJour[j.date]; return c?`<td>${c.hb}</td><td class="b ${c.libres<0?'pos':'neg'}">${f1(c.libres)}</td>`:'<td></td><td></td>';})()}</tr>`;
     });
@@ -412,7 +424,7 @@ const INDIC = [
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
   ['etpPlafondCharge','ETP pour le plafond',x=>x?f1(x):'> 80'],['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
-  ['consultationsParAn','Consultations / an',f0],['capaciteConsultAn','Capacité consult. / an',f0],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
+  ['consultationsParAn','Consultations / an',f0],['marConsultMoyen','MAR consult. / jour',f1],['capaciteConsultAn','Capacité consult. / an',f0],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
 ];
 function scenarios(){ try{ return JSON.parse(localStorage.getItem(SCEN)||'[]'); }catch(e){ return []; } }
@@ -470,6 +482,89 @@ function renderFinance(){
 }
 
 // ── Consignes (générées depuis les règles courantes) ──
+// ── Synthèse de l'organisation (toutes les données) ──
+function orgData(){
+  const s = R.stats.synthese, P = R.stats.parMar, c = cfg, G = c.gardes, PR = c.params, CS = c.consultations, M = c.maternite;
+  const pl = P.filter(m => m.q === 1 && m.qg > 0), avg = f => pl.length ? pl.reduce((a,m)=>a+f(m),0)/pl.length : 0;
+  const nb = f => R.equipe.filter(f).length;
+  const quot = {}; R.equipe.forEach(m => { quot[m.q] = (quot[m.q]||0) + 1; });
+  const open = R.jours.filter(j => j.statut === 'Ouvert').length;
+  const longs = R.postes.filter(p => p.fin18);
+  const plus = x => (x >= 0 ? '+' : '') + f1(x);
+  return [
+    ['Effectif', [
+      ['Médecins anesthésistes', f0(s.nMar), ''],
+      ['ETP de travail', f1(s.etp), Object.keys(quot).sort((a,b)=>b-a).map(q => `${quot[q]} à ${String(q).replace('.',',')}`).join(' · ')],
+      ['ETP de garde', f1(s.etpGarde), `${nb(m=>!(m.qg>0))} sans garde · ${nb(m=>m.qg>0 && m.we===false)} sans garde de WE · ${nb(m=>m.demiWE)} en demi-gardes de WE`],
+      ['ETP nécessaires pour ' + s.plafond + ' h / semaine', s.etpPlafondCharge ? f1(s.etpPlafondCharge) : '> 80', `charge actuelle répartie (${s.etpPlafondCharge ? plus(s.etpPlafondCharge - s.etp) : ''} par rapport à l'équipe)`],
+      ['MAR libres par jour ouvré', f1(s.marDisponiblesParJour), `${s.appreciation} · après bloc, réa, consultations, repos et absences moyennes`],
+    ]],
+    ['Journée type (jour ouvré)', [
+      ['Bloc', f0(R.postes.length) + ' MAR', '1 MAR pour 2 salles : ' + R.postes.map(p => p.code + ' ' + p.salles).join(' · ')],
+      ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h), par semaines entières`],
+      ['Consultation', f1(s.marConsultMoyen) + ' MAR', `${CS.marMin} par jour, ${CS.marMax} sur ${s.joursConsultMax} jours · ${CS.parMarJour} consultations par MAR`],
+      ['Maternité', M.actif ? f0(M.nombre) + ' MAR' : '—', M.actif ? `${M.heures} h, ${E.JOURS.slice(0,5).filter((j,d)=>M.jours[d]).join(', ').toLowerCase()}` : 'option désactivée'],
+      ['Garde', f0(G.parJour) + ' MAR', `16h → 8h (${G.heuresSemaine} h) après la journée ; jamais au bloc long`],
+      ['Repos de sécurité', f0(G.parJour) + ' MAR', 'lendemain de garde'],
+      ['Temps partiel', f1(s.tpTotal / open) + ' MAR', 'jours non travaillés en moyenne'],
+      ['Absents', f1(s.absentsMoyensParJour) + ' MAR', 'congés, formation, récupérations (moyenne)'],
+      ['Libres', f1(s.marDisponiblesParJour) + ' MAR', 'marge pour imprévus'],
+    ]],
+    ['Week-ends et fériés', [
+      ['Gardes', f0(G.parJour) + ' MAR', `${G.heuresWE} h, réa comprise`],
+      ['Demi-gardes de jour', f0(s.demiGardes) + ' / an', `${s.demiWeekends} week-ends · jour 8h-20h ; le collègue de garde ne fait que la nuit`],
+      ['Jours fériés en semaine', f0(s.joursOuvres - s.joursBloc), 'bloc, réa de jour et consultations fermés'],
+    ]],
+    ['Volumes annuels', [
+      ['Jours ouvrés de bloc', f0(open), ''],
+      ['Journées de bloc', f0(P.reduce((a,m)=>a+m.bloc,0)), `dont ${f0(P.reduce((a,m)=>a+m.fin18,0))} finies à 18h (${longs.map(p=>p.code).join(', ')})`],
+      ['Journées de réa', f0(P.reduce((a,m)=>a+m.rea,0)), ''],
+      ['Journées de consultation', f0(P.reduce((a,m)=>a+m.consult,0)), `${f0(s.capaciteConsultAn)} consultations pour un besoin de ${f0(s.consultationsParAn)} (${f0(s.couvertureConsult*100)} %)`],
+      ['Journées de maternité', f0(s.materniteTotal), ''],
+      ['Gardes', f0(s.gardesParAn), `${f0(P.reduce((a,m)=>a+m.gardes-m.gardesWE,0))} en semaine · ${f0(P.reduce((a,m)=>a+m.gardesWE,0))} WE / fériés · ${f1(s.gardesParEtpGarde)} par ETP de garde`],
+    ]],
+    ['Un MAR temps plein (moyenne sur l\'année)', [
+      ['Jours de bloc', f1(avg(m=>m.bloc)), f1(avg(m=>m.bloc)/(open/5)) + ' par semaine'],
+      ['Jours de réa', f1(avg(m=>m.rea)), f1(avg(m=>m.rea)/5) + ' semaines'],
+      ['Jours de consultation', f1(avg(m=>m.consult)), ''],
+      ['Gardes', f1(avg(m=>m.gardes)), `dont ${f1(avg(m=>m.gardesWE))} WE / fériés · une tous les ${f1(365/avg(m=>m.gardes))} jours`],
+      ['Repos de sécurité (jours ouvrés)', f1(avg(m=>m.repos)), ''],
+      ['Congés', f1(PR.conges), 'jours ouvrés'],
+      ['Formation', f1(PR.formation), ''],
+      ['Récupérations', f1(avg(m=>m.recup)), `samedis ${f1(avg(m=>m.recupSamedis))} · jours finis à 18h ${f1(avg(m=>m.recupFin18))}${PR.recupDansSemaineBloc?' (posées dans la semaine de bloc)':''}`],
+      ['Jours sans poste restant libres', f1(avg(m=>m.hbDisponible)), ''],
+    ]],
+    ['Temps de travail (temps plein)', [
+      ['Heures par an', f0(avg(m=>m.heuresSansGarde+m.heuresGarde)), `dont ${f0(avg(m=>m.heuresGarde))} h de garde`],
+      ['h / semaine de présence, sans garde', f1(s.hSemSansGarde), ''],
+      ['h / semaine de présence, avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h (${plus(s.hSemAvecGarde - s.plafond)})`],
+      ['h / semaine sur 52 semaines', f1(s.hSem52), 'congés et récupérations comptés à 0 h'],
+      ['Semaine la plus chargée', f1(s.semaineMax) + ' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond en moyenne`],
+    ]],
+    ['Absences de l\'équipe (jours ouvrés / an)', [
+      ['Congés', f0(s.congesTotal + s.rttTotal), `${PR.conges} j par ETP${PR.rtt ? ' + ' + PR.rtt + ' RTT' : ''}, proratisés`],
+      ['Formation', f0(s.formationTotal), `${PR.formation} j par ETP`],
+      ['Récupérations', f0(s.recupSamedisTotal + s.recupFin18Total), `samedis ${f0(s.recupSamedisTotal)} (½ pour une demi-garde) · 18h ${f0(s.recupFin18Total)} (1 j pour ${PR.joursFin18ParRecup})`],
+      ['Temps partiel', f0(s.tpTotal), ''],
+      ['Total', f0(s.absencesTotal), f1(s.absentsParJour) + ' MAR absents par jour ouvré'],
+    ]],
+    ['Part financière', [
+      ['Chiffre d\'affaires', eur(s.ca), `${f0(s.caParConsultation)} € par consultation`],
+      ['Nombre de parts', f1(s.nombreParts), `${f1(s.partsAttribuees)} attribuées`],
+      ['Valeur de la part', eur(s.valeurPart), ''],
+      ['Revenu d\'un temps plein', eur(s.revenuTempsPlein), `${f1(s.euroHeure)} €/h gardes comprises · ${f1(s.euroHeureHorsGarde)} €/h hors garde`],
+    ]],
+    ['Contrôles', [
+      ['Règles dures', E.verify(R).length ? E.verify(R).length + ' écart(s)' : 'respectées', 'gardes, repos, réa, bloc long, temps partiel, consultations'],
+      ['Jours où les absences ne peuvent pas toutes être posées', f0(s.joursNegatifs) + ' / ' + f0(open), ''],
+    ]],
+  ];
+}
+function renderOrganisation(){
+  document.getElementById('org').innerHTML = orgData().map(([t, rows]) =>
+    `<div class="org-sec"><h3>${esc(t)}</h3><table>${rows.map(([l,v,d]) => `<tr><td>${esc(l)}${d?`<br/><span class="d">${esc(d)}</span>`:''}</td><td class="v">${esc(v)}</td></tr>`).join('')}</table></div>`).join('');
+}
+
 function renderConsignes(){
   const g = cfg.gardes, p = cfg.params, r = cfg.rea;
   const longs = R.postes.filter(x=>x.fin18).map(x=>x.code).join(', ');
@@ -499,7 +594,7 @@ function renderConsignes(){
     <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li>
     <li>Effectif pour ${cfg.params.plafond} h par semaine (temps plein, gardes comprises) : ${R.stats.synthese.etpPlafondCharge ? f1(R.stats.synthese.etpPlafondCharge) : '> 80'} ETP si la charge actuelle est répartie entre plus de MAR.</li></ul>
   <h3>Consultations</h3><ul>
-    <li>${cfg.consultations.marParJour} MAR en consultation chaque jour ouvré (${cfg.consultations.heuresJour} h), ${cfg.consultations.parMarJour} consultations chacun : ${f0(R.stats.synthese.capaciteConsultJour)} par jour, ${f0(R.stats.synthese.capaciteConsultAn)} par an pour un besoin de ${f0(cfg.consultations.parAn)} (${f1(R.stats.synthese.marConsultNecessaires)} MAR par jour suffiraient).</li>
+    <li>${cfg.consultations.marMin} MAR en consultation chaque jour ouvré (${cfg.consultations.heuresJour} h), ${cfg.consultations.parMarJour} consultations chacun ; un ${cfg.consultations.marMax}ᵉ MAR ${R.stats.synthese.joursConsultMax} jours dans l'année, répartis régulièrement, pour atteindre ${f0(cfg.consultations.parAn)} consultations (capacité ${f0(R.stats.synthese.capaciteConsultAn)}).</li>
     <li>Poste réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.</li></ul>
   <h3>Part financière</h3><ul>
     <li>Chiffre d'affaires ${eur(cfg.finance.ca)} réparti en ${f1(cfg.finance.parts)} parts égales : ${eur(R.stats.synthese.valeurPart)} la part.</li>
@@ -510,15 +605,16 @@ function renderConsignes(){
 function exportXlsx(){
   const wb = XLSX.utils.book_new(), S = R.stats;
   const syn = [['Indicateur','Valeur']].concat(INDIC.map(([k,l])=>[l, S.synthese[k]]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Rubrique','Indicateur','Valeur','Détail']].concat(...orgData().map(([t,rows])=>rows.map(([l,v,d])=>[t,l,v,d])))), 'Organisation');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(syn), 'Synthèse');
   const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Maternité','Consultation','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','Sans poste','Jours libres','Congés','Formation','Récup. samedis','Récup. 18h','dont posées','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond','Parts','Revenu (€)','€/h']);
   const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.mater,m.consult,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.rc,m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
-  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), Array.from({length:cfg.consultations.marParJour},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
+  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), Array.from({length:cfg.consultations.marMax},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
     j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
-    j.statut==='Ouvert'?Array.from({length:cfg.consultations.marParJour},(_,k)=>nom((j.consultation||[])[k])):Array(cfg.consultations.marParJour).fill(''),
+    j.statut==='Ouvert'?Array.from({length:cfg.consultations.marMax},(_,k)=>nom((j.consultation||[])[k])):Array(cfg.consultations.marMax).fill(''),
     [j.maternite.map(nom).join(', '),(j.recup||[]).map(nom).join(', '),nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')].concat((c=>c?[c.hb,+c.libres.toFixed(1)]:['',''])(R.stats.parJour[j.date]))));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([tH].concat(tR)), 'Tableau de service');
   const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));

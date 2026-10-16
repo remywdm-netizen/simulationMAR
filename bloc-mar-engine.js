@@ -67,8 +67,9 @@
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
     finance: { ca: 1200000, parts: 15 },
-    // Consultations d'anesthésie : poste fixe de N MAR chaque jour ouvré, chacun avec un nombre de consultations par jour.
-    consultations: { parAn: 13000, marParJour: 3, parMarJour: 25, heuresJour: 7 },
+    // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
+    // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7 },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -205,7 +206,9 @@
     // 4. Maternité (jour) puis bloc
     const MAT = cfg.maternite;
     const matDay = days.map(() => []), mDone = Array(n).fill(0);
-    const CS = cfg.consultations, csDay = days.map(() => []), cDone = Array(n).fill(0);
+    const CS = cfg.consultations, csDay = days.map(() => []), csNb = days.map(() => 0), cDone = Array(n).fill(0);
+    const openIdx = {}; days.forEach((s, k) => { if (isOpen[k]) openIdx[k] = Object.keys(openIdx).length; });
+    const csPlan = consultPlan(CS, Object.keys(openIdx).length);
     const bDone = Array(n).fill(0), pc = P.map(() => Array(NP).fill(0));
     const wkBloc = {};
     const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
@@ -227,10 +230,12 @@
         elig.forEach(i => { mDone[i]++; matDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
-      if (CS.marParJour > 0) {   // consultations : poste fixe, au prorata de la quotité
+      const nbCs = csPlan.parJour(openIdx[k]);
+      csNb[k] = nbCs;
+      if (nbCs > 0) {   // consultations : au prorata de la quotité
         const elig = avail.filter(i => P[i].consult !== false)
-          .sort((a, b) => cmp([cDone[a] / Q[a], bDone[a] / Q[a], a], [cDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, CS.marParJour);
-        if (elig.length < CS.marParJour) warnings.push(`${labelFR(s)} : ${CS.marParJour - elig.length} MAR de consultation manquant(s)`);
+          .sort((a, b) => cmp([cDone[a] / Q[a], bDone[a] / Q[a], a], [cDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, nbCs);
+        if (elig.length < nbCs) warnings.push(`${labelFR(s)} : ${nbCs - elig.length} MAR de consultation manquant(s)`);
         elig.forEach(i => { cDone[i]++; csDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
@@ -267,7 +272,7 @@
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: [...reaDay[k]], garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], recup: rcDay[k],
+      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], consultNb: csNb[k], recup: rcDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
@@ -416,16 +421,27 @@
     return { parMar: per, synthese, parJour };
   }
 
-  // Consultations : capacité du poste fixe (MAR par jour × consultations par MAR × jours ouvrés) face au volume annuel
+  // Consultations : marMin MAR chaque jour ouvré, plus des jours à marMax pour couvrir le volume annuel,
+  // répartis régulièrement sur l'année.
+  function consultPlan(C, nOpen) {
+    const min = Math.max(0, Math.round(C.marMin)), max = Math.max(min, Math.round(C.marMax));
+    const besoin = C.parMarJour > 0 ? Math.ceil(C.parAn / C.parMarJour) : 0;          // journées de MAR nécessaires
+    const extra = Math.min(Math.max(besoin - min * nOpen, 0), (max - min) * nOpen);
+    return {
+      min, max, extra, joursMar: min * nOpen + extra,
+      parJour: t => min + Math.floor((t + 1) * extra / nOpen) - Math.floor(t * extra / nOpen),
+    };
+  }
   function consultIndic(C, nOpen, ca) {
-    const capJour = C.marParJour * C.parMarJour, besoinJour = nOpen ? C.parAn / nOpen : 0;
-    const marNec = C.parMarJour > 0 ? besoinJour / C.parMarJour : 0;
+    const plan = consultPlan(C, nOpen), besoinJour = nOpen ? C.parAn / nOpen : 0;
+    const marNec = C.parMarJour > 0 ? besoinJour / C.parMarJour : 0, marMoy = nOpen ? plan.joursMar / nOpen : 0;
+    const cap = plan.joursMar * C.parMarJour;
     return {
       consultationsParAn: C.parAn, consultationsParJour: besoinJour,
-      capaciteConsultJour: capJour, capaciteConsultAn: capJour * nOpen,
-      couvertureConsult: C.parAn ? capJour * nOpen / C.parAn : 0,
-      marConsultNecessaires: marNec, margeConsult: C.marParJour - marNec,     // en MAR par jour
-      joursMarConsultation: C.marParJour * nOpen, heuresConsultation: C.marParJour * nOpen * C.heuresJour,
+      capaciteConsultJour: nOpen ? cap / nOpen : 0, capaciteConsultAn: cap, couvertureConsult: C.parAn ? cap / C.parAn : 0,
+      marConsultMoyen: marMoy, joursConsultMax: plan.max > plan.min ? Math.round(plan.extra / (plan.max - plan.min)) : 0,
+      marConsultNecessaires: marNec, margeConsult: marMoy - marNec,                     // en MAR par jour
+      joursMarConsultation: plan.joursMar, heuresConsultation: plan.joursMar * C.heuresJour,
       caParConsultation: C.parAn ? ca / C.parAn : 0,
     };
   }
@@ -447,7 +463,7 @@
         if (new Set(all).size !== all.length) issues.push(`${d} : un MAR a deux postes`);
         if (j.postes.includes(null)) issues.push(`${d} : poste de bloc sans MAR`);
         if (j.rea.length !== cfg.rea.nombre) issues.push(`${d} : ${j.rea.length} MAR en réa`);
-        if ((j.consultation || []).length !== cfg.consultations.marParJour) issues.push(`${d} : ${(j.consultation || []).length} MAR en consultation`);
+        if ((j.consultation || []).length !== j.consultNb) issues.push(`${d} : ${(j.consultation || []).length} MAR en consultation`);
         const mat = cfg.maternite.actif && cfg.maternite.jours[dow(j.date)] ? cfg.maternite.nombre : 0;
         if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
         j.repos.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : repos de sécurité non respecté (${P[i].code})`); });
@@ -477,7 +493,7 @@
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
-    const CS = cfg.consultations, cons = CS.marParJour * nOpen;
+    const CS = cfg.consultations, cons = consultPlan(CS, nOpen).joursMar;
     const hRea = rea * cfg.rea.heures + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
       const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup) / N;
