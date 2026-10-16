@@ -40,7 +40,7 @@ test('réanimation par semaines entières (Réa 1, Réa 2 = Réa 1 de la semaine
     const r2 = w[0].recupRea.length ? w[0].recupRea[0] : w[0].rea[1];
     w.forEach(j => assert.ok(j.recupRea.length ? j.recupRea[0] === r2 : j.rea[1] === r2, j.date));
     if (n) assert.equal(r2, ws[n - 1][0].rea[0], 'Réa 2 = Réa 1 précédent ' + w[0].date);
-    assert.ok(w[w.length - 1].recupRea.length === 1, 'récupération en fin de semaine ' + w[0].date);
+    assert.ok(w.every(j => !j.recupRea.length), 'pas de récupération propre au groupe ' + w[0].date);
   });
 });
 test('pas de garde de WE (MAR 01) et quotité de garde 0 (MAR 04, MAR 05)', () => {
@@ -80,7 +80,7 @@ test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures',
   assert.ok(sim[0].marDisponiblesParJour < sim[1].marDisponiblesParJour);
   assert.ok(sim[1].marDisponiblesParJour < sim[2].marDisponiblesParJour);
   assert.ok(sim[0].hSemAvecGarde > sim[2].hSemAvecGarde);
-  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '0.2');                 // 20 ETP : marge faible
+  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '0.4');                 // 20 ETP : marge faible
 });
 
 test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
@@ -203,4 +203,12 @@ test('récupération libérable : jours libres moins la réserve', () => {
   assert.ok(Math.abs(s.recupTotaleTempsPlein - (s.recupReglementaireTempsPlein + s.recupLiberableParEtp)) < 1e-9);
   const cfg = E.mergeConfig(); cfg.rea.nombre = 2;                             // un levier libère des jours
   assert.ok(E.generate(cfg).stats.synthese.recupTotaleTempsPlein > s.recupTotaleTempsPlein + 5);
+});
+
+test('option : récupération du groupe Réa 1 pendant la semaine en Réa 2', () => {
+  const cfg = E.mergeConfig(); cfg.rea.recupSemaine2 = 1;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  const sem = {}; r.jours.filter(j => j.statut === 'Ouvert').forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
+  Object.values(sem).forEach(w => { assert.equal(w[w.length - 1].recupRea.length, 1); assert.equal(w[w.length - 1].rea.length, 3); });
 });

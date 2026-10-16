@@ -46,7 +46,7 @@
       { code: 'G', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 13 + Ch 14 (Risque 4)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
     ],
-    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 1 },   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
+    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 0 },   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
     hb: { heures: 8 },                                                    // jour sans poste (hors bloc, administratif)
     // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
     maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },

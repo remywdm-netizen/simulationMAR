@@ -102,7 +102,7 @@ chk('h/sem avec garde = moyenne des temps pleins', near(s.hSemAvecGarde, pl.redu
 const rng = (f, g) => { const v = PM.filter(g).map(f); return [Math.min(...v), Math.max(...v)]; };
 const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1 && !P[PM.indexOf(m)].joursFixes), cq = rng(m => m.consult / m.q, m => m.q > 0);
 chk('Gardes / quotité de garde homogènes (écart ≤ 2)', gq[1] - gq[0] <= 2, gq.map(x=>x.toFixed(1)).join(' à '));
-chk('(Bloc + réa) / quotité homogène (écart ≤ 6)', bq[1] - bq[0] <= 6, bq.map(x=>x.toFixed(1)).join(' à '));
+chk('(Bloc + réa) / quotité homogène (écart ≤ 8)', bq[1] - bq[0] <= 8, bq.map(x=>x.toFixed(1)).join(' à '));
 chk('Réa / quotité hors groupe Réa 1 et jours fixes (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
 chk('Consultations / quotité (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.toFixed(1)).join(' à '));
 // Réa 1 : groupe dédié, rotation par semaines entières
@@ -113,7 +113,7 @@ chk('Réa 1 assurée par le groupe dédié (5 MAR), semaines entières', g1.leng
 const ws = {}; open.forEach(j => { (ws[E.addDays(j.date, -dow(j.date))] ||= []).push(j); }); const wl = Object.values(ws);
 let r2ko = 0; wl.forEach((w, n) => { if (!n) return; const p1 = wl[n-1][0].rea[0]; w.forEach(j => { if ((j.recupRea.length ? j.recupRea[0] : j.rea[1]) !== p1) r2ko++; }); });
 chk('Réa 2 = MAR de la Réa 1 de la semaine précédente (2 semaines enchaînées)', !r2ko, r2ko + ' écarts');
-chk('Récupération de réa : 1 jour en fin de semaine de Réa 2, poste repris', wl.every(w => w[w.length-1].recupRea.length === 1 && w[w.length-1].rea.length === 3), String(PM.reduce((x,m)=>x+m.recupRea,0)) + ' jours');
+chk('Pas de jour de récupération propre au groupe Réa 1', PM.every(m => m.recupRea === 0) && open.every(j => j.rea.length === 3));
 const parG = g1.map(i => r1.filter(x => x === i).length);
 chk('Réa 1 : rotation équilibrée dans le groupe', Math.max(...parG) - Math.min(...parG) <= 1, parG.join(' / ') + ' semaines');
 // Jours fixes : le MAR à 0,6 travaille lundi, mardi, mercredi
