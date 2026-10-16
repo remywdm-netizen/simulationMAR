@@ -51,6 +51,9 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
 - **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long).
+- Option « récupération posée dans la semaine de bloc » : ce jour est placé dans le tableau dès que les 4 jours
+  sont atteints (premier jour libre hors garde, dans la même semaine si possible) ; un collègue couvre le poste.
+  Moyennes inchangées, mais semaines de bloc long allégées (≈ 46 h au lieu de 51 h gardes comprises).
 
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
