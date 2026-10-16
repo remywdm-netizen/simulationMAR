@@ -26,10 +26,11 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Réanimation
 - **3 MAR par jour ouvré, 8h-16h**, par **semaines entières** (lundi-vendredi).
 - Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel : garde possible le vendredi seulement.
-- **Réa 1** : poste tenu par un **groupe dédié de 5 MAR**, en rotation par semaines entières (≈ 10 semaines par an
-  chacun), **sans absence** pendant la semaine (ni repos, ni temps partiel, ni congés). Ils ne prennent pas les
-  autres postes de réa et font moins de bloc : la charge bloc + réa est équilibrée entre tous les MAR.
-- Les 2 autres postes de réa sont répartis entre les autres MAR, au prorata de la quotité.
+- **Groupe Réa 1 (5 MAR)** : chaque MAR fait une semaine en **Réa 1**, puis **enchaîne la semaine suivante en Réa 2**,
+  avec **1 jour de récupération** en fin de cette 2ᵉ semaine (poste repris ce jour-là par un autre MAR). Soit 2 semaines
+  de réa toutes les 5 semaines, **sans absence** (ni repos, ni temps partiel, ni congés). Ils ne prennent pas la Réa 3
+  et font moins de bloc : la charge bloc + réa est équilibrée entre tous les MAR.
+- **Réa 3** : répartie entre les autres MAR, au prorata de la quotité.
 - Week-ends et fériés : réa couverte par les MAR de garde.
 
 ## Maternité (option)
