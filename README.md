@@ -20,7 +20,7 @@ côté navigateur : ne pas mettre de données sensibles dans le dépôt).
   F = particularité : « pas de garde de WE », « demi-garde de WE »), ou modifier les lignes à la main.
   L'équipe reste dans le navigateur (localStorage) ; le dépôt ne contient qu'une équipe anonymisée (MAR 01…).
 - **⚙️ Règles** : maternité (détachement en journée), gardes par jour, horaires, réa, congés, formation, récupérations, plafond, consultations (volume annuel,
-  journée de 7 h, durée des créneaux), chiffre d'affaires et nombre de parts, postes, fériés.
+  MAR en consultation par jour, consultations par MAR), chiffre d'affaires et nombre de parts, postes, fériés.
 - **📅 Tableau de service** : par mois, par poste ou par MAR.
 - **🧪 Simulations** : enregistrer des scénarios et les comparer ; grille chiffre d'affaires × nombre de parts
   (valeur de la part, revenu horaire) ; tableau rapide selon le nombre d'ETP.

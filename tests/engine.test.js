@@ -77,7 +77,7 @@ test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures',
   assert.ok(sim[0].marDisponiblesParJour < sim[1].marDisponiblesParJour);
   assert.ok(sim[1].marDisponiblesParJour < sim[2].marDisponiblesParJour);
   assert.ok(sim[0].hSemAvecGarde > sim[2].hSemAvecGarde);
-  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '2.5');
+  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '-0.5');                // 20 ETP : absences impossibles à poser
 });
 
 test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
@@ -108,18 +108,6 @@ test('part financière : CA 1 200 000 € et 15 parts', () => {
   assert.equal(g[0][0].valeurPart, 80000);
   assert.equal(g[1][1].valeurPart, 82500);
   assert.equal(g[0][0].euroHeure, 40);
-});
-
-test('consultations : 13 000 par an, journée de 7 h, créneaux de 10 min et 15-30 min', () => {
-  const s = S.synthese;
-  assert.equal(s.consultationsParAn, 13000);
-  assert.ok(Math.abs(s.joursMarConsultation - (5000 * 10 + 8000 * 22.5) / 420) < 1e-9);
-  assert.ok(Math.abs(s.marConsultNecessaires - (5000 * 10 + 8000 * 22.5) / 420 / 251) < 1e-9);
-  assert.ok(Math.abs(s.marConsultMin - (5000 * 10 + 8000 * 15) / 420 / 251) < 1e-9);
-  assert.ok(Math.abs(s.marConsultMax - (5000 * 10 + 8000 * 30) / 420 / 251) < 1e-9);
-  assert.ok(Math.abs(s.margeConsult - (s.marDisponiblesParJour - s.marConsultNecessaires)) < 1e-9);
-  const sim = E.simulateETP(R, [18, 24]);
-  assert.ok(sim[0].margeConsult < 0 && sim[1].margeConsult > 0);
 });
 
 test('absences : congés, formation, récupérations et temps partiel par MAR', () => {
@@ -164,8 +152,8 @@ test('maternité : 1 MAR détaché en journée, hors bloc et hors réa', () => {
 
 test('effectif pour 48 h : charge répartie', () => {
   const s = S.synthese;
-  assert.ok(s.etpPlafondCharge > 21.1 && s.etpPlafondCharge <= 22, String(s.etpPlafondCharge));
-  assert.ok(s.etpPlafondConsult > 30, String(s.etpPlafondConsult));
+  assert.ok(s.etpPlafondCharge > 21.1 && s.etpPlafondCharge <= 23, String(s.etpPlafondCharge));
+  assert.ok(s.etpPlafondConsult > 25, String(s.etpPlafondConsult));
   const sim = E.simulateETP(R, [s.etpPlafondCharge - 0.1, s.etpPlafondCharge]);
   assert.ok(sim[0].hSemAvecGardeCharge > 48 && sim[1].hSemAvecGardeCharge <= 48);
   const cfg = E.mergeConfig(); cfg.maternite.actif = true;
@@ -185,11 +173,21 @@ test('récupération 18h posée dans la semaine de bloc', () => {
   assert.equal(S.parMar.reduce((a, m) => a + m.rc, 0), 0);                  // option désactivée par défaut
 });
 
-test('consultations jour par jour', () => {
-  const s = S.synthese, cj = Object.values(S.consultParJour);
+
+test('consultations : 3 MAR par jour, 25 consultations chacun', () => {
+  const s = S.synthese;
+  R.jours.filter(j => j.statut === 'Ouvert').forEach(j => {
+    assert.equal(j.consultation.length, 3, j.date);
+    j.consultation.forEach(i => assert.ok(!j.postes.includes(i) && !j.rea.includes(i) && !j.repos.includes(i) && !j.tp.includes(i)));
+  });
+  assert.equal(s.capaciteConsultJour, 75);
+  assert.equal(s.capaciteConsultAn, 75 * 251);
+  assert.equal(s.consultationsAssurees, 75 * 251);
+  assert.ok(Math.abs(s.marConsultNecessaires - 13000 / 251 / 25) < 1e-9);
+  assert.ok(s.couvertureConsult > 1.4);
+  const plein = S.parMar.find(m => m.q === 1 && m.qg === 1), demi = S.parMar.find(m => m.q === 0.5);
+  assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
+  const cj = Object.values(S.parJour);
   assert.equal(cj.length, 251);
-  const moy = cj.reduce((a, x) => a + x.dispo, 0) / cj.length;
-  assert.ok(Math.abs(moy - s.marDisponiblesParJour) < 0.05, `${moy} / ${s.marDisponiblesParJour}`);
-  cj.forEach(x => assert.ok(Math.abs(x.possibles - x.dispo * s.consultParJourMar) < 1e-9));
-  assert.equal(s.consultParJourSemaine.length, 5);
+  assert.ok(Math.abs(cj.reduce((a, x) => a + x.libres, 0) / 251 - s.marDisponiblesParJour) < 0.05);
 });
