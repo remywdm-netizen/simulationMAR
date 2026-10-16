@@ -58,16 +58,17 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
 - h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de temps partiel).
-- Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : environ **22,3 ETP** avec les règles par défaut.
+- Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : environ **21,5 ETP** avec les règles par défaut.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).
 
 ## Consultations
-- **Poste fixe : 3 MAR en consultation chaque jour ouvré**, **25 consultations chacun** (journée de 7 h) :
-  75 consultations par jour, 18 825 par an pour un besoin d'environ **13 000** (2,1 MAR par jour suffiraient).
+- **2 MAR en consultation chaque jour ouvré**, **25 consultations chacun** (journée de 7 h) ; un **3ᵉ MAR** est ajouté
+  juste le nombre de jours nécessaire pour atteindre le volume annuel (**13 000** → 520 journées de MAR, soit 18 jours
+  à 3 MAR), répartis régulièrement sur l'année.
 - Réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.
-- Les jours sans poste (ni bloc, réa, consultation, maternité, repos, temps partiel) servent aux congés, à la
-  formation et aux récupérations : avec 21,1 ETP, il reste 0,4 MAR libre par jour après ces absences.
+- Les jours sans poste servent aux congés, à la formation et aux récupérations : avec 21,1 ETP, il reste environ
+  1,3 MAR libre par jour après ces absences.
 
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.

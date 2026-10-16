@@ -77,7 +77,7 @@ test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures',
   assert.ok(sim[0].marDisponiblesParJour < sim[1].marDisponiblesParJour);
   assert.ok(sim[1].marDisponiblesParJour < sim[2].marDisponiblesParJour);
   assert.ok(sim[0].hSemAvecGarde > sim[2].hSemAvecGarde);
-  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '-0.5');                // 20 ETP : absences impossibles à poser
+  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '0.4');                 // 20 ETP : marge faible
 });
 
 test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
@@ -174,20 +174,25 @@ test('récupération 18h posée dans la semaine de bloc', () => {
 });
 
 
-test('consultations : 3 MAR par jour, 25 consultations chacun', () => {
-  const s = S.synthese;
-  R.jours.filter(j => j.statut === 'Ouvert').forEach(j => {
-    assert.equal(j.consultation.length, 3, j.date);
+test('consultations : 2 ou 3 MAR par jour, ajustés aux 13 000 consultations', () => {
+  const s = S.synthese, open = R.jours.filter(j => j.statut === 'Ouvert');
+  open.forEach(j => {
+    assert.ok([2, 3].includes(j.consultation.length), j.date);
+    assert.equal(j.consultation.length, j.consultNb);
     j.consultation.forEach(i => assert.ok(!j.postes.includes(i) && !j.rea.includes(i) && !j.repos.includes(i) && !j.tp.includes(i)));
   });
-  assert.equal(s.capaciteConsultJour, 75);
-  assert.equal(s.capaciteConsultAn, 75 * 251);
-  assert.equal(s.consultationsAssurees, 75 * 251);
-  assert.ok(Math.abs(s.marConsultNecessaires - 13000 / 251 / 25) < 1e-9);
-  assert.ok(s.couvertureConsult > 1.4);
+  const jm = open.reduce((a, j) => a + j.consultation.length, 0);
+  assert.equal(jm, Math.ceil(13000 / 25));                                    // 520 journées de MAR
+  assert.equal(open.filter(j => j.consultNb === 3).length, 520 - 2 * 251);
+  assert.equal(s.capaciteConsultAn, 13000);
+  assert.ok(s.couvertureConsult >= 1);
   const plein = S.parMar.find(m => m.q === 1 && m.qg === 1), demi = S.parMar.find(m => m.q === 0.5);
   assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
   const cj = Object.values(S.parJour);
   assert.equal(cj.length, 251);
   assert.ok(Math.abs(cj.reduce((a, x) => a + x.libres, 0) / 251 - s.marDisponiblesParJour) < 0.05);
+  const cfg = E.mergeConfig(); cfg.consultations.marMin = 3;                   // 3 MAR tous les jours
+  const r3 = E.generate(cfg);
+  assert.deepEqual(E.verify(r3), []);
+  assert.equal(r3.stats.synthese.capaciteConsultAn, 75 * 251);
 });
