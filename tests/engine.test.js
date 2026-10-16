@@ -184,3 +184,12 @@ test('récupération 18h posée dans la semaine de bloc', () => {
   assert.ok(Math.abs(r.stats.synthese.marDisponiblesParJour - S.synthese.marDisponiblesParJour) < 0.05);
   assert.equal(S.parMar.reduce((a, m) => a + m.rc, 0), 0);                  // option désactivée par défaut
 });
+
+test('consultations jour par jour', () => {
+  const s = S.synthese, cj = Object.values(S.consultParJour);
+  assert.equal(cj.length, 251);
+  const moy = cj.reduce((a, x) => a + x.dispo, 0) / cj.length;
+  assert.ok(Math.abs(moy - s.marDisponiblesParJour) < 0.05, `${moy} / ${s.marDisponiblesParJour}`);
+  cj.forEach(x => assert.ok(Math.abs(x.possibles - x.dispo * s.consultParJourMar) < 1e-9));
+  assert.equal(s.consultParJourSemaine.length, 5);
+});

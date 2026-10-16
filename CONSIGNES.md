@@ -69,6 +69,8 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   (moyenne retenue 22,5 min).
 - Besoin = durée des créneaux ÷ 7 h : 548 journées de MAR par an, soit **2,2 MAR par jour ouvré**
   (1,6 avec des créneaux longs de 15 min, 2,75 avec 30 min).
+- Jour par jour : consultations possibles = (MAR hors bloc du jour − absences moyennes) × ≈ 24 consultations par
+  journée de 7 h, comparées au besoin de 51,8 par jour.
 - Assurées par les MAR disponibles : ni bloc, ni réa, ni repos de sécurité, congés, récupération ou formation.
 
 ## Part financière

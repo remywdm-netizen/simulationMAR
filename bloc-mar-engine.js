@@ -386,7 +386,27 @@
       caParHeureEquipe: F.ca / (sum(s => s.heuresSansGarde + s.heuresGarde) || 1),
     });
     Object.assign(synthese, consultIndic(cfg.consultations, nOpen, synthese.marDisponiblesParJour, F.ca));
-    return { parMar: per, synthese };
+
+    // Consultations jour par jour : MAR hors bloc du jour, moins les absences moyennes (congés, formation,
+    // récupérations non posées), × consultations par journée de MAR ; comparé au besoin moyen par jour ouvré.
+    const absMoy = (sum(s => s.hb) - sum(s => s.hbDisponible)) / nOpen;
+    const parJourMar = synthese.consultParJourMar, besoin = synthese.consultationsParJour;
+    const parJour = {};
+    jours.forEach(j => {
+      if (j.statut !== 'Ouvert') return;
+      const hb = P.reduce((a, m, i) => a + (activite(result, j, i).act === 'HB' ? 1 : 0), 0);
+      const dispo = Math.max(hb - absMoy, 0);
+      parJour[j.date] = { hb, dispo, possibles: dispo * parJourMar, besoin };
+    });
+    const semaine = [0, 1, 2, 3, 4].map(d => {
+      const l = jours.filter(j => parJour[j.date] && dow(j.date) === d).map(j => parJour[j.date]);
+      const m = f => (l.length ? l.reduce((a, x) => a + f(x), 0) / l.length : 0);
+      return { jour: JOURS[d], jours: l.length, hb: m(x => x.hb), dispo: m(x => x.dispo), possibles: m(x => x.possibles), besoin,
+        joursInsuffisants: l.filter(x => x.possibles < x.besoin).length };
+    });
+    Object.assign(synthese, { absentsMoyensParJour: absMoy, consultParJourSemaine: semaine,
+      joursConsultInsuffisants: Object.values(parJour).filter(x => x.possibles < x.besoin).length });
+    return { parMar: per, synthese, consultParJour: parJour };
   }
 
   // Besoin en consultations face aux MAR disponibles (jours hors bloc, réa, repos, congés, récupérations, formation)
