@@ -70,6 +70,13 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Les jours sans poste servent aux congés, à la formation et aux récupérations : avec 21,1 ETP, il reste environ
   1,3 MAR libre par jour après ces absences.
 
+## Récupération (objectif)
+- Objectif de l'organisation : **libérer le plus de jours de récupération possible**.
+- Jours libérables = jours sans poste restant libres après congés, formation et récupérations, moins une **réserve de
+  0,5 MAR par jour** pour les imprévus ; répartis au prorata de la quotité.
+- Organisation par défaut : ≈ 24 jours de récupération par temps plein et par an (13,7 réglementaires + 10 libérables).
+- Leviers comparés automatiquement dans l'onglet Simulations (consultations, réa, postes de bloc, gardes, maternité, effectif).
+
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
 - Parts de chaque MAR : saisies dans l'équipe ; à défaut, au prorata de la quotité de travail.

@@ -191,6 +191,10 @@ body.locked .bar,body.locked .wrap{display:none}
       <button class="btn btn-r" onclick="clearScenarios()">Tout effacer</button>
     </div>
     <div class="tbl-wrap"><table id="tbl-scen"></table></div>
+    <h2>Leviers pour libérer des jours de récupération</h2>
+    <p class="hint">Chaque levier part de l'organisation courante et recalcule tout le planning. Récupération totale = récupérations réglementaires (samedis de garde, jours finis à 18h) + jours libérables (jours sans poste restant libres après congés, formation et récupérations, moins la réserve pour imprévus), par temps plein et par an.</p>
+    <div class="row"><button class="btn btn-g" onclick="renderLeviers()">▶ Calculer les leviers</button></div>
+    <div class="tbl-wrap"><table id="tbl-leviers"></table></div>
     <h2>Part financière : chiffre d'affaires × nombre de parts</h2>
     <p class="hint">Valeur d'une part (en gras) et revenu horaire d'un temps plein à 1 part (heures de l'année, gardes comprises). Séparer les valeurs par des virgules.</p>
     <div class="row">
@@ -254,6 +258,7 @@ function renderSynthese(){
     card('h/sem avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
     card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`) +
     card(`ETP pour ${s.plafond} h / semaine`, s.etpPlafondCharge ? f1(s.etpPlafondCharge)+' ETP' : '> 80', `${s.etpPlafondCharge ? (s.etpPlafondCharge-s.etp>=0?'+':'')+f1(s.etpPlafondCharge-s.etp)+' par rapport à l\'équipe · ' : ''}charge actuelle répartie ; ${s.etpPlafondConsult ? f1(s.etpPlafondConsult) : '> 80'} si la capacité en plus va en consultations`, s.etpPlafondCharge && s.etpPlafondCharge <= s.etp ? 'good' : 'mid') +
+    card('Récupération possible / temps plein', f1(s.recupTotaleTempsPlein)+' j / an', `${f1(s.recupReglementaireTempsPlein)} j réglementaires + ${f1(s.recupLiberableParEtp)} j libérables (réserve ${cfg.params.reserveImprevus} MAR / jour)`, s.recupLiberableParEtp > 0 ? 'good' : 'warn') +
     card('Absences (jours ouvrés / an)', f0(s.absencesTotal), `${f1(s.absentsParJour)} MAR absents / jour · congés ${f0(s.congesTotal+s.rttTotal)} · formation ${f0(s.formationTotal)} · récup. ${f0(s.recupSamedisTotal+s.recupFin18Total)} · TP ${f0(s.tpTotal)}`) +
     card('Un temps plein', f1(s.congesTempsPlein + s.recupTempsPlein)+' j', `${s.congesTempsPlein} j de congés + ${f1(s.recupTempsPlein)} j de récupération (+ ${cfg.params.formation} j de formation)`) +
     card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré · CA ${f0(s.caParConsultation)} € par consultation`) +
@@ -351,7 +356,7 @@ function renderRegles(){
     field('params.conges','Congés par ETP (jours ouvrés)') + field('params.rtt','RTT par ETP (jours)') + field('params.formation','Formation par ETP (jours)') +
     field('params.recupSamedi','Récupération par samedi de garde (jours, ½ pour une demi-garde)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
     `<label>Récupération 18h posée dans la semaine de bloc<select onchange="setP('params.recupDansSemaineBloc',this.value==='Oui')"><option ${cfg.params.recupDansSemaineBloc?'selected':''}>Oui</option><option ${cfg.params.recupDansSemaineBloc?'':'selected'}>Non</option></select></label>` +
-    field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
+    field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.reserveImprevus','Réserve pour imprévus (MAR libres / jour)',{step:0.1}) + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
   document.getElementById('f-finance').innerHTML =
     field('finance.ca','Chiffre d\'affaires annuel (€)',{step:10000}) + field('finance.parts','Nombre de parts',{step:0.5});
   document.getElementById('f-consult').innerHTML =
@@ -420,7 +425,7 @@ function renderTableau(){
 
 // ── Simulations ──
 const INDIC = [
-  ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR libres / jour',f1],['appreciation','Appréciation',x=>x],
+  ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR libres / jour',f1],['recupTotaleTempsPlein','Récup. possible / TP (j)',f1],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
   ['etpPlafondCharge','ETP pour le plafond',x=>x?f1(x):'> 80'],['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
@@ -456,6 +461,32 @@ function renderSimu(){
     ['h/sem avec garde — charge actuelle répartie','hSemAvecGardeCharge',f1],['Écart au plafond — charge répartie','ecartPlafondCharge',x=>(x>0?'+':'')+f1(x)]];
   document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${(k==='ecartPlafond'||k==='ecartPlafondCharge')?(x[k]>0?'pos':'neg'):k==='marDisponiblesParJour'?(x[k]<0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
 }
+
+function leviers(){
+  const C = cfg, actifs = C.postes.map((p,i)=>i).filter(i=>C.postes[i].actif!==false), open = R.stats.synthese.joursBloc;
+  const L = [['Organisation actuelle', c => {}]];
+  const CS = C.consultations;
+  if(CS.marMax > CS.marMin) L.push([`Consultations : ${CS.marMin} MAR tous les jours à ${Math.ceil(CS.parAn/(CS.marMin*open))} consultations chacun`, c => { c.consultations.marMax = c.consultations.marMin; c.consultations.parMarJour = Math.ceil(CS.parAn/(CS.marMin*open)); }]);
+  if(CS.marMax > CS.marMin) L.push([`Consultations : ${CS.marMax} MAR tous les jours`, c => { c.consultations.marMin = c.consultations.marMax; }]);
+  if(C.rea.nombre > 1) L.push([`Réanimation : ${C.rea.nombre-1} MAR au lieu de ${C.rea.nombre}`, c => { c.rea.nombre--; }]);
+  if(actifs.length > 1){ const k = actifs[actifs.length-1]; L.push([`Bloc : ${actifs.length-1} postes (fermer ${C.postes[k].code} ${C.postes[k].salles})`, c => { c.postes[k].actif = false; }]); }
+  if(C.gardes.parJour > 1) L.push([`Gardes : ${C.gardes.parJour-1} sur place (la ${C.gardes.parJour}ᵉ en astreinte, non comptée)`, c => { c.gardes.parJour--; }]);
+  L.push([C.maternite.actif ? 'Sans détachement à la maternité' : 'Avec 1 MAR à la maternité (lun-ven)', c => { c.maternite.actif = !C.maternite.actif; }]);
+  L.push([C.params.recupDansSemaineBloc ? 'Récupération 18h prise hors bloc' : 'Récupération 18h posée dans la semaine de bloc', c => { c.params.recupDansSemaineBloc = !C.params.recupDansSemaineBloc; }]);
+  L.push(['+1 MAR à temps plein', c => { c.equipe.push({code:'MAR +1',q:1,qg:1,we:true,demiWE:false,rea:true,consult:true,mater:true,note:'simulation'}); }]);
+  if(C.params.reserveImprevus > 0) L.push(['Sans réserve pour imprévus', c => { c.params.reserveImprevus = 0; }]);
+  return L;
+}
+let LEVIERS = [];
+function renderLeviers(){
+  const base = R.stats.synthese.recupTotaleTempsPlein;
+  LEVIERS = leviers().map(([nom, f]) => { const c = E.mergeConfig(JSON.parse(JSON.stringify(cfg))); f(c); const r = E.generate(c); return { nom, cfg: c, s: r.stats.synthese, ok: !E.verify(r).length && !r.warnings.length }; });
+  const ord = LEVIERS.slice(1).sort((a,b) => b.s.recupTotaleTempsPlein - a.s.recupTotaleTempsPlein);
+  const rows = [LEVIERS[0]].concat(ord);
+  document.getElementById('tbl-leviers').innerHTML = `<tr><th class="l">Levier</th><th>Récupération totale / temps plein</th><th>Écart</th><th>dont réglementaire</th><th>dont libérable</th><th>MAR libres / jour</th><th>Jours où les absences ne passent pas</th><th>h/sem avec garde</th><th>Règles</th><th></th></tr>`
+    + rows.map((x,k) => { const d = x.s.recupTotaleTempsPlein - base; return `<tr><td class="l b">${esc(x.nom)}</td><td class="b">${f1(x.s.recupTotaleTempsPlein)} j</td><td class="${k?(d>0.05?'neg':d<-0.05?'pos':''):''}">${k?(d>=0?'+':'')+f1(d)+' j':''}</td><td>${f1(x.s.recupReglementaireTempsPlein)}</td><td>${f1(x.s.recupLiberableParEtp)}</td><td>${f1(x.s.marDisponiblesParJour)}</td><td>${x.s.joursNegatifs}</td><td>${f1(x.s.hSemAvecGarde)}</td><td>${x.ok?'✅':'⚠'}</td><td>${k?`<button class="btn btn-s" onclick="appliquerLevier(${LEVIERS.indexOf(x)})">Appliquer</button>`:''}</td></tr>`; }).join('');
+}
+function appliquerLevier(i){ if(confirm('Appliquer « '+LEVIERS[i].nom+' » à l\'organisation courante ?')){ cfg = LEVIERS[i].cfg; recompute(); document.getElementById('tbl-leviers').innerHTML=''; } }
 
 function heuresTempsPlein(){
   const pl = R.stats.parMar.filter(m => m.q === 1 && m.qg > 0);
@@ -541,6 +572,11 @@ function orgData(){
       ['h / semaine sur 52 semaines', f1(s.hSem52), 'congés et récupérations comptés à 0 h'],
       ['Semaine la plus chargée', f1(s.semaineMax) + ' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond en moyenne`],
     ]],
+    ['Récupération (objectif)', [
+      ['Récupération possible par temps plein', f1(s.recupTotaleTempsPlein) + ' j / an', 'réglementaire + libérable'],
+      ['dont réglementaire', f1(s.recupReglementaireTempsPlein) + ' j', `samedis de garde (½ pour une demi-garde), 1 j pour ${PR.joursFin18ParRecup} jours finis à 18h`],
+      ['dont libérable', f1(s.recupLiberableParEtp) + ' j', `jours sans poste restant libres (${f0(s.joursLibresAn)} pour l'équipe), moins la réserve de ${PR.reserveImprevus} MAR / jour`],
+    ]],
     ['Absences de l\'équipe (jours ouvrés / an)', [
       ['Congés', f0(s.congesTotal + s.rttTotal), `${PR.conges} j par ETP${PR.rtt ? ' + ' + PR.rtt + ' RTT' : ''}, proratisés`],
       ['Formation', f0(s.formationTotal), `${PR.formation} j par ETP`],
@@ -596,6 +632,9 @@ function renderConsignes(){
   <h3>Consultations</h3><ul>
     <li>${cfg.consultations.marMin} MAR en consultation chaque jour ouvré (${cfg.consultations.heuresJour} h), ${cfg.consultations.parMarJour} consultations chacun ; un ${cfg.consultations.marMax}ᵉ MAR ${R.stats.synthese.joursConsultMax} jours dans l'année, répartis régulièrement, pour atteindre ${f0(cfg.consultations.parAn)} consultations (capacité ${f0(R.stats.synthese.capaciteConsultAn)}).</li>
     <li>Poste réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.</li></ul>
+  <h3>Récupération (objectif)</h3><ul>
+    <li>Objectif : libérer le plus de jours de récupération. Jours libérables = jours sans poste restant libres après congés, formation et récupérations, moins une réserve de ${cfg.params.reserveImprevus} MAR par jour pour les imprévus, répartis au prorata de la quotité.</li>
+    <li>Actuellement : ${f1(R.stats.synthese.recupTotaleTempsPlein)} jours de récupération possibles par temps plein et par an (${f1(R.stats.synthese.recupReglementaireTempsPlein)} réglementaires + ${f1(R.stats.synthese.recupLiberableParEtp)} libérables). Leviers : onglet Simulations.</li></ul>
   <h3>Part financière</h3><ul>
     <li>Chiffre d'affaires ${eur(cfg.finance.ca)} réparti en ${f1(cfg.finance.parts)} parts égales : ${eur(R.stats.synthese.valeurPart)} la part.</li>
     <li>Parts de chaque MAR saisies dans l'équipe ; à défaut, au prorata de la quotité de travail. Revenu horaire = revenu ÷ heures de l'année, gardes comprises.</li></ul>`;
