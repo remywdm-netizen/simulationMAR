@@ -28,6 +28,13 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Une semaine de réa n'est jamais coupée par un repos de sécurité : garde possible le vendredi seulement.
 - Week-ends et fériés : réa couverte par les MAR de garde.
 
+## Maternité (option)
+- Possibilité de **détacher un MAR à la maternité en journée** (8h-16h par défaut), les jours choisis.
+- Ce jour-là, il n'est ni au bloc ni en réa ; il peut prendre la garde à 16h.
+- Répartition au prorata de la quotité entre les MAR désignés (case « Maternité » de l'équipe).
+- Option désactivée par défaut ; activée du lundi au vendredi avec 1 MAR : 251 journées par an,
+  environ 12 par temps plein, et 1 MAR de moins disponible chaque jour pour les consultations.
+
 ## Gardes
 - **2 MAR de garde par jour**, répartis au prorata de la **quotité de garde**.
 - En semaine : garde **de 16h à 8h** après la journée (16 h). Le MAR de garde n'est jamais au bloc long (fin 18h).

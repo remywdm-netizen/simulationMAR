@@ -141,3 +141,23 @@ test('demi-garde du samedi : demi-récupération (jour et nuit seule)', () => {
   assert.equal(nuits, 2 * mb.samedisDemi);                                  // un jour + une nuit seule par samedi partagé
   S.parMar.forEach(m => assert.equal(m.recupSamedis, m.samedis + m.samedisDemi / 2));
 });
+
+test('maternité : 1 MAR détaché en journée, hors bloc et hors réa', () => {
+  const cfg = E.mergeConfig();
+  cfg.maternite.actif = true;
+  cfg.maternite.jours = [true, true, false, true, true];                   // pas le mercredi
+  cfg.equipe[3].mater = false;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  r.jours.filter(j => j.statut === 'Ouvert').forEach(j => {
+    assert.equal(j.maternite.length, j.jour === 'Mercredi' ? 0 : 1, j.date);
+    j.maternite.forEach(i => {
+      assert.ok(!j.postes.includes(i) && !j.rea.includes(i) && !j.repos.includes(i) && !j.tp.includes(i));
+      assert.notEqual(i, 3);
+    });
+  });
+  const s = r.stats.synthese;
+  assert.equal(s.materniteTotal, r.jours.filter(j => j.statut === 'Ouvert' && j.jour !== 'Mercredi').length);
+  assert.ok(s.marDisponiblesParJour < S.synthese.marDisponiblesParJour);
+  assert.equal(S.synthese.materniteTotal, 0);                              // option désactivée par défaut
+});
