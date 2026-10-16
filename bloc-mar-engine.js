@@ -426,6 +426,7 @@
       joursLibresAn: libresAn, recupLiberableAn: liberable, recupLiberableParEtp: etp ? liberable / etp : 0,
       recupReglementaireTempsPlein: avg(pleins, s => s.recup),
       recupTotaleTempsPlein: avg(pleins, s => s.recup) + (etp ? liberable / etp : 0),
+      recupReglementaireService: sum(s => s.recup), recupTotaleService: sum(s => s.recup) + liberable,   // jours / an, toute l'équipe
     });
     Object.assign(synthese, { absentsMoyensParJour: absMoy, parJourSemaine: semaine,
       joursNegatifs: Object.values(parJour).filter(x => x.libres < 0).length });
