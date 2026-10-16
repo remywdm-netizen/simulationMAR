@@ -24,8 +24,8 @@ r.jours.forEach((j, k) => {
   if (j.statut === 'Ouvert') {
     if (j.postes.length !== 8 || j.postes.includes(null)) e2.push(j.date + ' postes');
     if (j.rea.length !== 3) e2.push(j.date + ' réa');
-    if (j.consultation.length !== (dow(j.date) === 2 ? 1 : j.consultNb)) e2.push(j.date + ' consult');
-    if (dow(j.date) === 2 && j.consultation.length !== 1) e2.push(j.date + ' mercredi ≠ 1');
+    if (j.consultation.length !== (dow(j.date) === 2 ? 2 : j.consultNb)) e2.push(j.date + ' consult');
+    if (dow(j.date) === 2 && j.consultation.length !== 2) e2.push(j.date + ' mercredi ≠ 2');
     const all = [...j.postes, ...j.rea, ...j.consultation, ...j.maternite, ...(j.recup||[]), ...j.recupRea, ...j.tp, ...j.repos];
     if (new Set(all).size !== all.length) e2.push(j.date + ' double affectation');
     j.garde.forEach(i => { if ([5,6,7].includes(j.postes.indexOf(i))) e2.push(j.date + ' garde au bloc long'); });

@@ -177,11 +177,11 @@ test('récupération 18h posée dans la semaine de bloc', () => {
 });
 
 
-test('consultations : 1 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an', () => {
+test('consultations : 2 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an', () => {
   const s = S.synthese, open = R.jours.filter(j => j.statut === 'Ouvert');
   open.forEach(j => {
     assert.equal(j.consultation.length, j.consultNb);
-    if (j.jour === 'Mercredi') assert.equal(j.consultNb, 1, j.date);
+    if (j.jour === 'Mercredi') assert.equal(j.consultNb, 2, j.date);
     else assert.ok([2, 3].includes(j.consultNb), j.date);
     j.consultation.forEach(i => assert.ok(!j.postes.includes(i) && !j.rea.includes(i) && !j.repos.includes(i) && !j.tp.includes(i)));
   });
@@ -189,7 +189,7 @@ test('consultations : 1 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an'
   assert.equal(jm, Math.ceil(13000 / 25));                                    // 520 journées de MAR
   assert.equal(s.capaciteConsultAn, 13000);
   const mer = s.parJourSemaine.find(x => x.jour === 'Mercredi'), lun = s.parJourSemaine.find(x => x.jour === 'Lundi');
-  assert.ok(mer.hb > lun.hb + 0.8);                                            // un MAR de plus sans poste le mercredi
+  assert.ok(mer.consultations === 50);                                         // 2 MAR × 25 le mercredi
   const plein = S.parMar.find(m => m.q === 1 && m.qg === 1), demi = S.parMar.find(m => m.q === 0.5);
   assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
   const cfg = E.mergeConfig(); cfg.consultations.marMin = 3; cfg.consultations.parJourSemaine = [null, null, null, null, null];

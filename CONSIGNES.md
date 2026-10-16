@@ -72,9 +72,9 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Consultations
 - **25 consultations par MAR** et par jour (journée de 7 h), **13 000 par an** → 520 journées de MAR.
-- **Mercredi : 1 seul MAR en consultation**, pour libérer un MAR de plus ce jour-là (absences, récupérations).
+- **Mercredi : 2 MAR en consultation** (jamais de 3ᵉ ce jour-là).
 - Autres jours : **2 MAR**, et un **3ᵉ MAR** juste le nombre de jours nécessaire pour atteindre le volume
-  (68 jours en 2027), répartis régulièrement.
+  (jours à 3 MAR répartis du lundi au vendredi hors mercredi), répartis régulièrement.
 - Réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.
 
 ## Récupération (objectif)
