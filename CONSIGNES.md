@@ -43,7 +43,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Jours de **temps partiel** = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
-- **Récupération** : 1 jour par **samedi de garde** (ou de demi-garde) ; **1 jour pour 4 jours finis à 18h** (bloc long).
+- **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long).
 
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.

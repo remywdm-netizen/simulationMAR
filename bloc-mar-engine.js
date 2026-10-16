@@ -56,7 +56,7 @@
     },
     params: {
       conges: 32, rtt: 0, formation: 10,         // jours ouvrés par ETP (proratisés à la quotité)
-      recupSamedi: 1,                            // jours de récupération par samedi de garde (ou de demi-garde)
+      recupSamedi: 1,                            // jours de récupération par samedi de garde (demi-garde : la moitié)
       joursFin18ParRecup: 4,                     // 1 jour de récupération pour N jours finis à 18h
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
       blocMaxSemaine: 3, tpMaxParJour: 5,
@@ -282,7 +282,7 @@
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
     const per = P.map((m, i) => {
       const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
-        postes: postes.map(() => 0), samedis: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
+        postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
@@ -294,13 +294,13 @@
         if (a.garde) {
           if (a.garde === 'DJ') { s.demi++; hg = G.heuresDemiJour; }
           else { s.gardes++; if (j.statut !== 'Ouvert') s.gardesWE++; if (a.garde === 'GN') s.nuits++; hg = { G16: G.heuresSemaine, G24: G.heuresWE, GN: G.heuresNuit }[a.garde]; }
-          if (d === 5) s.samedis++;
+          if (d === 5) { if (a.garde === 'DJ' || a.garde === 'GN') s.samedisDemi++; else s.samedis++; }   // demi-garde : demi-récupération
         }
         s.heuresJour += hj; s.heuresGarde += hg;
         const w = j.semaine; s.semaines[w] = (s.semaines[w] || 0) + hj + hg;
       });
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
-      s.recupSamedis = s.samedis * PR.recupSamedi;
+      s.recupSamedis = (s.samedis + s.samedisDemi / 2) * PR.recupSamedi;
       s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
       s.recup = s.recupSamedis + s.recupFin18;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)

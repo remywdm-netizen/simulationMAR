@@ -132,3 +132,12 @@ test('absences : congés, formation, récupérations et temps partiel par MAR', 
   const s = S.synthese;
   assert.ok(Math.abs(s.absencesTotal - S.parMar.reduce((a, m) => a + m.absences, 0)) < 1e-6);
 });
+
+test('demi-garde du samedi : demi-récupération (jour et nuit seule)', () => {
+  const mb = S.parMar.find(m => m.demi > 0);
+  assert.equal(mb.samedis, 0);
+  assert.equal(mb.recupSamedis, mb.samedisDemi / 2);
+  const nuits = S.parMar.reduce((a, m) => a + m.samedisDemi, 0);
+  assert.equal(nuits, 2 * mb.samedisDemi);                                  // un jour + une nuit seule par samedi partagé
+  S.parMar.forEach(m => assert.equal(m.recupSamedis, m.samedis + m.samedisDemi / 2));
+});
