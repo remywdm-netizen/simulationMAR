@@ -315,7 +315,7 @@ function renderRegles(){
     field('hb.heures','Heures d\'un jour hors bloc / consultation',{step:0.5});
   document.getElementById('f-params').innerHTML =
     field('params.conges','Congés par ETP (jours ouvrés)') + field('params.rtt','RTT par ETP (jours)') + field('params.formation','Formation par ETP (jours)') +
-    field('params.recupSamedi','Récupération par samedi de garde (jours)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
+    field('params.recupSamedi','Récupération par samedi de garde (jours, ½ pour une demi-garde)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
     field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
   document.getElementById('f-finance').innerHTML =
     field('finance.ca','Chiffre d\'affaires annuel (€)',{step:10000}) + field('finance.parts','Nombre de parts',{step:0.5});
@@ -465,7 +465,7 @@ function renderConsignes(){
   <h3>Temps partiel, congés, récupérations</h3><ul>
     <li>Jours de temps partiel (TP) = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos (au plus ${p.tpMaxParJour} MAR en TP le même jour).</li>
     <li>Congés : ${p.conges} jours par ETP, formation : ${p.formation} jours, RTT : ${p.rtt} — proratisés à la quotité, posés sur des jours hors bloc.</li>
-    <li>Récupération : ${p.recupSamedi} jour par samedi de garde (ou de demi-garde) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h.</li></ul>
+    <li>Récupération : ${p.recupSamedi} jour par samedi de garde, la moitié pour une demi-garde (jour 8h-20h ou nuit seule) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h.</li></ul>
   <h3>Temps de travail</h3><ul>
     <li>Garde sur place comptée en temps de travail effectif. Repère : ${p.plafond} h par semaine en moyenne, gardes comprises (directive 2003/88/CE, à vérifier avec la réglementation applicable).</li>
     <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li></ul>
