@@ -214,6 +214,7 @@ body.locked .bar,body.locked .wrap{display:none}
   <div class="view" id="view-organisation">
     <div class="row noprint"><button class="btn" onclick="window.print()">🖨 Imprimer</button><span class="hint" style="margin:0">Synthèse de l'organisation calculée sur l'année avec l'équipe et les règles courantes. Moyennes « temps plein » = MAR à temps plein qui font des gardes.</span></div>
     <div class="org" id="org"></div>
+    <div id="grp-rea1"></div>
   </div>
   <div class="view" id="view-consignes"><div class="rules" id="consignes"></div></div>
 </div>
@@ -238,7 +239,7 @@ function recompute(){ clearTimeout(recomputeTimer); recomputeTimer = setTimeout(
 function recomputeNow(){
   R = E.generate(cfg); save();
   document.getElementById('bar-sub').textContent = `${cfg.annee} · ${R.equipe.length} MAR · ${f1(R.stats.synthese.etp)} ETP · ${R.postes.length} postes de bloc · ${cfg.rea.nombre} réa · ${cfg.gardes.parJour} gardes/jour`;
-  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes(); renderOrganisation();
+  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes(); renderOrganisation(); renderGroupeRea1();
 }
 function showTab(id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.id==='tab-'+id));
@@ -607,6 +608,49 @@ function orgData(){
     ]],
   ];
 }
+// ── Récapitulatif du groupe Réa 1 ──
+function groupeRea1(){
+  const g = R.equipe.map((m,i)=>i).filter(i => R.equipe[i].rea1);
+  if(!g.length) return null;
+  const open = R.jours.filter(j => j.statut === 'Ouvert'), sem = {};
+  open.forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
+  const semaines = Object.entries(sem).map(([lundi, js]) => {
+    const r1 = js[0].rea[0], r2 = js[0].reaPrioritaire;
+    const tenus = r2 == null ? js.filter(j => j.rea[1] !== undefined).length : js.filter(j => j.rea[1] === r2).length;
+    const rempl = r2 == null ? [] : js.filter(j => j.rea[1] !== r2).map(j => {
+      const why = j.repos.includes(r2) ? 'repos' : j.tp.includes(r2) ? 'temps partiel' : (j.recupRea||[]).includes(r2) ? 'récupération' : j.garde.includes(r2) ? 'garde' : 'autre';
+      return { date: j.date, par: j.rea[1], why };
+    });
+    return { lundi, semaine: E.isoWeek(lundi), r1, r2, jours: js.length, tenus, rempl };
+  });
+  const S = R.stats.parMar, pl = S.filter((m,i) => m.q === 1 && m.qg > 0 && !R.equipe[i].rea1);
+  const avgO = f => pl.length ? pl.reduce((a,m)=>a+f(m),0)/pl.length : 0;
+  const membres = g.map(i => {
+    const m = S[i], s1 = semaines.filter(w => w.r1 === i), s2 = semaines.filter(w => w.r2 === i);
+    return { i, code: R.equipe[i].code, m, semR1: s1.length, joursR1: s1.reduce((a,w)=>a+w.jours,0), semR2: s2.length,
+      joursR2: s2.reduce((a,w)=>a+w.tenus,0), joursR2Prevus: s2.reduce((a,w)=>a+w.jours,0),
+      rempl: s2.reduce((a,w)=>a+w.rempl.length,0), autres: m.rea - s1.reduce((a,w)=>a+w.jours,0) - s2.reduce((a,w)=>a+w.tenus,0) };
+  });
+  return { membres, semaines, autres: { n: pl.length, rea: avgO(m=>m.rea), bloc: avgO(m=>m.bloc), consult: avgO(m=>m.consult), gardes: avgO(m=>m.gardes),
+    gardesWE: avgO(m=>m.gardesWE), libres: avgO(m=>m.hbDisponible), h: avgO(m=>m.heuresSansGarde+m.heuresGarde), hSem: avgO(m=>m.hSemAvecGarde), recup: avgO(m=>m.recup) } };
+}
+function renderGroupeRea1(){
+  const el = document.getElementById('grp-rea1'), G = groupeRea1();
+  if(!G){ el.innerHTML = ''; return; }
+  const nom = i => i == null ? '—' : esc(R.equipe[i].code), A = G.autres;
+  const tot = f => G.membres.reduce((a,x)=>a+f(x),0) / G.membres.length;
+  let h = `<h2 style="margin-top:22px">Récapitulatif du groupe Réa 1</h2>
+    <p class="hint">${G.membres.length} MAR : semaine entière en Réa 1 sans absence, puis la semaine suivante prioritaires sur la Réa 2 (non obligatoire : garde, repos, temps partiel ou absence possibles, un autre MAR reprend le poste). Ils ne prennent pas la Réa 3 ; leur bloc est réduit pour équilibrer la charge bloc + réa.</p>
+    <div class="tbl-wrap"><table><tr><th class="l">MAR</th><th>Semaines Réa 1</th><th>Semaines Réa 2</th><th>Jours Réa 2 tenus / prévus</th><th>Jours Réa 2 remplacés</th><th>Jours de réa (total)</th><th>Bloc</th><th>Consult.</th><th>Gardes</th><th>dont WE / fériés</th><th>Récupérations</th><th>Jours libres</th><th>Heures / an</th><th>h/sem avec garde</th></tr>`;
+  G.membres.forEach(x => { h += `<tr><td class="l b">${esc(x.code)}</td><td>${x.semR1}</td><td>${x.semR2}</td><td>${x.joursR2} / ${x.joursR2Prevus}</td><td>${x.rempl}</td><td class="b">${x.m.rea}</td><td>${x.m.bloc}</td><td>${x.m.consult}</td><td>${x.m.gardes}</td><td>${x.m.gardesWE}</td><td>${f1(x.m.recup)}</td><td>${f1(x.m.hbDisponible)}</td><td>${f0(x.m.heuresSansGarde+x.m.heuresGarde)}</td><td>${f1(x.m.hSemAvecGarde)}</td></tr>`; });
+  h += `<tr><td class="l b">Moyenne du groupe</td><td>${f1(tot(x=>x.semR1))}</td><td>${f1(tot(x=>x.semR2))}</td><td>${f1(tot(x=>x.joursR2))} / ${f1(tot(x=>x.joursR2Prevus))}</td><td>${f1(tot(x=>x.rempl))}</td><td class="b">${f1(tot(x=>x.m.rea))}</td><td>${f1(tot(x=>x.m.bloc))}</td><td>${f1(tot(x=>x.m.consult))}</td><td>${f1(tot(x=>x.m.gardes))}</td><td>${f1(tot(x=>x.m.gardesWE))}</td><td>${f1(tot(x=>x.m.recup))}</td><td>${f1(tot(x=>x.m.hbDisponible))}</td><td>${f0(tot(x=>x.m.heuresSansGarde+x.m.heuresGarde))}</td><td>${f1(tot(x=>x.m.hSemAvecGarde))}</td></tr>
+    <tr><td class="l">Autres temps pleins (moyenne, ${A.n} MAR)</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="b">${f1(A.rea)}</td><td>${f1(A.bloc)}</td><td>${f1(A.consult)}</td><td>${f1(A.gardes)}</td><td>${f1(A.gardesWE)}</td><td>${f1(A.recup)}</td><td>${f1(A.libres)}</td><td>${f0(A.h)}</td><td>${f1(A.hSem)}</td></tr></table></div>
+    <h2>Rotation semaine par semaine</h2>
+    <div class="tbl-wrap" style="max-height:420px"><table><tr><th>Semaine</th><th>Lundi</th><th class="l">Réa 1</th><th class="l">Réa 2 (prioritaire)</th><th>Jours tenus</th><th class="l">Remplacements</th></tr>`;
+  G.semaines.forEach(w => { h += `<tr><td>${w.semaine}</td><td>${E.labelFR(w.lundi).slice(0,5)}</td><td class="l k-rea">${nom(w.r1)}</td><td class="l">${nom(w.r2)}</td><td>${w.r2 == null ? '' : w.tenus + ' / ' + w.jours}</td><td class="l">${w.rempl.map(x => `${E.labelFR(x.date).slice(0,5)} : ${nom(x.par)} (${x.why})`).join(' · ')}</td></tr>`; });
+  el.innerHTML = h + '</table></div>';
+}
+
 function renderOrganisation(){
   document.getElementById('org').innerHTML = orgData().map(([t, rows]) =>
     `<div class="org-sec"><h3>${esc(t)}</h3><table>${rows.map(([l,v,d]) => `<tr><td>${esc(l)}${d?`<br/><span class="d">${esc(d)}</span>`:''}</td><td class="v">${esc(v)}</td></tr>`).join('')}</table></div>`).join('');
@@ -672,6 +716,14 @@ function exportXlsx(){
   const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));
   const vR = R.jours.map(j=>[E.labelFR(j.date),j.jour].concat(R.equipe.map((p,i)=>E.codeActivite(R,E.activite(R,j,i)))));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([vH].concat(vR)), 'Par MAR');
+  const G1 = groupeRea1();
+  if(G1){
+    const nm = i => i == null ? '' : R.equipe[i].code;
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['MAR','Semaines Réa 1','Semaines Réa 2','Jours Réa 2 tenus','Jours Réa 2 prévus','Jours Réa 2 remplacés','Jours de réa','Bloc','Consultation','Gardes','dont WE/fériés','Récupérations','Jours libres','Heures / an','h/sem avec garde']]
+      .concat(G1.membres.map(x=>[x.code,x.semR1,x.semR2,x.joursR2,x.joursR2Prevus,x.rempl,x.m.rea,x.m.bloc,x.m.consult,x.m.gardes,x.m.gardesWE,+x.m.recup.toFixed(1),+x.m.hbDisponible.toFixed(1),Math.round(x.m.heuresSansGarde+x.m.heuresGarde),+x.m.hSemAvecGarde.toFixed(1)]))
+      .concat([[],['Semaine','Lundi','Réa 1','Réa 2 (prioritaire)','Jours tenus','Remplacements']])
+      .concat(G1.semaines.map(w=>[w.semaine,E.labelFR(w.lundi),nm(w.r1),nm(w.r2),w.r2==null?'':w.tenus+' / '+w.jours,w.rempl.map(x=>E.labelFR(x.date)+' : '+nm(x.par)+' ('+x.why+')').join(' ; ')]))), 'Groupe Réa 1');
+  }
   const [cas, parts] = finLists(), fg = E.simulateFinance(cas, parts, heuresTempsPlein());
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Valeur de la part (€) — CA \\ parts'].concat(parts)].concat(fg.map((row,i)=>[cas[i]].concat(row.map(c=>Math.round(c.valeurPart)))))), 'Finance');
   const sc = scenarios();
