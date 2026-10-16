@@ -100,11 +100,11 @@ const pl = PM.filter(m => m.q === 1 && m.qg > 0);
 chk('h/sem avec garde = moyenne des temps pleins', near(s.hSemAvecGarde, pl.reduce((a,m)=>a+m.hSemAvecGarde,0)/pl.length));
 // 8. Équité
 const rng = (f, g) => { const v = PM.filter(g).map(f); return [Math.min(...v), Math.max(...v)]; };
-const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1 && !P[PM.indexOf(m)].joursFixes), cq = rng(m => m.consult / m.q, m => m.q > 0);
+const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea + m.consult) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1 && !P[PM.indexOf(m)].joursFixes), cq = rng(m => m.consult / m.q, m => m.q > 0 && !P[PM.indexOf(m)].rea1);
 chk('Gardes / quotité de garde homogènes (écart ≤ 2)', gq[1] - gq[0] <= 2, gq.map(x=>x.toFixed(1)).join(' à '));
-chk('(Bloc + réa) / quotité homogène (écart ≤ 8)', bq[1] - bq[0] <= 8, bq.map(x=>x.toFixed(1)).join(' à '));
+chk('(Bloc + réa + consultations) / quotité homogène (écart ≤ 8)', bq[1] - bq[0] <= 8, bq.map(x=>x.toFixed(1)).join(' à '));
 chk('Réa / quotité hors groupe Réa 1 et jours fixes (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
-chk('Consultations / quotité (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.toFixed(1)).join(' à '));
+chk('Consultations / quotité hors groupe Réa 1 (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.toFixed(1)).join(' à '));
 // Réa 1 : groupe dédié, rotation par semaines entières
 const g1 = P.map((m, i) => i).filter(i => P[i].rea1);
 const sem = {}; open.forEach(j => { sem[E.addDays(j.date, -dow(j.date))] = j.rea[0]; });
@@ -122,6 +122,10 @@ chk('Jours fixes respectés (aucun poste ni garde hors jours travaillés, pas de
   const a = E.activite(r, j, i).act, d = dow(j.date);
   return P[i].joursFixes[d] ? a !== 'TP' : a === 'TP' && !j.garde.includes(i);
 }) && PM[i].rea === 0), jf.map(i => P[i].code).join());
+// Groupe Réa 1 : consultations proportionnelles au temps au bloc
+const grpM = PM.filter((m, i) => P[i].rea1), autM = PM.filter((m, i) => !P[i].rea1 && m.q > 0);
+const ratio = l => l.reduce((a, m) => a + m.consult, 0) / l.reduce((a, m) => a + m.bloc, 0);
+chk('Groupe Réa 1 : consultations / jours de bloc = celui des autres MAR (± 0,03)', Math.abs(ratio(grpM) - ratio(autM)) <= 0.03, ratio(grpM).toFixed(3) + ' / ' + ratio(autM).toFixed(3));
 // 9. Analytique vs planning
 const sim = E.simulateETP(r, [s.etp])[0];
 chk('Simulation ETP (21,1) ≈ planning : MAR libres / jour', near(sim.marDisponiblesParJour, s.marDisponiblesParJour, 0.15), sim.marDisponiblesParJour.toFixed(2) + ' / ' + s.marDisponiblesParJour.toFixed(2));
