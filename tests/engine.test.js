@@ -89,3 +89,23 @@ test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
   assert.equal(r.stats.synthese.gardesParAn, 365);
   assert.equal(r.stats.synthese.demiGardes, 0);
 });
+
+test('part financière : CA 1 200 000 € et 15 parts', () => {
+  const s = S.synthese;
+  assert.equal(s.valeurPart, 80000);
+  assert.ok(Math.abs(s.partsAttribuees - 15) < 1e-9);                       // parts au prorata de la quotité
+  const tp = S.parMar.find(m => m.q === 0.5);
+  const plein = S.parMar.find(m => m.q === 1);
+  assert.ok(Math.abs(tp.revenu - plein.revenu / 2) < 1e-6);
+  const cfg = E.mergeConfig();
+  cfg.finance = { ca: 1500000, parts: 12 };
+  cfg.equipe.forEach((m, i) => { m.parts = i < 12 ? 1 : 0; });
+  const r = E.generate(cfg);
+  assert.equal(r.stats.synthese.valeurPart, 125000);
+  assert.equal(r.stats.parMar[0].revenu, 125000);
+  assert.equal(r.stats.parMar[20].revenu, 0);
+  const g = E.simulateFinance([1200000, 1320000], [15, 16], 2000);
+  assert.equal(g[0][0].valeurPart, 80000);
+  assert.equal(g[1][1].valeurPart, 82500);
+  assert.equal(g[0][0].euroHeure, 40);
+});

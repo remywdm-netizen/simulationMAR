@@ -51,6 +51,12 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).
 
+## Part financière
+- **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
+- Parts de chaque MAR : saisies dans l'équipe ; à défaut, au prorata de la quotité de travail.
+- Revenu d'un MAR = parts × valeur de la part ; revenu horaire = revenu ÷ heures de l'année, gardes comprises.
+- CA et nombre de parts modifiables (onglet Règles) ; grille CA × nombre de parts dans l'onglet Simulations.
+
 ## Jours fériés 2027 (Monaco)
 1ᵉʳ janvier, 27 janvier (Sainte-Dévote), 29 mars (lundi de Pâques), 1ᵉʳ mai, 6 mai (Ascension),
 17 mai (lundi de Pentecôte), 27 mai (Fête-Dieu), 15 et 16 août (Assomption, reportée), 1ᵉʳ novembre,

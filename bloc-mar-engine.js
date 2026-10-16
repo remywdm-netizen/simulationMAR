@@ -61,6 +61,9 @@
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
       blocMaxSemaine: 3, tpMaxParJour: 5,
     },
+    // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
+    // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
+    finance: { ca: 1200000, parts: 15 },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -82,7 +85,7 @@
     const base = clone(DEFAULT_CONFIG);
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
-    ['rea', 'hb', 'gardes', 'params'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
+    ['rea', 'hb', 'gardes', 'params', 'finance'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
     return out;
   }
 
@@ -321,6 +324,31 @@
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
     };
     synthese.appreciation = appreciation(synthese.marDisponiblesParJour);
+
+    // Part financière
+    const F = cfg.finance, valeurPart = F.parts > 0 ? F.ca / F.parts : 0;
+    const auto = P.some(m => m.parts === undefined || m.parts === null || m.parts === '');
+    const fixes = P.reduce((a, m) => a + (auto && (m.parts === undefined || m.parts === null || m.parts === '') ? 0 : +m.parts || 0), 0);
+    const qAuto = P.reduce((a, m) => a + (m.parts === undefined || m.parts === null || m.parts === '' ? m.q : 0), 0);
+    per.forEach((s, i) => {
+      const m = P[i], isAuto = m.parts === undefined || m.parts === null || m.parts === '';
+      s.parts = isAuto ? (qAuto ? Math.max(F.parts - fixes, 0) * m.q / qAuto : 0) : +m.parts || 0;
+      s.partsAuto = isAuto;
+      s.revenu = s.parts * valeurPart;
+      const h = s.heuresSansGarde + s.heuresGarde;
+      s.euroHeure = h > 0 ? s.revenu / h : 0;
+      s.euroHeureHorsGarde = s.heuresSansGarde > 0 ? s.revenu / s.heuresSansGarde : 0;
+      s.euroGarde = s.gardes + s.demi / 2 > 0 ? s.revenu / (s.gardes + s.demi / 2) : 0;
+    });
+    const partsAttribuees = per.reduce((a, s) => a + s.parts, 0);
+    const pleinsFin = per.filter(s => s.q === 1 && s.qg > 0 && s.parts > 0);
+    Object.assign(synthese, {
+      ca: F.ca, nombreParts: F.parts, valeurPart, partsAttribuees,
+      caParEtp: etp ? F.ca / etp : 0,
+      revenuTempsPlein: avg(pleinsFin, s => s.revenu),
+      euroHeure: avg(pleinsFin, s => s.euroHeure), euroHeureHorsGarde: avg(pleinsFin, s => s.euroHeureHorsGarde),
+      caParHeureEquipe: F.ca / (sum(s => s.heuresSansGarde + s.heuresGarde) || 1),
+    });
     return { parMar: per, synthese };
   }
 
@@ -382,7 +410,16 @@
     });
   }
 
-  const api = { DEFAULT_CONFIG, JOURS, generate, verify, stats, simulateETP, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
+  // ── Simulation financière : valeur de la part et revenu selon le CA et le nombre de parts ──
+  // heures = heures annuelles d'un MAR temps plein (avec garde), pour le revenu horaire.
+  function simulateFinance(caList, partsList, heures) {
+    return caList.map(ca => partsList.map(n => {
+      const part = n > 0 ? ca / n : 0;
+      return { ca, parts: n, valeurPart: part, euroHeure: heures ? part / heures : 0 };
+    }));
+  }
+
+  const api = { DEFAULT_CONFIG, JOURS, generate, verify, stats, simulateETP, simulateFinance, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BlocMarEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
