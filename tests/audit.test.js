@@ -26,7 +26,7 @@ r.jours.forEach((j, k) => {
     if (j.rea.length !== 3) e2.push(j.date + ' réa');
     if (j.consultation.length !== (dow(j.date) === 2 ? 1 : j.consultNb)) e2.push(j.date + ' consult');
     if (dow(j.date) === 2 && j.consultation.length !== 1) e2.push(j.date + ' mercredi ≠ 1');
-    const all = [...j.postes, ...j.rea, ...j.consultation, ...j.maternite, ...(j.recup||[]), ...j.tp, ...j.repos];
+    const all = [...j.postes, ...j.rea, ...j.consultation, ...j.maternite, ...(j.recup||[]), ...j.recupRea, ...j.tp, ...j.repos];
     if (new Set(all).size !== all.length) e2.push(j.date + ' double affectation');
     j.garde.forEach(i => { if ([5,6,7].includes(j.postes.indexOf(i))) e2.push(j.date + ' garde au bloc long'); });
   } else j.garde.forEach(i => { if (!P[i].we) e2.push(j.date + ' garde WE interdite ' + P[i].code); });
@@ -37,7 +37,7 @@ chk('Chaque jour : 2 gardes, repos = gardes de la veille, 8 postes, 3 réa, cons
 let gapMin = 99; P.forEach((m,i) => { const ks = r.jours.map((j,k)=>j.garde.includes(i)?k:-1).filter(k=>k>=0); for (let t=1;t<ks.length;t++) gapMin=Math.min(gapMin,ks[t]-ks[t-1]); });
 chk('Écart minimal entre deux gardes ≥ 5 jours', gapMin >= 5, 'min ' + gapMin);
 // réa par semaines entières, sans repos dans la semaine
-let reaKo = 0; const wk = {}; open.forEach(j => { const m = E.addDays(j.date, -dow(j.date)); const v = j.rea.slice().sort().join(); if (wk[m] && wk[m] !== v) reaKo++; wk[m] = v; });
+let reaKo = 0; const wk = {}; open.forEach(j => { const m = E.addDays(j.date, -dow(j.date)); const v = [j.rea[0], j.recupRea.length ? j.recupRea[0] : j.rea[1], j.rea[2]].join(); if (wk[m] && wk[m] !== v) reaKo++; wk[m] = v; });
 chk('Réa par semaines entières', !reaKo, reaKo + ' ruptures');
 // demi-gardes
 const dj = r.jours.filter(j => j.demi.length);
@@ -53,8 +53,8 @@ chk('Σ gardes WE/fériés = 2 × 114', sum(m=>m.gardesWE) === 228, sum(m=>m.gar
 chk('Demi-gardes = nuits seules', sum(m=>m.demi) === sum(m=>m.nuits), sum(m=>m.demi)+' / '+sum(m=>m.nuits));
 chk('Σ repos jours ouvrés = 2 × 251', sum(m=>m.repos) === 2*nO, sum(m=>m.repos));
 // 4. Partition des jours ouvrés par MAR
-let part = PM.filter(m => m.bloc+m.rea+m.consult+m.mater+m.repos+m.tp+m.rc+m.hb !== nO).map(m=>m.code);
-chk('Par MAR : bloc+réa+consult+mater+repos+TP+récup posée+sans poste = 251', !part.length, part.join());
+let part = PM.filter(m => m.bloc+m.rea+m.consult+m.mater+m.repos+m.tp+m.rc+m.recupRea+m.hb !== nO).map(m=>m.code);
+chk('Par MAR : bloc+réa+consult+mater+repos+TP+récupérations posées+sans poste = 251', !part.length, part.join());
 // 5. Heures recalculées
 let hk = [];
 P.forEach((m, i) => {
@@ -109,7 +109,11 @@ chk('Consultations / quotité (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.t
 const g1 = P.map((m, i) => i).filter(i => P[i].rea1);
 const sem = {}; open.forEach(j => { sem[E.addDays(j.date, -dow(j.date))] = j.rea[0]; });
 const r1 = Object.values(sem);
-chk('Réa 1 assurée par le groupe dédié (5 MAR), semaines entières', g1.length === 5 && r1.every(i => g1.includes(i)) && open.every(j => !j.rea.slice(1).some(i => g1.includes(i))));
+chk('Réa 1 assurée par le groupe dédié (5 MAR), semaines entières', g1.length === 5 && r1.every(i => g1.includes(i)) && open.every(j => !j.rea.slice(2).some(i => g1.includes(i))));
+const ws = {}; open.forEach(j => { (ws[E.addDays(j.date, -dow(j.date))] ||= []).push(j); }); const wl = Object.values(ws);
+let r2ko = 0; wl.forEach((w, n) => { if (!n) return; const p1 = wl[n-1][0].rea[0]; w.forEach(j => { if ((j.recupRea.length ? j.recupRea[0] : j.rea[1]) !== p1) r2ko++; }); });
+chk('Réa 2 = MAR de la Réa 1 de la semaine précédente (2 semaines enchaînées)', !r2ko, r2ko + ' écarts');
+chk('Récupération de réa : 1 jour en fin de semaine de Réa 2, poste repris', wl.every(w => w[w.length-1].recupRea.length === 1 && w[w.length-1].rea.length === 3), String(PM.reduce((x,m)=>x+m.recupRea,0)) + ' jours');
 const parG = g1.map(i => r1.filter(x => x === i).length);
 chk('Réa 1 : rotation équilibrée dans le groupe', Math.max(...parG) - Math.min(...parG) <= 1, parG.join(' / ') + ' semaines');
 // 9. Analytique vs planning

@@ -45,7 +45,7 @@
       { code: 'G', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 13 + Ch 14 (Risque 4)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
     ],
-    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5 },          // 8h-16h, par semaines entières
+    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 1 },   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
     hb: { heures: 8 },                                                    // jour sans poste (hors bloc, administratif)
     // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
     maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },
@@ -120,20 +120,38 @@
     const reaCands = P.map((p, i) => i).filter(i => P[i].rea !== false && Q[i] >= cfg.rea.quotiteMin);
     const sqRea = reaCands.reduce((a, i) => a + Q[i], 0);
     const reaDone = Array(n).fill(0), lastRea = Array(n).fill(-9);
-    const reaDay = days.map(() => new Set());
-    // Poste « Réa 1 » : groupe dédié (case Réa 1 de l'équipe) qui se relaie par semaines entières ;
-    // ces MAR ne prennent pas les autres postes de réa. Les autres postes : tous les autres MAR de réa.
+    const reaDay = days.map(() => new Set()), reaOrdre = days.map(() => []), rrDay = days.map(() => []);
+    // Groupe Réa 1 (case Réa 1 de l'équipe) : chaque MAR fait une semaine en Réa 1 puis enchaîne la semaine suivante
+    // en Réa 2, avec des jours de récupération en fin de semaine (poste repris ce jour-là par un autre MAR).
+    // Ces MAR ne prennent pas les autres postes de réa. Les autres postes : tous les autres MAR de réa.
     const groupe1 = cfg.rea.nombre > 0 ? reaCands.filter(i => P[i].rea1) : [];
+    const deux = groupe1.length >= 2 && cfg.rea.nombre >= 2;
     const autres = groupe1.length ? reaCands.filter(i => !P[i].rea1) : reaCands;
-    const sqAutres = autres.reduce((a, i) => a + Q[i], 0), nAutres = cfg.rea.nombre - (groupe1.length ? 1 : 0);
+    const nGroupe = groupe1.length ? (deux ? 2 : 1) : 0;
+    const sqAutres = autres.reduce((a, i) => a + Q[i], 0), nAutres = cfg.rea.nombre - nGroupe;
+    let prevR1 = null;
     weeks.forEach((mon, wi) => {
       const key = i => [wi - lastRea[i] < 4 ? 1 : 0, -(Q[i] / sqAutres * nAutres * (wi + 1) - reaDone[i]), -(wi - lastRea[i]), i];
       const key1 = i => [wi - lastRea[i] < 2 ? 1 : 0, reaDone[i] / Q[i], -(wi - lastRea[i]), i];
-      const chosen = (groupe1.length ? groupe1.slice().sort((a, b) => cmp(key1(a), key1(b))).slice(0, 1) : [])
-        .concat(autres.slice().sort((a, b) => cmp(key(a), key(b))).slice(0, nAutres));
+      let g = [];
+      if (groupe1.length) {
+        const r1 = groupe1.filter(i => i !== prevR1).sort((a, b) => cmp(key1(a), key1(b)))[0];
+        g = [r1];
+        if (deux) g.push(prevR1 !== null && prevR1 !== r1 ? prevR1 : groupe1.filter(i => i !== r1).sort((a, b) => cmp(key1(a), key1(b)))[0]);
+        prevR1 = r1;
+      }
+      const chosen = g.concat(autres.slice().sort((a, b) => cmp(key(a), key(b))).slice(0, nAutres));
       if (chosen.length < cfg.rea.nombre) warnings.push(`Semaine du ${labelFR(mon)} : pas assez de MAR pour la réa`);
       chosen.forEach(i => { reaDone[i]++; lastRea[i] = wi; });
-      for (let j = 0; j < 5; j++) { const k = idx[addDays(mon, j)]; if (k !== undefined && isOpen[k]) chosen.forEach(i => reaDay[k].add(i)); }
+      const ks = [0, 1, 2, 3, 4].map(j => idx[addDays(mon, j)]).filter(k => k !== undefined && isOpen[k]);
+      const nRr = deux ? Math.max(0, Math.min(Math.round(cfg.rea.recupSemaine2 || 0), ks.length)) : 0;
+      const rr = nRr ? ks.slice(-nRr) : [];   // derniers jours ouvrés de la semaine en Réa 2
+      ks.forEach(k => {
+        chosen.forEach((i, pos) => {
+          if (deux && pos === 1 && rr.includes(k)) { rrDay[k].push(i); reaOrdre[k].push(null); return; }   // récupération : poste à reprendre
+          reaDay[k].add(i); reaOrdre[k].push(i);
+        });
+      });
     });
 
     // 2. Gardes
@@ -145,7 +163,7 @@
     days.forEach((s, k) => {
       const spec = !isOpen[k];
       if (spec) nSpec++;
-      const ok = i => QG[i] > 0 && !(spec && !P[i].we) && k - lastG[i] >= G.ecartMin
+      const ok = i => QG[i] > 0 && !(spec && !P[i].we) && k - lastG[i] >= G.ecartMin && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
         && !(k + 1 < days.length && reaDay[k + 1].has(i))              // le repos ne coupe pas une semaine de réa
         && !(reaDay[k].has(i) && dow(s) !== 4);                         // garde en semaine de réa : le vendredi
       const key = i => {
@@ -207,7 +225,7 @@
       pt.slice().sort((a, b) => owed[b] - owed[a]).forEach(i => {
         const need = Math.floor(owed[i] + 1e-9);
         if (need <= 0) return;
-        const free = wk.filter(k => !reaDay[k].has(i) && !repos[k].has(i) && !garde[k].includes(i) && tp[k].size < PR.tpMaxParJour)
+        const free = wk.filter(k => !reaDay[k].has(i) && !rrDay[k].includes(i) && !repos[k].has(i) && !garde[k].includes(i) && tp[k].size < PR.tpMaxParJour)
           .sort((a, b) => cmp([pref[i].indexOf(dow(days[a])), tp[a].size], [pref[i].indexOf(dow(days[b])), tp[b].size]));
         free.slice(0, need).forEach(k => { tp[k].add(i); owed[i]--; });
       });
@@ -228,8 +246,15 @@
     const postesJour = days.map((s, k) => {
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
       const wkey = monday(s);
+      let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !rrDay[k].includes(i) && !repos[k].has(i) && !tp[k].has(i));
+      reaOrdre[k].forEach((x, pos) => {   // poste de réa libéré par une récupération : repris par un autre MAR de réa
+        if (x !== null) return;
+        const rp = avail.filter(i => P[i].rea !== false && !P[i].rea1 && Q[i] >= cfg.rea.quotiteMin && !garde[k].includes(i))
+          .sort((a, b) => cmp([rDays[a] / Q[a], a], [rDays[b] / Q[b], b]))[0];
+        if (rp === undefined) { warnings.push(`${labelFR(s)} : réa sans remplaçant`); return; }
+        reaOrdre[k][pos] = rp; reaDay[k].add(rp); avail = avail.filter(i => i !== rp);
+      });
       reaDay[k].forEach(i => { rDays[i]++; });
-      let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !repos[k].has(i) && !tp[k].has(i));
       if (RECUP_BLOC) {   // récupération des jours finis à 18h : premier jour libre (hors garde) après les avoir accumulés
         const rc = avail.filter(i => credit[i] >= 1 - 1e-9 && !garde[k].includes(i));
         rc.forEach(i => { credit[i] -= 1; rcDay[k].push(i); });
@@ -283,8 +308,8 @@
 
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
-      postes: postesJour[k], rea: [...reaDay[k]], garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], consultNb: csNb[k], recup: rcDay[k],
+      postes: postesJour[k], rea: reaOrdre[k].filter(x => x !== null), garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
+      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], recupRea: rrDay[k], consultNb: csNb[k], recup: rcDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
@@ -306,7 +331,7 @@
     if (j.repos.includes(i)) act = 'REPOS';
     else if (open) {
       const p = j.postes.indexOf(i);
-      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.consultation || []).includes(i) ? 'CS' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
+      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.consultation || []).includes(i) ? 'CS' : (j.recupRea || []).includes(i) ? 'RR' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
     }
     let g = '';
     if (j.demi.includes(i)) g = 'DJ';
@@ -316,7 +341,7 @@
 
   function codeActivite(result, a) {
     const base = a.act[0] === 'P' ? result.postes[+a.act.slice(1)].code
-      : { REA: 'Réa', MAT: 'Mat', CS: 'Consult', RC: 'Récup', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
+      : { REA: 'Réa', MAT: 'Mat', CS: 'Consult', RC: 'Récup', RR: 'Récup réa', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
     const g = { G16: 'G16h', G24: 'G24h', GN: 'G nuit', DJ: 'Demi-garde', '': '' }[a.garde];
     return base && g ? base + ' + ' + g : base || g;
   }
@@ -328,7 +353,7 @@
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
     const per = P.map((m, i) => {
-      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
+      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, recupRea: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
         postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
@@ -340,6 +365,7 @@
         else if (a.act === 'HB') { s.hb++; hj = cfg.hb.heures; }
         else if (a.act === 'TP') s.tp++;
         else if (a.act === 'RC') s.rc++;
+        else if (a.act === 'RR') s.recupRea++;
         else if (a.act === 'REPOS' && j.statut === 'Ouvert') s.repos++;
         if (a.garde) {
           if (a.garde === 'DJ') { s.demi++; hg = G.heuresDemiJour; }
@@ -352,11 +378,11 @@
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
       s.recupSamedis = (s.samedis + s.samedisDemi / 2) * PR.recupSamedi;
       s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
-      s.recup = s.recupSamedis + s.recupFin18;
+      s.recup = s.recupSamedis + s.recupFin18 + s.recupRea;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
       const absHB = s.conges + s.rtt + s.recupSamedis + Math.max(s.recupFin18 - s.rc, 0);   // pris sur des jours HB (formation = jour travaillé ; récup. posées à part)
       s.heuresSansGarde = s.heuresJour - absHB * cfg.hb.heures;
-      s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB - s.rc) / (5 * m.q) : 0;   // semaines calendaires de présence
+      s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB - s.rc - s.recupRea) / (5 * m.q) : 0;   // semaines calendaires de présence
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
       s.hSem52 = (s.heuresSansGarde + s.heuresGarde) / 52;
@@ -380,7 +406,7 @@
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
       materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
-      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), tpTotal: sum(s => s.tp),
+      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), tpTotal: sum(s => s.tp),
       absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
       congesTempsPlein: PR.conges, recupTempsPlein: avg(pleins, s => s.recup),
     };
@@ -488,7 +514,7 @@
       if (j.garde.length !== cfg.gardes.parJour) issues.push(`${d} : ${j.garde.length} gardes`);
       if (new Set(j.garde).size !== j.garde.length) issues.push(`${d} : même MAR deux fois de garde`);
       if (j.statut === 'Ouvert') {
-        const all = j.postes.concat(j.rea, j.maternite || [], j.consultation || []).filter(x => x !== null);
+        const all = j.postes.concat(j.rea, j.maternite || [], j.consultation || [], j.recupRea || []).filter(x => x !== null);
         if (new Set(all).size !== all.length) issues.push(`${d} : un MAR a deux postes`);
         if (j.postes.includes(null)) issues.push(`${d} : poste de bloc sans MAR`);
         if (j.rea.length !== cfg.rea.nombre) issues.push(`${d} : ${j.rea.length} MAR en réa`);
@@ -522,11 +548,13 @@
     const gSem = G.parJour * nOpen, gWE = G.parJour * (jours.length - nOpen);
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
+    const recupRea = result.equipe.filter(m => m.rea1).length >= 2 && cfg.rea.nombre >= 2
+      ? jours.reduce((a, j) => a + (j.recupRea || []).length, 0) : 0;   // récupérations du groupe Réa 1 (semaine en Réa 2)
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
     const CS = cfg.consultations, openDows = open.map(j => dow(j.date)), cons = consultPlan(CS, openDows).joursMar;
     const hRea = rea * cfg.rea.heures + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
-      const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup) / N;
+      const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup + recupRea) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
       const reste = N * jt - (bloc + rea + mat + cons + repos);
       const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * PR.formation) * cfg.hb.heures) / N;

@@ -31,15 +31,18 @@ test('fériés de Monaco : bloc fermé', () => {
   assert.equal(S.synthese.joursBloc, 251);
 });
 
-test('réanimation par semaines entières', () => {
-  const byWeek = {};
-  R.jours.filter(j => j.statut === 'Ouvert').forEach(j => {
-    const k = E.addDays(j.date, -E.dow(j.date));
-    const v = j.rea.slice().sort().join(',');
-    if (byWeek[k]) assert.equal(byWeek[k], v, j.date); else byWeek[k] = v;
+test('réanimation par semaines entières (Réa 1, Réa 2 = Réa 1 de la semaine précédente, Réa 3)', () => {
+  const sem = {};
+  R.jours.filter(j => j.statut === 'Ouvert').forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
+  const ws = Object.values(sem);
+  ws.forEach((w, n) => {
+    assert.ok(w.every(j => j.rea[0] === w[0].rea[0] && j.rea[2] === w[0].rea[2]), w[0].date);
+    const r2 = w[0].recupRea.length ? w[0].recupRea[0] : w[0].rea[1];
+    w.forEach(j => assert.ok(j.recupRea.length ? j.recupRea[0] === r2 : j.rea[1] === r2, j.date));
+    if (n) assert.equal(r2, ws[n - 1][0].rea[0], 'Réa 2 = Réa 1 précédent ' + w[0].date);
+    assert.ok(w[w.length - 1].recupRea.length === 1, 'récupération en fin de semaine ' + w[0].date);
   });
 });
-
 test('pas de garde de WE (MAR 01) et quotité de garde 0 (MAR 04, MAR 05)', () => {
   R.jours.forEach(j => {
     if (j.statut !== 'Ouvert') assert.ok(!j.garde.includes(idx('MAR 01')), j.date);
@@ -77,7 +80,7 @@ test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures',
   assert.ok(sim[0].marDisponiblesParJour < sim[1].marDisponiblesParJour);
   assert.ok(sim[1].marDisponiblesParJour < sim[2].marDisponiblesParJour);
   assert.ok(sim[0].hSemAvecGarde > sim[2].hSemAvecGarde);
-  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '0.4');                 // 20 ETP : marge faible
+  assert.equal(sim[1].marDisponiblesParJour.toFixed(1), '0.2');                 // 20 ETP : marge faible
 });
 
 test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
@@ -114,7 +117,7 @@ test('absences : congés, formation, récupérations et temps partiel par MAR', 
   S.parMar.forEach(m => {
     assert.ok(Math.abs(m.conges - 32 * m.q) < 1e-9);
     assert.ok(Math.abs(m.formation - 10 * m.q) < 1e-9);
-    assert.ok(Math.abs(m.recup - (m.recupSamedis + m.recupFin18)) < 1e-9);
+    assert.ok(Math.abs(m.recup - (m.recupSamedis + m.recupFin18 + m.recupRea)) < 1e-9);
     assert.ok(Math.abs(m.absences - (m.conges + m.rtt + m.formation + m.recup + m.tp)) < 1e-9);
   });
   const s = S.synthese;
