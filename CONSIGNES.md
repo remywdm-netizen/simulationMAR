@@ -58,20 +58,16 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
 - h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de temps partiel).
-- Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : **22 ETP** avec les règles par défaut
-  (23 avec la maternité, 21 sans la récupération des jours finis à 18h).
+- Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : environ **22,3 ETP** avec les règles par défaut.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).
 
 ## Consultations
-- **Environ 13 000 consultations par an**, soit 51,8 par jour ouvré.
-- Journée de consultation : **7 h**. Créneaux de **10 min pour 5 000 consultations**, de **15 à 30 min pour les 8 000 autres**
-  (moyenne retenue 22,5 min).
-- Besoin = durée des créneaux ÷ 7 h : 548 journées de MAR par an, soit **2,2 MAR par jour ouvré**
-  (1,6 avec des créneaux longs de 15 min, 2,75 avec 30 min).
-- Jour par jour : consultations possibles = (MAR hors bloc du jour − absences moyennes) × ≈ 24 consultations par
-  journée de 7 h, comparées au besoin de 51,8 par jour.
-- Assurées par les MAR disponibles : ni bloc, ni réa, ni repos de sécurité, congés, récupération ou formation.
+- **Poste fixe : 3 MAR en consultation chaque jour ouvré**, **25 consultations chacun** (journée de 7 h) :
+  75 consultations par jour, 18 825 par an pour un besoin d'environ **13 000** (2,1 MAR par jour suffiraient).
+- Réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.
+- Les jours sans poste (ni bloc, réa, consultation, maternité, repos, temps partiel) servent aux congés, à la
+  formation et aux récupérations : avec 21,1 ETP, il reste 0,4 MAR libre par jour après ces absences.
 
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.

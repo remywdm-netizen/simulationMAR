@@ -45,7 +45,7 @@
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
     ],
     rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5 },          // 8h-16h, par semaines entières
-    hb: { heures: 8 },                                                    // consultation / hors bloc
+    hb: { heures: 8 },                                                    // jour sans poste (hors bloc, administratif)
     // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
     maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },
     gardes: {
@@ -67,9 +67,8 @@
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
     finance: { ca: 1200000, parts: 15 },
-    // Consultations d'anesthésie : journée de consultation de 7 h ; créneaux de 10 min pour une partie,
-    // 15 à 30 min pour le reste (durée moyenne retenue pour le besoin, mini et maxi pour la fourchette).
-    consultations: { parAn: 13000, heuresJour: 7, courtes: 5000, minCourtes: 10, minLonguesMin: 15, minLonguesMax: 30, minLongues: 22.5 },
+    // Consultations d'anesthésie : poste fixe de N MAR chaque jour ouvré, chacun avec un nombre de consultations par jour.
+    consultations: { parAn: 13000, marParJour: 3, parMarJour: 25, heuresJour: 7 },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -98,7 +97,7 @@
   // ── Génération du tableau de service ───────────────────────
   function generate(userCfg) {
     const cfg = mergeConfig(userCfg);
-    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, mater: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
+    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, mater: true, consult: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
     const postes = cfg.postes.filter(p => p.actif !== false);
     const NP = postes.length;
@@ -206,6 +205,7 @@
     // 4. Maternité (jour) puis bloc
     const MAT = cfg.maternite;
     const matDay = days.map(() => []), mDone = Array(n).fill(0);
+    const CS = cfg.consultations, csDay = days.map(() => []), cDone = Array(n).fill(0);
     const bDone = Array(n).fill(0), pc = P.map(() => Array(NP).fill(0));
     const wkBloc = {};
     const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
@@ -225,6 +225,13 @@
           .sort((a, b) => cmp([mDone[a] / Q[a], bDone[a] / Q[a], a], [mDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, MAT.nombre);
         if (elig.length < MAT.nombre) warnings.push(`${labelFR(s)} : maternité sans MAR`);
         elig.forEach(i => { mDone[i]++; matDay[k].push(i); });
+        avail = avail.filter(i => !elig.includes(i));
+      }
+      if (CS.marParJour > 0) {   // consultations : poste fixe, au prorata de la quotité
+        const elig = avail.filter(i => P[i].consult !== false)
+          .sort((a, b) => cmp([cDone[a] / Q[a], bDone[a] / Q[a], a], [cDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, CS.marParJour);
+        if (elig.length < CS.marParJour) warnings.push(`${labelFR(s)} : ${CS.marParJour - elig.length} MAR de consultation manquant(s)`);
+        elig.forEach(i => { cDone[i]++; csDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
       const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, bDone[i] / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];
@@ -260,7 +267,7 @@
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: [...reaDay[k]], garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k], maternite: matDay[k], recup: rcDay[k],
+      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], recup: rcDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
@@ -282,7 +289,7 @@
     if (j.repos.includes(i)) act = 'REPOS';
     else if (open) {
       const p = j.postes.indexOf(i);
-      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
+      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.consultation || []).includes(i) ? 'CS' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
     }
     let g = '';
     if (j.demi.includes(i)) g = 'DJ';
@@ -292,7 +299,7 @@
 
   function codeActivite(result, a) {
     const base = a.act[0] === 'P' ? result.postes[+a.act.slice(1)].code
-      : { REA: 'Réa', MAT: 'Mat', RC: 'Récup', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
+      : { REA: 'Réa', MAT: 'Mat', CS: 'Consult', RC: 'Récup', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
     const g = { G16: 'G16h', G24: 'G24h', GN: 'G nuit', DJ: 'Demi-garde', '': '' }[a.garde];
     return base && g ? base + ' + ' + g : base || g;
   }
@@ -304,13 +311,14 @@
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
     const per = P.map((m, i) => {
-      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, rc: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
+      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
         postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
         if (a.act[0] === 'P') { const p = +a.act.slice(1); s.bloc++; s.postes[p]++; hj = postes[p].heures[d]; if (postes[p].fin18) s.fin18++; if (a.garde === 'G16') hj -= postes[p].apres16 || 0; }
         else if (a.act === 'REA') { s.rea++; hj = cfg.rea.heures - (a.garde === 'G16' ? cfg.rea.apres16 || 0 : 0); }
+        else if (a.act === 'CS') { s.consult++; hj = cfg.consultations.heuresJour; }
         else if (a.act === 'MAT') { s.mater++; hj = cfg.maternite.heures - (a.garde === 'G16' ? cfg.maternite.apres16 || 0 : 0); }
         else if (a.act === 'HB') { s.hb++; hj = cfg.hb.heures; }
         else if (a.act === 'TP') s.tp++;
@@ -337,7 +345,7 @@
       s.hSem52 = (s.heuresSansGarde + s.heuresGarde) / 52;
       s.semaineMax = Math.max(0, ...Object.values(s.semaines));
       s.ecartPlafond = s.hSemAvecGarde - PR.plafond;
-      s.hbDisponible = s.hb - absHB - s.formation;                      // jours réellement disponibles en consultation
+      s.hbDisponible = s.hb - absHB - s.formation;                      // jours sans poste restant libres après les absences
       delete s.semaines;
       return s;
     });
@@ -385,50 +393,45 @@
       euroHeure: avg(pleinsFin, s => s.euroHeure), euroHeureHorsGarde: avg(pleinsFin, s => s.euroHeureHorsGarde),
       caParHeureEquipe: F.ca / (sum(s => s.heuresSansGarde + s.heuresGarde) || 1),
     });
-    Object.assign(synthese, consultIndic(cfg.consultations, nOpen, synthese.marDisponiblesParJour, F.ca));
+    Object.assign(synthese, consultIndic(cfg.consultations, nOpen, F.ca),
+      { consultationsAssurees: sum(s => s.consult) * cfg.consultations.parMarJour });
 
-    // Consultations jour par jour : MAR hors bloc du jour, moins les absences moyennes (congés, formation,
-    // récupérations non posées), × consultations par journée de MAR ; comparé au besoin moyen par jour ouvré.
+    // Jour par jour : MAR sans poste (ni bloc, réa, consultation, maternité, repos, TP, récupération posée),
+    // moins les absences moyennes (congés, formation, récupérations) = MAR libres ; < 0 : absences impossibles à poser.
     const absMoy = (sum(s => s.hb) - sum(s => s.hbDisponible)) / nOpen;
-    const parJourMar = synthese.consultParJourMar, besoin = synthese.consultationsParJour;
     const parJour = {};
     jours.forEach(j => {
       if (j.statut !== 'Ouvert') return;
       const hb = P.reduce((a, m, i) => a + (activite(result, j, i).act === 'HB' ? 1 : 0), 0);
-      const dispo = Math.max(hb - absMoy, 0);
-      parJour[j.date] = { hb, dispo, possibles: dispo * parJourMar, besoin };
+      parJour[j.date] = { hb, libres: hb - absMoy, consultations: (j.consultation || []).length * cfg.consultations.parMarJour };
     });
     const semaine = [0, 1, 2, 3, 4].map(d => {
       const l = jours.filter(j => parJour[j.date] && dow(j.date) === d).map(j => parJour[j.date]);
       const m = f => (l.length ? l.reduce((a, x) => a + f(x), 0) / l.length : 0);
-      return { jour: JOURS[d], jours: l.length, hb: m(x => x.hb), dispo: m(x => x.dispo), possibles: m(x => x.possibles), besoin,
-        joursInsuffisants: l.filter(x => x.possibles < x.besoin).length };
+      return { jour: JOURS[d], jours: l.length, hb: m(x => x.hb), libres: m(x => x.libres), consultations: m(x => x.consultations),
+        joursNegatifs: l.filter(x => x.libres < 0).length };
     });
-    Object.assign(synthese, { absentsMoyensParJour: absMoy, consultParJourSemaine: semaine,
-      joursConsultInsuffisants: Object.values(parJour).filter(x => x.possibles < x.besoin).length });
-    return { parMar: per, synthese, consultParJour: parJour };
+    Object.assign(synthese, { absentsMoyensParJour: absMoy, parJourSemaine: semaine,
+      joursNegatifs: Object.values(parJour).filter(x => x.libres < 0).length });
+    return { parMar: per, synthese, parJour };
   }
 
-  // Besoin en consultations face aux MAR disponibles (jours hors bloc, réa, repos, congés, récupérations, formation)
-  function consultIndic(C, nOpen, dispo, ca) {
-    const parJour = nOpen ? C.parAn / nOpen : 0;
-    const longues = Math.max(C.parAn - C.courtes, 0), jour = C.heuresJour * 60;
-    const joursMar = minL => (jour > 0 ? (C.courtes * C.minCourtes + longues * minL) / jour : 0);
-    const jm = joursMar(C.minLongues), jmMin = joursMar(C.minLonguesMin), jmMax = joursMar(C.minLonguesMax);
-    const besoin = nOpen ? jm / nOpen : 0;
+  // Consultations : capacité du poste fixe (MAR par jour × consultations par MAR × jours ouvrés) face au volume annuel
+  function consultIndic(C, nOpen, ca) {
+    const capJour = C.marParJour * C.parMarJour, besoinJour = nOpen ? C.parAn / nOpen : 0;
+    const marNec = C.parMarJour > 0 ? besoinJour / C.parMarJour : 0;
     return {
-      consultationsParAn: C.parAn, consultationsParJour: parJour,
-      heuresConsultation: jm * C.heuresJour, joursMarConsultation: jm,
-      dureeMoyenne: C.parAn ? (C.courtes * C.minCourtes + longues * C.minLongues) / C.parAn : 0,
-      consultParJourMar: jm ? C.parAn / jm : 0,                       // consultations par journée de 7 h
-      marConsultNecessaires: besoin, marConsultMin: nOpen ? jmMin / nOpen : 0, marConsultMax: nOpen ? jmMax / nOpen : 0,
-      margeConsult: dispo - besoin, margeConsultPire: dispo - (nOpen ? jmMax / nOpen : 0),
-      consultParMarDispo: dispo > 0 ? parJour / dispo : 0,            // consultations par jour pour chaque MAR disponible
+      consultationsParAn: C.parAn, consultationsParJour: besoinJour,
+      capaciteConsultJour: capJour, capaciteConsultAn: capJour * nOpen,
+      couvertureConsult: C.parAn ? capJour * nOpen / C.parAn : 0,
+      marConsultNecessaires: marNec, margeConsult: C.marParJour - marNec,     // en MAR par jour
+      joursMarConsultation: C.marParJour * nOpen, heuresConsultation: C.marParJour * nOpen * C.heuresJour,
       caParConsultation: C.parAn ? ca / C.parAn : 0,
     };
   }
 
-  const appreciation = x => (x < 1 ? 'Insuffisant' : x < 2 ? 'Tendu' : x < 3 ? 'Juste' : 'Confortable');
+  // MAR libres par jour après bloc, réa, consultations, maternité, repos et absences moyennes
+  const appreciation = x => (x < 0 ? 'Insuffisant' : x < 0.5 ? 'Tendu' : x < 1.5 ? 'Juste' : 'Confortable');
 
   // ── Contrôle des règles dures ──────────────────────────────
   function verify(result) {
@@ -440,10 +443,11 @@
       if (j.garde.length !== cfg.gardes.parJour) issues.push(`${d} : ${j.garde.length} gardes`);
       if (new Set(j.garde).size !== j.garde.length) issues.push(`${d} : même MAR deux fois de garde`);
       if (j.statut === 'Ouvert') {
-        const all = j.postes.concat(j.rea, j.maternite || []).filter(x => x !== null);
+        const all = j.postes.concat(j.rea, j.maternite || [], j.consultation || []).filter(x => x !== null);
         if (new Set(all).size !== all.length) issues.push(`${d} : un MAR a deux postes`);
         if (j.postes.includes(null)) issues.push(`${d} : poste de bloc sans MAR`);
         if (j.rea.length !== cfg.rea.nombre) issues.push(`${d} : ${j.rea.length} MAR en réa`);
+        if ((j.consultation || []).length !== cfg.consultations.marParJour) issues.push(`${d} : ${(j.consultation || []).length} MAR en consultation`);
         const mat = cfg.maternite.actif && cfg.maternite.jours[dow(j.date)] ? cfg.maternite.nombre : 0;
         if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
         j.repos.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : repos de sécurité non respecté (${P[i].code})`); });
@@ -473,11 +477,12 @@
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
-    const hRea = rea * cfg.rea.heures + mat * MAT.heures, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
+    const CS = cfg.consultations, cons = CS.marParJour * nOpen;
+    const hRea = rea * cfg.rea.heures + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
       const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
-      const reste = N * jt - (bloc + rea + mat + repos);
+      const reste = N * jt - (bloc + rea + mat + cons + repos);
       const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * PR.formation) * cfg.hb.heures) / N;
       const sem = (jt + PR.formation) / 5;
       const r = {
@@ -486,10 +491,10 @@
         hSemSansGarde: hSans / sem, hSemAvecGarde: (hSans + hGarde / N) / sem, hSem52: (hSans + hGarde / N) / 52,
       };
       r.ecartPlafond = r.hSemAvecGarde - PR.plafond;
-      Object.assign(r, consultIndic(cfg.consultations, nOpen, r.marDisponiblesParJour, cfg.finance.ca));
-      // Charge réelle répartie : bloc, réa, maternité, temps de consultation nécessaire, formation et gardes
-      // (la capacité en plus allège chacun au lieu d'être comptée en consultations supplémentaires).
-      const hCharge = (hBloc + hRea + r.heuresConsultation + N * PR.formation * cfg.hb.heures) / N;
+      Object.assign(r, consultIndic(CS, nOpen, cfg.finance.ca));
+      // Charge réelle répartie : bloc, réa, consultations, maternité, formation et gardes
+      // (les jours sans poste ne sont pas comptés comme travaillés).
+      const hCharge = (hBloc + hRea + N * PR.formation * cfg.hb.heures) / N;
       r.hSemSansGardeCharge = hCharge / sem;
       r.hSemAvecGardeCharge = (hCharge + hGarde / N) / sem;
       r.ecartPlafondCharge = r.hSemAvecGardeCharge - PR.plafond;
@@ -499,7 +504,7 @@
   }
 
   // ── Effectif nécessaire pour rester sous le plafond hebdomadaire (temps plein, gardes comprises) ──
-  // charge : charge réelle répartie ; consultations : toute la capacité en plus travaillée en consultation.
+  // charge : charge réelle répartie ; consultations : jours sans poste comptés comme travaillés.
   function etpPourPlafond(result) {
     const Ns = []; for (let n = 5; n <= 80.001; n += 0.1) Ns.push(Math.round(n * 10) / 10);
     const sim = simulateETP(result, Ns);
