@@ -50,7 +50,7 @@ tr.we td{background:#f6f8fa;color:var(--t3)}tr.fe td{background:#fff1e5}
 td input[type=number],td input[type=text]{width:70px;padding:3px 5px;border:1px solid var(--bd);border-radius:4px;font-family:var(--font);font-size:12px}
 td input.w{width:150px}
 .k-bloc{background:var(--c-bloc)}.k-long{background:var(--c-long)}.k-rea{background:var(--c-rea)}.k-garde{background:var(--c-garde);font-weight:600}
-.k-repos{background:var(--c-repos);color:var(--t3)}.k-tp{background:var(--c-tp)}.k-demi{background:var(--c-demi);font-weight:600}.k-hb{color:var(--t3)}
+.k-repos{background:var(--c-repos);color:var(--t3)}.k-tp{background:var(--c-tp)}.k-demi{background:var(--c-demi);font-weight:600}.k-hb{color:var(--t3)}.k-mat{background:#ffeff7;font-weight:600}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 22px;background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 16px}
 .form label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
 .form input,.form select{width:90px;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--font);font-size:13px}
@@ -121,7 +121,7 @@ body.locked .bar,body.locked .wrap{display:none}
       <button class="btn btn-r" onclick="resetEquipe()">↺ Équipe par défaut</button>
     </div>
     <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
-    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
+    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation · <b>Maternité</b> = peut être détaché à la maternité (si l'option est active) · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
     <div class="tbl-wrap"><table id="tbl-equipe"></table></div>
     <div id="equipe-tot" class="hint" style="margin-top:8px"></div>
   </div>
@@ -132,6 +132,9 @@ body.locked .bar,body.locked .wrap{display:none}
     <div class="form" id="f-gardes"></div>
     <h2>Réanimation, hors bloc</h2>
     <div class="form" id="f-rea"></div>
+    <h2>Maternité (détachement en journée)</h2>
+    <p class="hint">Un ou plusieurs MAR détachés à la maternité les jours choisis ; ils ne sont ni au bloc ni en réa ce jour-là et peuvent prendre la garde à 16h. Répartition au prorata de la quotité entre les MAR cochés « Maternité » dans l'équipe.</p>
+    <div class="form" id="f-mater"></div>
     <h2>Congés, récupérations, plafond</h2>
     <div class="form" id="f-params"></div>
     <h2>Part financière</h2>
@@ -160,7 +163,7 @@ body.locked .bar,body.locked .wrap{display:none}
       </select>
     </div>
     <div class="legend">
-      <span class="k-bloc">A-E bloc court</span><span class="k-long">F-H bloc long (18h)</span><span class="k-rea">Réa</span>
+      <span class="k-bloc">A-E bloc court</span><span class="k-long">F-H bloc long (18h)</span><span class="k-rea">Réa</span><span class="k-mat">Mat maternité</span>
       <span class="k-garde">G16h garde de semaine · G24h WE/férié · G nuit</span><span class="k-demi">Demi-garde jour WE</span>
       <span class="k-repos">Repos de sécurité</span><span class="k-tp">TP temps partiel</span><span class="k-hb">HB hors bloc / consultation / congés</span>
     </div>
@@ -246,10 +249,10 @@ function renderSynthese(){
     (Math.abs(s.partsAttribuees - s.nombreParts) > 0.01 ? `<div class="ok info">Parts attribuées dans l'équipe : ${f1(s.partsAttribuees)} pour ${f1(s.nombreParts)} parts — ${eur(s.partsAttribuees*s.valeurPart)} répartis sur ${eur(s.ca)} de CA.</div>` : '') +
     (w.length ? `<div class="ok info">${w.slice(0,10).map(esc).join('<br/>')}${w.length>10?'<br/>…':''}</div>` : '');
   const P = R.postes;
-  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>HB</th><th>Dispo consult.</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
+  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Mater.</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>HB</th><th>Dispo consult.</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
     + P.map(p=>`<th>${p.code}</th>`).join('') + `<th>h/an hors garde</th><th>h/an garde</th><th>h/sem sans</th><th>h/sem avec</th><th>Sem. max</th><th>Écart</th><th>Parts</th><th>Revenu</th><th>€/h</th></tr>`;
   R.stats.parMar.forEach(m => {
-    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.conges+m.rtt)}</td><td>${f1(m.formation)}</td><td>${f1(m.recupSamedis)}</td><td>${f1(m.recupFin18)}</td><td>${m.tp}</td><td class="b">${f1(m.absences)}</td>`
+    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.mater}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.conges+m.rtt)}</td><td>${f1(m.formation)}</td><td>${f1(m.recupSamedis)}</td><td>${f1(m.recupFin18)}</td><td>${m.tp}</td><td class="b">${f1(m.absences)}</td>`
       + m.postes.map(x=>`<td>${x}</td>`).join('')
       + `<td>${f0(m.heuresSansGarde)}</td><td>${f0(m.heuresGarde)}</td><td>${f1(m.hSemSansGarde)}</td><td class="b">${f1(m.hSemAvecGarde)}</td><td>${f1(m.semaineMax)}</td><td class="${m.ecartPlafond>0?'pos':'neg'}">${m.ecartPlafond>0?'+':''}${f1(m.ecartPlafond)}</td><td>${(Math.round(m.parts*100)/100).toLocaleString('fr-FR')}</td><td>${eur(m.revenu)}</td><td>${f1(m.euroHeure)}</td></tr>`;
   });
@@ -258,7 +261,7 @@ function renderSynthese(){
 
 // ── Équipe ──
 function renderEquipe(){
-  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
+  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th>Maternité</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
   cfg.equipe.forEach((m,i) => {
     h += `<tr><td class="l"><input type="text" value="${esc(m.code)}" onchange="setM(${i},'code',this.value.trim()||'?')"/></td>
       <td><input type="number" step="0.1" min="0" max="1" value="${m.q}" onchange="setM(${i},'q',+this.value)"/></td>
@@ -266,6 +269,7 @@ function renderEquipe(){
       <td><input type="checkbox" ${m.we!==false?'checked':''} onchange="setM(${i},'we',this.checked)"/></td>
       <td><input type="checkbox" ${m.demiWE?'checked':''} onchange="setM(${i},'demiWE',this.checked)"/></td>
       <td><input type="checkbox" ${m.rea!==false?'checked':''} onchange="setM(${i},'rea',this.checked)"/></td>
+      <td><input type="checkbox" ${m.mater!==false?'checked':''} onchange="setM(${i},'mater',this.checked)"/></td>
       <td><input type="number" step="0.1" min="0" value="${m.parts===undefined||m.parts===null||m.parts===''?'':m.parts}" placeholder="${(Math.round(R.stats.parMar[i].parts*100)/100).toLocaleString('fr-FR')}" title="Vide = au prorata de la quotité" onchange="setM(${i},'parts',this.value===''?null:+this.value)"/></td>
       <td class="l"><input class="w" type="text" value="${esc(m.note||'')}" onchange="setM(${i},'note',this.value)"/></td>
       <td><button class="btn btn-s btn-r" onclick="delMar(${i})">✕</button></td></tr>`;
@@ -276,7 +280,7 @@ function renderEquipe(){
 }
 function setM(i,k,v){ cfg.equipe[i][k] = v; recompute(); }
 function delMar(i){ if(confirm('Retirer '+cfg.equipe[i].code+' ?')){ cfg.equipe.splice(i,1); recompute(); } }
-function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,note:''}); recompute(); }
+function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,mater:true,note:''}); recompute(); }
 function resetEquipe(){ if(confirm("Revenir à l'équipe par défaut ?")){ cfg.equipe = E.mergeConfig().equipe; recompute(); } }
 function importEquipe(file){
   const rd = new FileReader();
@@ -313,6 +317,11 @@ function renderRegles(){
     field('rea.nombre','MAR en réa par jour ouvré') + field('rea.heures','Heures de réa par jour',{step:0.5}) +
     field('rea.apres16','Réa : heures après 16h',{step:0.5}) + field('rea.quotiteMin','Quotité minimale pour la réa',{step:0.1}) +
     field('hb.heures','Heures d\'un jour hors bloc / consultation',{step:0.5});
+  const M = cfg.maternite;
+  document.getElementById('f-mater').innerHTML =
+    `<label>Détacher un MAR à la maternité<select onchange="setP('maternite.actif',this.value==='Oui')"><option ${M.actif?'selected':''}>Oui</option><option ${M.actif?'':'selected'}>Non</option></select></label>` +
+    field('maternite.nombre','MAR détachés par jour') + field('maternite.heures','Heures par jour (8h-16h)',{step:0.5}) + field('maternite.apres16','Heures après 16h',{step:0.5}) +
+    `<label>Jours<span>${E.JOURS.slice(0,5).map((j,d)=>`<label style="display:inline;margin-left:6px"><input type="checkbox" style="width:auto" ${M.jours[d]?'checked':''} onchange="cfg.maternite.jours[${d}]=this.checked;recompute()"/> ${j.slice(0,3)}</label>`).join('')}</span></label>`;
   document.getElementById('f-params').innerHTML =
     field('params.conges','Congés par ETP (jours ouvrés)') + field('params.rtt','RTT par ETP (jours)') + field('params.formation','Formation par ETP (jours)') +
     field('params.recupSamedi','Récupération par samedi de garde (jours, ½ pour une demi-garde)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
@@ -356,7 +365,7 @@ function kcls(code){
   if(!code) return '';
   if(/Demi/.test(code)) return 'k-demi';
   if(/G16h|G24h|G nuit/.test(code)) return 'k-garde';
-  if(code==='Repos') return 'k-repos'; if(code==='TP') return 'k-tp'; if(code==='HB') return 'k-hb'; if(code==='Réa') return 'k-rea';
+  if(code==='Repos') return 'k-repos'; if(/^Mat/.test(code)) return 'k-mat'; if(code==='TP') return 'k-tp'; if(code==='HB') return 'k-hb'; if(code==='Réa') return 'k-rea';
   const p = R.postes.find(x=>x.code===code[0]); return p ? (p.fin18 ? 'k-long' : 'k-bloc') : '';
 }
 function renderTableau(){
@@ -365,13 +374,14 @@ function renderTableau(){
   const nom = i => i===null||i===undefined ? '' : esc(R.equipe[i].code);
   let h = '';
   if(document.getElementById('vue').value === 'poste'){
-    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th><th>TP</th></tr>`;
+    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th><th>TP</th></tr>`;
     jours.forEach(j => {
       const tr = j.statut==='Week-end'?'we':j.statut==='Férié'?'fe':'';
       const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
       const rea = j.statut==='Ouvert' ? j.rea.map(i=>`<td class="k-rea">${nom(i)}</td>`).join('') : `<td colspan="${cfg.rea.nombre}"></td>`;
       const g = j.garde.map(i=>nom(i)+(j.nuit.includes(i)?' (nuit)':'')).join(', ');
-      h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td><td class="k-tp">${j.tp.map(nom).join(', ')}</td></tr>`;
+      const mat = cfg.maternite.actif ? `<td class="${j.maternite.length?'k-mat':''}">${j.maternite.map(nom).join(', ')}</td>` : '';
+      h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}${mat}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td><td class="k-tp">${j.tp.map(nom).join(', ')}</td></tr>`;
     });
   } else {
     h = `<tr><th class="l">MAR</th>${jours.map(j=>`<th title="${j.jour}">${j.jour.slice(0,2)}<br/>${j.date.slice(8)}</th>`).join('')}</tr>`;
@@ -387,7 +397,7 @@ const INDIC = [
   ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR dispo / jour',f1],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
-  ['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
+  ['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
   ['consultationsParAn','Consultations / an',f0],['marConsultNecessaires','MAR consult. nécessaires / j',f1],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
 ];
@@ -456,6 +466,8 @@ function renderConsignes(){
     <li>${r.nombre} MAR en réanimation chaque jour ouvré, ${r.heures} h par jour (8h-16h), par semaines entières du lundi au vendredi.</li>
     <li>Une semaine de réa n'est jamais coupée par un repos de sécurité (garde possible le vendredi seulement). Quotité minimale : ${r.quotiteMin}.</li>
     <li>Week-ends et fériés : réa couverte par les MAR de garde.</li></ul>
+  <h3>Maternité</h3><ul>
+    <li>${cfg.maternite.actif ? `${cfg.maternite.nombre} MAR détaché(s) à la maternité en journée (${cfg.maternite.heures} h) les ${E.JOURS.slice(0,5).filter((j,d)=>cfg.maternite.jours[d]).join(', ').toLowerCase()} ; ni bloc ni réa ce jour-là, garde possible à 16h ; répartition au prorata de la quotité.` : 'Pas de détachement à la maternité (option désactivée dans les règles).'}</li></ul>
   <h3>Gardes</h3><ul>
     <li>${g.parJour} MAR de garde par jour, au prorata de la quotité de garde ; gardes de week-end et fériés réparties entre les MAR éligibles.</li>
     <li>En semaine : garde de 16h à 8h après la journée (${g.heuresSemaine} h) ; le MAR de garde n'est pas au bloc long (fin 18h). Week-end et fériés : ${g.heuresWE} h.</li>
@@ -483,14 +495,14 @@ function exportXlsx(){
   const wb = XLSX.utils.book_new(), S = R.stats;
   const syn = [['Indicateur','Valeur']].concat(INDIC.map(([k,l])=>[l, S.synthese[k]]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(syn), 'Synthèse');
-  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','HB','Dispo consult.','Congés','Formation','Récup. samedis','Récup. 18h','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond','Parts','Revenu (€)','€/h']);
-  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
+  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Maternité','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','HB','Dispo consult.','Congés','Formation','Récup. samedis','Récup. 18h','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond','Parts','Revenu (€)','€/h']);
+  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.mater,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
-  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP']);
+  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Maternité','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
     j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
-    [nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')]));
+    [j.maternite.map(nom).join(', '),nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([tH].concat(tR)), 'Tableau de service');
   const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));
   const vR = R.jours.map(j=>[E.labelFR(j.date),j.jour].concat(R.equipe.map((p,i)=>E.codeActivite(R,E.activite(R,j,i)))));

@@ -46,6 +46,8 @@
     ],
     rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5 },          // 8h-16h, par semaines entières
     hb: { heures: 8 },                                                    // consultation / hors bloc
+    // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
+    maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },
     gardes: {
       parJour: 2, ecartMin: 5,
       heuresSemaine: 16,       // 16h -> 8h, après la journée
@@ -88,14 +90,14 @@
     const base = clone(DEFAULT_CONFIG);
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
-    ['rea', 'hb', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
+    ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
     return out;
   }
 
   // ── Génération du tableau de service ───────────────────────
   function generate(userCfg) {
     const cfg = mergeConfig(userCfg);
-    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
+    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, mater: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
     const postes = cfg.postes.filter(p => p.actif !== false);
     const NP = postes.length;
@@ -200,14 +202,23 @@
       });
     });
 
-    // 4. Bloc
+    // 4. Maternité (jour) puis bloc
+    const MAT = cfg.maternite;
+    const matDay = days.map(() => []), mDone = Array(n).fill(0);
     const bDone = Array(n).fill(0), pc = P.map(() => Array(NP).fill(0));
     const wkBloc = {};
     let prev = {}, run = {};
     const postesJour = days.map((s, k) => {
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
       const wkey = monday(s);
-      const avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !repos[k].has(i) && !tp[k].has(i));
+      let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !repos[k].has(i) && !tp[k].has(i));
+      if (MAT.actif && MAT.jours[dow(s)]) {
+        const elig = avail.filter(i => P[i].mater !== false)
+          .sort((a, b) => cmp([mDone[a] / Q[a], bDone[a] / Q[a], a], [mDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, MAT.nombre);
+        if (elig.length < MAT.nombre) warnings.push(`${labelFR(s)} : maternité sans MAR`);
+        elig.forEach(i => { mDone[i]++; matDay[k].push(i); });
+        avail = avail.filter(i => !elig.includes(i));
+      }
       const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, bDone[i] / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];
       const chosen = avail.sort((a, b) => cmp(key(a), key(b))).slice(0, NP);
       if (chosen.length < NP) warnings.push(`${labelFR(s)} : ${NP - chosen.length} poste(s) de bloc sans MAR`);
@@ -240,7 +251,7 @@
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: [...reaDay[k]], garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k],
+      demi: demi[k], nuit: nuit[k], maternite: matDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
@@ -259,7 +270,7 @@
     if (j.repos.includes(i)) act = 'REPOS';
     else if (open) {
       const p = j.postes.indexOf(i);
-      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : j.tp.includes(i) ? 'TP' : 'HB';
+      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : j.tp.includes(i) ? 'TP' : 'HB';
     }
     let g = '';
     if (j.demi.includes(i)) g = 'DJ';
@@ -269,7 +280,7 @@
 
   function codeActivite(result, a) {
     const base = a.act[0] === 'P' ? result.postes[+a.act.slice(1)].code
-      : { REA: 'Réa', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
+      : { REA: 'Réa', MAT: 'Mat', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
     const g = { G16: 'G16h', G24: 'G24h', GN: 'G nuit', DJ: 'Demi-garde', '': '' }[a.garde];
     return base && g ? base + ' + ' + g : base || g;
   }
@@ -281,13 +292,14 @@
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
     const per = P.map((m, i) => {
-      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
+      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
         postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
         if (a.act[0] === 'P') { const p = +a.act.slice(1); s.bloc++; s.postes[p]++; hj = postes[p].heures[d]; if (postes[p].fin18) s.fin18++; if (a.garde === 'G16') hj -= postes[p].apres16 || 0; }
         else if (a.act === 'REA') { s.rea++; hj = cfg.rea.heures - (a.garde === 'G16' ? cfg.rea.apres16 || 0 : 0); }
+        else if (a.act === 'MAT') { s.mater++; hj = cfg.maternite.heures - (a.garde === 'G16' ? cfg.maternite.apres16 || 0 : 0); }
         else if (a.act === 'HB') { s.hb++; hj = cfg.hb.heures; }
         else if (a.act === 'TP') s.tp++;
         else if (a.act === 'REPOS' && j.statut === 'Ouvert') s.repos++;
@@ -328,6 +340,7 @@
       hSemSansGarde: avg(pleins, s => s.hSemSansGarde), hSemAvecGarde: avg(pleins, s => s.hSemAvecGarde),
       hSem52: avg(pleins, s => s.hSem52), semaineMax: Math.max(...per.map(s => s.semaineMax)),
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
+      materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
       recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), tpTotal: sum(s => s.tp),
       absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
@@ -394,10 +407,12 @@
       if (j.garde.length !== cfg.gardes.parJour) issues.push(`${d} : ${j.garde.length} gardes`);
       if (new Set(j.garde).size !== j.garde.length) issues.push(`${d} : même MAR deux fois de garde`);
       if (j.statut === 'Ouvert') {
-        const all = j.postes.concat(j.rea).filter(x => x !== null);
+        const all = j.postes.concat(j.rea, j.maternite || []).filter(x => x !== null);
         if (new Set(all).size !== all.length) issues.push(`${d} : un MAR a deux postes`);
         if (j.postes.includes(null)) issues.push(`${d} : poste de bloc sans MAR`);
         if (j.rea.length !== cfg.rea.nombre) issues.push(`${d} : ${j.rea.length} MAR en réa`);
+        const mat = cfg.maternite.actif && cfg.maternite.jours[dow(j.date)] ? cfg.maternite.nombre : 0;
+        if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
         j.repos.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : repos de sécurité non respecté (${P[i].code})`); });
         j.tp.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : ${P[i].code} travaille un jour de temps partiel`); });
         j.postes.forEach((i, p) => { if (LONG.has(p) && j.garde.includes(i)) issues.push(`${d} : ${P[i].code} de garde au bloc long`); });
@@ -418,15 +433,17 @@
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length, nFeries = nOuvres - nOpen;
     const bloc = postes.length * nOpen, rea = cfg.rea.nombre * nOpen, repos = G.parJour * nOpen;
+    const MAT = cfg.maternite;
+    const mat = MAT.actif ? MAT.nombre * open.filter(j => MAT.jours[dow(j.date)]).length : 0;
     const gSem = G.parJour * nOpen, gWE = G.parJour * (jours.length - nOpen);
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
-    const hRea = rea * cfg.rea.heures, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
+    const hRea = rea * cfg.rea.heures + mat * MAT.heures, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
       const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
-      const reste = N * jt - (bloc + rea + repos);
+      const reste = N * jt - (bloc + rea + mat + repos);
       const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * PR.formation) * cfg.hb.heures) / N;
       const sem = (jt + PR.formation) / 5;
       const r = {
