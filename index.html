@@ -131,8 +131,8 @@ body.locked .bar,body.locked .wrap{display:none}
       <button class="btn" onclick="addMar()">＋ Ajouter un MAR</button>
       <button class="btn btn-r" onclick="resetEquipe()">↺ Équipe par défaut</button>
     </div>
-    <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
-    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation · <b>Consult.</b> = fait des consultations · <b>Maternité</b> = peut être détaché à la maternité (si l'option est active) · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
+    <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE », « réa 1 »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
+    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation · <b>Réa 1</b> = groupe dédié au premier poste de réa (semaines entières, en rotation ; ces MAR ne prennent pas les autres postes de réa) · <b>Consult.</b> = fait des consultations · <b>Maternité</b> = peut être détaché à la maternité (si l'option est active) · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
     <div class="tbl-wrap"><table id="tbl-equipe"></table></div>
     <div id="equipe-tot" class="hint" style="margin-top:8px"></div>
   </div>
@@ -278,10 +278,10 @@ function renderSynthese(){
     + `<tr><td class="l b">MAR libres après absences moyennes</td>${cs.map(x=>`<td class="b ${x.libres<0?'pos':'neg'}">${f1(x.libres)}</td>`).join('')}<td class="b">${f1(s.marDisponiblesParJour)}</td></tr>`
     + `<tr><td class="l">Jours où les absences ne peuvent pas toutes être posées</td>${cs.map(x=>`<td class="${x.joursNegatifs?'pos':''}">${x.joursNegatifs} / ${x.jours}</td>`).join('')}<td>${s.joursNegatifs} / ${s.joursBloc}</td></tr>`;
   const P = R.postes;
-  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Mater.</th><th>Consult.</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>Sans poste</th><th>Jours libres</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
+  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th title="Groupe Réa 1">R1</th><th>Mater.</th><th>Consult.</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>Sans poste</th><th>Jours libres</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
     + P.map(p=>`<th>${p.code}</th>`).join('') + `<th>h/an hors garde</th><th>h/an garde</th><th>h/sem sans</th><th>h/sem avec</th><th>Sem. max</th><th title="h/sem avec garde de ce MAR − plafond">Écart / MAR (h/sem)</th><th>Parts</th><th>Revenu</th><th>€/h</th></tr>`;
   R.stats.parMar.forEach(m => {
-    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.mater}</td><td>${m.consult}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.conges+m.rtt)}</td><td>${f1(m.formation)}</td><td>${f1(m.recupSamedis)}</td><td title="dont posées dans le tableau">${f1(m.recupFin18)}${m.rc?` <small style="color:var(--t3)">(${m.rc} posées)</small>`:''}</td><td>${m.tp}</td><td class="b">${f1(m.absences)}</td>`
+    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${R.equipe[R.stats.parMar.indexOf(m)].rea1?'✓':''}</td><td>${m.mater}</td><td>${m.consult}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.conges+m.rtt)}</td><td>${f1(m.formation)}</td><td>${f1(m.recupSamedis)}</td><td title="dont posées dans le tableau">${f1(m.recupFin18)}${m.rc?` <small style="color:var(--t3)">(${m.rc} posées)</small>`:''}</td><td>${m.tp}</td><td class="b">${f1(m.absences)}</td>`
       + m.postes.map(x=>`<td>${x}</td>`).join('')
       + `<td>${f0(m.heuresSansGarde)}</td><td>${f0(m.heuresGarde)}</td><td>${f1(m.hSemSansGarde)}</td><td class="b">${f1(m.hSemAvecGarde)}</td><td>${f1(m.semaineMax)}</td><td class="${m.ecartPlafond>0?'pos':'neg'}">${m.ecartPlafond>0?'+':''}${f1(m.ecartPlafond)}</td><td>${(Math.round(m.parts*100)/100).toLocaleString('fr-FR')}</td><td>${eur(m.revenu)}</td><td>${f1(m.euroHeure)}</td></tr>`;
   });
@@ -290,7 +290,7 @@ function renderSynthese(){
 
 // ── Équipe ──
 function renderEquipe(){
-  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th>Consult.</th><th>Maternité</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
+  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th title="Groupe dédié au poste Réa 1">Réa 1</th><th>Consult.</th><th>Maternité</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
   cfg.equipe.forEach((m,i) => {
     h += `<tr><td class="l"><input type="text" value="${esc(m.code)}" onchange="setM(${i},'code',this.value.trim()||'?')"/></td>
       <td><input type="number" step="0.1" min="0" max="1" value="${m.q}" onchange="setM(${i},'q',+this.value)"/></td>
@@ -298,6 +298,7 @@ function renderEquipe(){
       <td><input type="checkbox" ${m.we!==false?'checked':''} onchange="setM(${i},'we',this.checked)"/></td>
       <td><input type="checkbox" ${m.demiWE?'checked':''} onchange="setM(${i},'demiWE',this.checked)"/></td>
       <td><input type="checkbox" ${m.rea!==false?'checked':''} onchange="setM(${i},'rea',this.checked)"/></td>
+      <td><input type="checkbox" ${m.rea1?'checked':''} onchange="setM(${i},'rea1',this.checked)"/></td>
       <td><input type="checkbox" ${m.consult!==false?'checked':''} onchange="setM(${i},'consult',this.checked)"/></td>
       <td><input type="checkbox" ${m.mater!==false?'checked':''} onchange="setM(${i},'mater',this.checked)"/></td>
       <td><input type="number" step="0.1" min="0" value="${m.parts===undefined||m.parts===null||m.parts===''?'':m.parts}" placeholder="${(Math.round(R.stats.parMar[i].parts*100)/100).toLocaleString('fr-FR')}" title="Vide = au prorata de la quotité" onchange="setM(${i},'parts',this.value===''?null:+this.value)"/></td>
@@ -310,7 +311,7 @@ function renderEquipe(){
 }
 function setM(i,k,v){ cfg.equipe[i][k] = v; recompute(); }
 function delMar(i){ if(confirm('Retirer '+cfg.equipe[i].code+' ?')){ cfg.equipe.splice(i,1); recompute(); } }
-function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,consult:true,mater:true,note:''}); recompute(); }
+function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,rea1:false,consult:true,mater:true,note:''}); recompute(); }
 function resetEquipe(){ if(confirm("Revenir à l'équipe par défaut ?")){ cfg.equipe = E.mergeConfig().equipe; recompute(); } }
 function importEquipe(file){
   const rd = new FileReader();
@@ -322,7 +323,7 @@ function importEquipe(file){
       if(!r[0] || isNaN(parseFloat(r[1]))) return;
       const note = String(r[5]||'').trim(), n = note.toLowerCase();
       eq.push({code:String(r[0]).trim(), q:parseFloat(r[1]), qg:isNaN(parseFloat(r[4]))?parseFloat(r[1]):parseFloat(r[4]),
-        we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), note});
+        we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), rea1:/r[ée]a ?1/.test(n), note});
     });
     if(!eq.length){ alert("Aucun médecin reconnu (colonnes A, B, E, F)."); return; }
     cfg.equipe = eq; recompute(); alert(eq.length+' MAR importés.');
@@ -406,7 +407,7 @@ function renderTableau(){
   const nom = i => i===null||i===undefined ? '' : esc(R.equipe[i].code);
   let h = '';
   if(document.getElementById('vue').value === 'poste'){
-    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}<th colspan="${cfg.consultations.marMax}">Consultation</th>${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th><th title="MAR sans poste ce jour-là">Sans poste</th><th title="MAR libres après les absences moyennes">Libres</th></tr>`;
+    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},(_,k)=>`<th>Réa${k===0&&R.equipe.some(m=>m.rea1)?' 1':''}</th>`).join('')}<th colspan="${cfg.consultations.marMax}">Consultation</th>${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th><th title="MAR sans poste ce jour-là">Sans poste</th><th title="MAR libres après les absences moyennes">Libres</th></tr>`;
     jours.forEach(j => {
       const tr = j.statut==='Week-end'?'we':j.statut==='Férié'?'fe':'';
       const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
@@ -539,7 +540,7 @@ function orgData(){
     ]],
     ['Journée type (jour ouvré)', [
       ['Bloc', f0(R.postes.length) + ' MAR', '1 MAR pour 2 salles : ' + R.postes.map(p => p.code + ' ' + p.salles).join(' · ')],
-      ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h), par semaines entières`],
+      ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h), par semaines entières${R.equipe.some(m=>m.rea1) ? ` · Réa 1 : groupe de ${R.equipe.filter(m=>m.rea1).length} MAR (${R.equipe.filter(m=>m.rea1).map(m=>m.code).join(', ')}), une semaine sur ${R.equipe.filter(m=>m.rea1).length}` : ''}`],
       ['Consultation', f1(s.marConsultMoyen) + ' MAR', `${consultTexte()} · ${CS.parMarJour} consultations par MAR`],
       ['Maternité', M.actif ? f0(M.nombre) + ' MAR' : '—', M.actif ? `${M.heures} h, ${E.JOURS.slice(0,5).filter((j,d)=>M.jours[d]).join(', ').toLowerCase()}` : 'option désactivée'],
       ['Garde', f0(G.parJour) + ' MAR', `16h → 8h (${G.heuresSemaine} h) après la journée ; jamais au bloc long`],
@@ -619,7 +620,8 @@ function renderConsignes(){
     <li>Bloc court : fin entre 13h et 16h30 ; bloc long (${longs}) : 8h-18h. Au plus ${p.blocMaxSemaine} jours de bloc par semaine et par MAR ; 2 jours consécutifs sur le même poste privilégiés.</li></ul>
   <h3>Réanimation</h3><ul>
     <li>${r.nombre} MAR en réanimation chaque jour ouvré, ${r.heures} h par jour (8h-16h), par semaines entières du lundi au vendredi.</li>
-    <li>Une semaine de réa n'est jamais coupée par un repos de sécurité (garde possible le vendredi seulement). Quotité minimale : ${r.quotiteMin}.</li>
+    <li>Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel (garde possible le vendredi seulement) ; pas de congés pendant une semaine de réa. Quotité minimale : ${r.quotiteMin}.</li>
+    ${R.equipe.some(m=>m.rea1) ? `<li><b>Réa 1</b> : poste tenu par un groupe dédié de ${R.equipe.filter(m=>m.rea1).length} MAR (${R.equipe.filter(m=>m.rea1).map(m=>esc(m.code)).join(', ')}), en rotation par semaines entières ; ils ne prennent pas les autres postes de réa et font moins de bloc (charge bloc + réa équilibrée).</li>` : ''}
     <li>Week-ends et fériés : réa couverte par les MAR de garde.</li></ul>
   <h3>Maternité</h3><ul>
     <li>${cfg.maternite.actif ? `${cfg.maternite.nombre} MAR détaché(s) à la maternité en journée (${cfg.maternite.heures} h) les ${E.JOURS.slice(0,5).filter((j,d)=>cfg.maternite.jours[d]).join(', ').toLowerCase()} ; ni bloc ni réa ce jour-là, garde possible à 16h ; répartition au prorata de la quotité.` : 'Pas de détachement à la maternité (option désactivée dans les règles).'}</li></ul>
@@ -654,11 +656,11 @@ function exportXlsx(){
   const syn = [['Indicateur','Valeur']].concat(INDIC.map(([k,l])=>[l, S.synthese[k]]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Rubrique','Indicateur','Valeur','Détail']].concat(...orgData().map(([t,rows])=>rows.map(([l,v,d])=>[t,l,v,d])))), 'Organisation');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(syn), 'Synthèse');
-  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Maternité','Consultation','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','Sans poste','Jours libres','Congés','Formation','Récup. samedis','Récup. 18h','dont posées','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart / MAR (h/sem)','Parts','Revenu (€)','€/h']);
-  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.mater,m.consult,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.rc,m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
+  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Groupe Réa 1','Maternité','Consultation','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','Sans poste','Jours libres','Congés','Formation','Récup. samedis','Récup. 18h','dont posées','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart / MAR (h/sem)','Parts','Revenu (€)','€/h']);
+  const cR = S.parMar.map((m,i)=>[m.code,m.q,m.qg,m.bloc,m.rea,R.equipe[i].rea1?'oui':'',m.mater,m.consult,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.rc,m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
-  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), Array.from({length:cfg.consultations.marMax},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
+  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)+(k===0&&R.equipe.some(m=>m.rea1)?' (groupe)':'')), Array.from({length:cfg.consultations.marMax},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
     j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
     j.statut==='Ouvert'?Array.from({length:cfg.consultations.marMax},(_,k)=>nom((j.consultation||[])[k])):Array(cfg.consultations.marMax).fill(''),

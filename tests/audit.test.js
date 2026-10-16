@@ -100,11 +100,18 @@ const pl = PM.filter(m => m.q === 1 && m.qg > 0);
 chk('h/sem avec garde = moyenne des temps pleins', near(s.hSemAvecGarde, pl.reduce((a,m)=>a+m.hSemAvecGarde,0)/pl.length));
 // 8. Équité
 const rng = (f, g) => { const v = PM.filter(g).map(f); return [Math.min(...v), Math.max(...v)]; };
-const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => m.bloc / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5), cq = rng(m => m.consult / m.q, m => m.q > 0);
+const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1), cq = rng(m => m.consult / m.q, m => m.q > 0);
 chk('Gardes / quotité de garde homogènes (écart ≤ 2)', gq[1] - gq[0] <= 2, gq.map(x=>x.toFixed(1)).join(' à '));
-chk('Bloc / quotité homogène (écart ≤ 6)', bq[1] - bq[0] <= 6, bq.map(x=>x.toFixed(1)).join(' à '));
-chk('Réa / quotité (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
+chk('(Bloc + réa) / quotité homogène (écart ≤ 6)', bq[1] - bq[0] <= 6, bq.map(x=>x.toFixed(1)).join(' à '));
+chk('Réa / quotité hors groupe Réa 1 (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
 chk('Consultations / quotité (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.toFixed(1)).join(' à '));
+// Réa 1 : groupe dédié, rotation par semaines entières
+const g1 = P.map((m, i) => i).filter(i => P[i].rea1);
+const sem = {}; open.forEach(j => { sem[E.addDays(j.date, -dow(j.date))] = j.rea[0]; });
+const r1 = Object.values(sem);
+chk('Réa 1 assurée par le groupe dédié (5 MAR), semaines entières', g1.length === 5 && r1.every(i => g1.includes(i)) && open.every(j => !j.rea.slice(1).some(i => g1.includes(i))));
+const parG = g1.map(i => r1.filter(x => x === i).length);
+chk('Réa 1 : rotation équilibrée dans le groupe', Math.max(...parG) - Math.min(...parG) <= 1, parG.join(' / ') + ' semaines');
 // 9. Analytique vs planning
 const sim = E.simulateETP(r, [s.etp])[0];
 chk('Simulation ETP (21,1) ≈ planning : MAR libres / jour', near(sim.marDisponiblesParJour, s.marDisponiblesParJour, 0.15), sim.marDisponiblesParJour.toFixed(2) + ' / ' + s.marDisponiblesParJour.toFixed(2));
