@@ -542,7 +542,7 @@ function orgData(){
     ]],
     ['Journée type (jour ouvré)', [
       ['Bloc', f0(R.postes.length) + ' MAR', '1 MAR pour 2 salles : ' + R.postes.map(p => p.code + ' ' + p.salles).join(' · ')],
-      ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h), par semaines entières${R.equipe.some(m=>m.rea1) ? ` · groupe de ${R.equipe.filter(m=>m.rea1).length} MAR (${R.equipe.filter(m=>m.rea1).map(m=>m.code).join(', ')}) : Réa 1 puis Réa 2 la semaine suivante (${c.rea.recupSemaine2} j de récupération), 2 semaines sur ${R.equipe.filter(m=>m.rea1).length}` : ''}`],
+      ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h), par semaines entières${R.equipe.some(m=>m.rea1) ? ` · groupe de ${R.equipe.filter(m=>m.rea1).length} MAR (${R.equipe.filter(m=>m.rea1).map(m=>m.code).join(', ')}) : Réa 1 (semaine entière) puis Réa 2 la semaine suivante (prioritaire, non obligatoire), 2 semaines sur ${R.equipe.filter(m=>m.rea1).length}` : ''}`],
       ['Consultation', f1(s.marConsultMoyen) + ' MAR', `${consultTexte()} · ${CS.parMarJour} consultations par MAR`],
       ['Maternité', M.actif ? f0(M.nombre) + ' MAR' : '—', M.actif ? `${M.heures} h, ${E.JOURS.slice(0,5).filter((j,d)=>M.jours[d]).join(', ').toLowerCase()}` : 'option désactivée'],
       ['Garde', f0(G.parJour) + ' MAR', `16h → 8h (${G.heuresSemaine} h) après la journée ; jamais au bloc long`],
@@ -623,7 +623,7 @@ function renderConsignes(){
   <h3>Réanimation</h3><ul>
     <li>${r.nombre} MAR en réanimation chaque jour ouvré, ${r.heures} h par jour (8h-16h), par semaines entières du lundi au vendredi.</li>
     <li>Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel (garde possible le vendredi seulement) ; pas de congés pendant une semaine de réa. Quotité minimale : ${r.quotiteMin}.</li>
-    ${R.equipe.some(m=>m.rea1) ? `<li><b>Groupe Réa 1</b> (${R.equipe.filter(m=>m.rea1).map(m=>esc(m.code)).join(', ')}) : chaque MAR fait une semaine en <b>Réa 1</b>, puis enchaîne la semaine suivante en <b>Réa 2</b> avec ${cfg.rea.recupSemaine2} jour(s) de récupération en fin de semaine (poste repris ce jour-là par un autre MAR). Ils ne prennent pas les autres postes de réa et font moins de bloc (charge bloc + réa équilibrée). La Réa 3 est répartie entre les autres MAR.</li>` : ''}
+    ${R.equipe.some(m=>m.rea1) ? `<li><b>Groupe Réa 1</b> (${R.equipe.filter(m=>m.rea1).map(m=>esc(m.code)).join(', ')}) : chaque MAR fait une semaine entière en <b>Réa 1</b>, sans absence ; la semaine suivante il est prioritaire sur la <b>Réa 2</b> sans être obligé de faire toute la semaine (garde, repos, temps partiel ou absence possibles : un autre MAR reprend alors la Réa 2)${cfg.rea.recupSemaine2 ? `, avec ${cfg.rea.recupSemaine2} jour(s) de récupération en fin de semaine` : ''}. Ils ne prennent pas les autres postes de réa et font moins de bloc (charge bloc + réa équilibrée). La Réa 3 est répartie entre les autres MAR.</li>` : ''}
     <li>Week-ends et fériés : réa couverte par les MAR de garde.</li></ul>
   <h3>Maternité</h3><ul>
     <li>${cfg.maternite.actif ? `${cfg.maternite.nombre} MAR détaché(s) à la maternité en journée (${cfg.maternite.heures} h) les ${E.JOURS.slice(0,5).filter((j,d)=>cfg.maternite.jours[d]).join(', ').toLowerCase()} ; ni bloc ni réa ce jour-là, garde possible à 16h ; répartition au prorata de la quotité.` : 'Pas de détachement à la maternité (option désactivée dans les règles).'}</li></ul>
