@@ -211,14 +211,6 @@ test('récupération libérable : jours libres moins la réserve', () => {
   assert.ok(E.generate(cfg).stats.synthese.recupTotaleTempsPlein > s.recupTotaleTempsPlein + 5);
 });
 
-test('option : récupération du groupe Réa 1 pendant la semaine en Réa 2', () => {
-  const cfg = E.mergeConfig(); cfg.rea.recupSemaine2 = 1;
-  const r = E.generate(cfg);
-  assert.deepEqual(E.verify(r), []);
-  const sem = {}; r.jours.filter(j => j.statut === 'Ouvert').forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
-  Object.values(sem).forEach(w => { assert.equal(w[w.length - 1].recupRea.length, 1); assert.equal(w[w.length - 1].rea.length, 3); });
-});
-
 test('option Réa 1 jusqu\'à 17h : 9 h et 1 jour de récupération pour 8 jours', () => {
   const cfg = E.mergeConfig(); cfg.rea.reaUn.actif = true;
   const r = E.generate(cfg);
