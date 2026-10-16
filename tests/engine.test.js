@@ -121,3 +121,14 @@ test('consultations : 13 000 par an, journée de 7 h, créneaux de 10 min et 15-
   const sim = E.simulateETP(R, [18, 24]);
   assert.ok(sim[0].margeConsult < 0 && sim[1].margeConsult > 0);
 });
+
+test('absences : congés, formation, récupérations et temps partiel par MAR', () => {
+  S.parMar.forEach(m => {
+    assert.ok(Math.abs(m.conges - 32 * m.q) < 1e-9);
+    assert.ok(Math.abs(m.formation - 10 * m.q) < 1e-9);
+    assert.ok(Math.abs(m.recup - (m.recupSamedis + m.recupFin18)) < 1e-9);
+    assert.ok(Math.abs(m.absences - (m.conges + m.rtt + m.formation + m.recup + m.tp)) < 1e-9);
+  });
+  const s = S.synthese;
+  assert.ok(Math.abs(s.absencesTotal - S.parMar.reduce((a, m) => a + m.absences, 0)) < 1e-6);
+});
