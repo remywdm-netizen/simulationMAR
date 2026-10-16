@@ -63,6 +63,7 @@
       recupDansSemaineBloc: false,               // poser cette récupération dans le tableau, juste après les jours finis à 18h
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
       blocMaxSemaine: 3, tpMaxParJour: 5,
+      reserveImprevus: 0.5,                      // MAR libres gardés chaque jour pour les imprévus (non convertis en récupération)
     },
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
@@ -415,6 +416,15 @@
       const m = f => (l.length ? l.reduce((a, x) => a + f(x), 0) / l.length : 0);
       return { jour: JOURS[d], jours: l.length, hb: m(x => x.hb), libres: m(x => x.libres), consultations: m(x => x.consultations),
         joursNegatifs: l.filter(x => x.libres < 0).length };
+    });
+    // Récupération libérable : jours sans poste restant libres après absences, moins la réserve pour imprévus,
+    // convertibles en jours de récupération supplémentaires (répartis au prorata de la quotité).
+    const libresAn = sum(s => s.hbDisponible), reserve = (PR.reserveImprevus || 0) * nOpen;
+    const liberable = Math.max(libresAn - reserve, 0);
+    Object.assign(synthese, {
+      joursLibresAn: libresAn, recupLiberableAn: liberable, recupLiberableParEtp: etp ? liberable / etp : 0,
+      recupReglementaireTempsPlein: avg(pleins, s => s.recup),
+      recupTotaleTempsPlein: avg(pleins, s => s.recup) + (etp ? liberable / etp : 0),
     });
     Object.assign(synthese, { absentsMoyensParJour: absMoy, parJourSemaine: semaine,
       joursNegatifs: Object.values(parJour).filter(x => x.libres < 0).length });

@@ -196,3 +196,11 @@ test('consultations : 2 ou 3 MAR par jour, ajustés aux 13 000 consultations', (
   assert.deepEqual(E.verify(r3), []);
   assert.equal(r3.stats.synthese.capaciteConsultAn, 75 * 251);
 });
+
+test('récupération libérable : jours libres moins la réserve', () => {
+  const s = S.synthese;
+  assert.ok(Math.abs(s.recupLiberableAn - Math.max(s.joursLibresAn - 0.5 * 251, 0)) < 1e-6);
+  assert.ok(Math.abs(s.recupTotaleTempsPlein - (s.recupReglementaireTempsPlein + s.recupLiberableParEtp)) < 1e-9);
+  const cfg = E.mergeConfig(); cfg.rea.nombre = 2;                             // un levier libère des jours
+  assert.ok(E.generate(cfg).stats.synthese.recupTotaleTempsPlein > s.recupTotaleTempsPlein + 5);
+});
