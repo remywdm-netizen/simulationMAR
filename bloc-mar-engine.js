@@ -73,7 +73,7 @@
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
-    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 1, null, null] },
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null] },
     equipe: EQUIPE_DEFAUT,
   };
 
