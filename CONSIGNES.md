@@ -87,9 +87,10 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
-- Parts de chaque MAR : saisies dans l'équipe ; à défaut, au prorata de la quotité de travail.
+- Parts de chaque MAR : saisies dans l'onglet Finance ; à défaut, au prorata de la quotité de travail.
 - Revenu d'un MAR = parts × valeur de la part ; revenu horaire = revenu ÷ heures de l'année, gardes comprises.
-- CA et nombre de parts modifiables (onglet Règles) ; grille CA × nombre de parts dans l'onglet Simulations.
+- Tout le volet financier est dans l'onglet **💶 Finance** : CA et nombre de parts, parts de chaque MAR, revenus,
+  €/h, grille CA × nombre de parts.
 
 ## Jours fériés 2027 (Monaco)
 1ᵉʳ janvier, 27 janvier (Sainte-Dévote), 29 mars (lundi de Pâques), 1ᵉʳ mai, 6 mai (Ascension),
