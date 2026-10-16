@@ -26,8 +26,9 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Réanimation
 - **3 MAR par jour ouvré, 8h-16h**, par **semaines entières** (lundi-vendredi).
 - Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel : garde possible le vendredi seulement.
-- **Groupe Réa 1 (5 MAR)** : chaque MAR fait une semaine en **Réa 1**, puis **enchaîne la semaine suivante en Réa 2**,
-  soit 2 semaines de réa complètes toutes les 5 semaines, **sans absence** (ni repos, ni temps partiel, ni congés).
+- **Groupe Réa 1 (5 MAR)** : chaque MAR fait une **semaine entière en Réa 1, sans absence** (ni repos, ni temps partiel,
+  ni congés), puis **la semaine suivante il est prioritaire sur la Réa 2**, sans obligation de faire toute la semaine :
+  garde, repos, temps partiel ou absence possibles, un autre MAR reprend alors la Réa 2.
   **Pas de jour de récupération propre au groupe** (option réglable, désactivée). Ils ne prennent pas la Réa 3
   et font moins de bloc : la charge bloc + réa est équilibrée entre tous les MAR.
 - **Réa 3** : répartie entre les autres MAR, au prorata de la quotité.
