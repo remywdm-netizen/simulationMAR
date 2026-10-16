@@ -53,6 +53,9 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Temps partiel, congés, récupérations
 - Jours de **temps partiel** = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos.
+- **Jours fixes** : le MAR à **0,6 ETP travaille le lundi, le mardi et le mercredi** ; jeudi et vendredi sont ses jours de
+  temps partiel (pas de poste ni de garde). Il ne fait pas de réa (semaine entière). Les jours de temps partiel des
+  autres MAR sont posés de préférence les jours où le moins de MAR sont déjà absents.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
 - **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long).

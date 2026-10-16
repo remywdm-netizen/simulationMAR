@@ -131,8 +131,8 @@ body.locked .bar,body.locked .wrap{display:none}
       <button class="btn" onclick="addMar()">＋ Ajouter un MAR</button>
       <button class="btn btn-r" onclick="resetEquipe()">↺ Équipe par défaut</button>
     </div>
-    <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE », « réa 1 »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
-    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Réa</b> = participe aux semaines de réanimation · <b>Réa 1</b> = groupe dédié au premier poste de réa (semaines entières, en rotation ; ces MAR ne prennent pas les autres postes de réa) · <b>Consult.</b> = fait des consultations · <b>Maternité</b> = peut être détaché à la maternité (si l'option est active) · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
+    <p class="hint">Fichier Excel : colonne A = médecin, B = temps de travail, E = quotité de garde, F = particularité (« pas de garde de WE », « demi-garde de WE », « réa 1 », jours fixes : « lundi mardi mercredi »). L'équipe reste dans ce navigateur : elle n'est jamais publiée.<br/>
+    <b>WE</b> = gardes de week-end et fériés · <b>Demi-garde WE</b> = journées 8h-20h du samedi et du dimanche (le MAR de garde ne fait que la nuit) · <b>Jours travaillés</b> = jours fixes d'un temps partiel (décocher les jours non travaillés ; tous cochés = jours de temps partiel répartis par le planning ; un MAR à jours fixes ne fait pas de réa) · <b>Réa</b> = participe aux semaines de réanimation · <b>Réa 1</b> = groupe dédié au premier poste de réa (semaines entières, en rotation ; ces MAR ne prennent pas les autres postes de réa) · <b>Consult.</b> = fait des consultations · <b>Maternité</b> = peut être détaché à la maternité (si l'option est active) · <b>Parts</b> = parts du chiffre d'affaires (vide = au prorata de la quotité).</p>
     <div class="tbl-wrap"><table id="tbl-equipe"></table></div>
     <div id="equipe-tot" class="hint" style="margin-top:8px"></div>
   </div>
@@ -290,13 +290,14 @@ function renderSynthese(){
 
 // ── Équipe ──
 function renderEquipe(){
-  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th>Réa</th><th title="Groupe dédié au poste Réa 1">Réa 1</th><th>Consult.</th><th>Maternité</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
+  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th title="Jours travaillés (tous cochés = jours de temps partiel variables)">Jours travaillés L M M J V</th><th>Réa</th><th title="Groupe dédié au poste Réa 1">Réa 1</th><th>Consult.</th><th>Maternité</th><th>Parts</th><th class="l">Particularité</th><th></th></tr>`;
   cfg.equipe.forEach((m,i) => {
     h += `<tr><td class="l"><input type="text" value="${esc(m.code)}" onchange="setM(${i},'code',this.value.trim()||'?')"/></td>
       <td><input type="number" step="0.1" min="0" max="1" value="${m.q}" onchange="setM(${i},'q',+this.value)"/></td>
       <td><input type="number" step="0.1" min="0" max="1" value="${m.qg}" onchange="setM(${i},'qg',+this.value)"/></td>
       <td><input type="checkbox" ${m.we!==false?'checked':''} onchange="setM(${i},'we',this.checked)"/></td>
       <td><input type="checkbox" ${m.demiWE?'checked':''} onchange="setM(${i},'demiWE',this.checked)"/></td>
+      <td style="white-space:nowrap">${[0,1,2,3,4].map(d=>`<input type="checkbox" style="margin:0 2px" title="${E.JOURS[d]}" ${!Array.isArray(m.joursFixes)||m.joursFixes[d]?'checked':''} onchange="setJourFixe(${i},${d},this.checked)"/>`).join('')}</td>
       <td><input type="checkbox" ${m.rea!==false?'checked':''} onchange="setM(${i},'rea',this.checked)"/></td>
       <td><input type="checkbox" ${m.rea1?'checked':''} onchange="setM(${i},'rea1',this.checked)"/></td>
       <td><input type="checkbox" ${m.consult!==false?'checked':''} onchange="setM(${i},'consult',this.checked)"/></td>
@@ -309,6 +310,7 @@ function renderEquipe(){
   const s = R.stats.synthese;
   document.getElementById('equipe-tot').textContent = `${cfg.equipe.length} MAR · ${f1(s.etp)} ETP de travail · ${f1(s.etpGarde)} ETP de garde · ${f1(s.partsAttribuees)} parts attribuées sur ${f1(s.nombreParts)} (colonne Parts vide = au prorata de la quotité)`;
 }
+function setJourFixe(i,d,v){ const m = cfg.equipe[i], a = Array.isArray(m.joursFixes) ? m.joursFixes.slice() : [true,true,true,true,true]; a[d] = v; m.joursFixes = a.every(Boolean) ? null : a; recompute(); }
 function setM(i,k,v){ cfg.equipe[i][k] = v; recompute(); }
 function delMar(i){ if(confirm('Retirer '+cfg.equipe[i].code+' ?')){ cfg.equipe.splice(i,1); recompute(); } }
 function addMar(){ cfg.equipe.push({code:'MAR '+String(cfg.equipe.length+1).padStart(2,'0'),q:1,qg:1,we:true,demiWE:false,rea:true,rea1:false,consult:true,mater:true,note:''}); recompute(); }
@@ -323,7 +325,7 @@ function importEquipe(file){
       if(!r[0] || isNaN(parseFloat(r[1]))) return;
       const note = String(r[5]||'').trim(), n = note.toLowerCase();
       eq.push({code:String(r[0]).trim(), q:parseFloat(r[1]), qg:isNaN(parseFloat(r[4]))?parseFloat(r[1]):parseFloat(r[4]),
-        we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), rea1:/r[ée]a ?1/.test(n), note});
+        we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), rea1:/r[ée]a ?1/.test(n), joursFixes:(()=>{const j=['lundi','mardi','mercredi','jeudi','vendredi'].map(x=>n.includes(x));return j.some(Boolean)&&!j.every(Boolean)?j:null;})(), note});
     });
     if(!eq.length){ alert("Aucun médecin reconnu (colonnes A, B, E, F)."); return; }
     cfg.equipe = eq; recompute(); alert(eq.length+' MAR importés.');
@@ -545,7 +547,7 @@ function orgData(){
       ['Maternité', M.actif ? f0(M.nombre) + ' MAR' : '—', M.actif ? `${M.heures} h, ${E.JOURS.slice(0,5).filter((j,d)=>M.jours[d]).join(', ').toLowerCase()}` : 'option désactivée'],
       ['Garde', f0(G.parJour) + ' MAR', `16h → 8h (${G.heuresSemaine} h) après la journée ; jamais au bloc long`],
       ['Repos de sécurité', f0(G.parJour) + ' MAR', 'lendemain de garde'],
-      ['Temps partiel', f1(s.tpTotal / open) + ' MAR', 'jours non travaillés en moyenne'],
+      ['Temps partiel', f1(s.tpTotal / open) + ' MAR', 'jours non travaillés en moyenne' + (R.equipe.some(m=>Array.isArray(m.joursFixes)) ? ' · jours fixes : ' + R.equipe.filter(m=>Array.isArray(m.joursFixes)).map(m=>m.code + ' (' + E.JOURS.slice(0,5).filter((j,d)=>m.joursFixes[d]).map(j=>j.slice(0,3).toLowerCase()).join(', ') + ')').join(', ') : '')],
       ['Absents', f1(s.absentsMoyensParJour) + ' MAR', 'congés, formation, récupérations (moyenne)'],
       ['Libres', f1(s.marDisponiblesParJour) + ' MAR', 'marge pour imprévus'],
     ]],
@@ -632,7 +634,8 @@ function renderConsignes(){
     <li>Quotité de garde 0 : pas de garde. « Pas de garde de WE » : gardes de semaine uniquement.</li>
     <li>Demi-garde de WE : le MAR concerné assure le jour (8h-20h, ${g.heuresDemiJour} h) le samedi et le dimanche d'un même week-end ; le MAR de garde ne fait alors que la nuit (20h-8h, ${g.heuresNuit} h). Nombre de week-ends : ${g.demiWeekends}.</li></ul>
   <h3>Temps partiel, congés, récupérations</h3><ul>
-    <li>Jours de temps partiel (TP) = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos (au plus ${p.tpMaxParJour} MAR en TP le même jour).</li>
+    <li>Jours de temps partiel (TP) = (1 − quotité) × jours ouvrés, posés hors réa, garde et repos, de préférence les jours où le moins de MAR sont déjà en TP (au plus ${p.tpMaxParJour} MAR en TP le même jour).</li>
+    ${R.equipe.some(m=>Array.isArray(m.joursFixes)) ? `<li>Jours fixes : ${R.equipe.filter(m=>Array.isArray(m.joursFixes)).map(m=>`${esc(m.code)} travaille ${E.JOURS.slice(0,5).filter((j,d)=>m.joursFixes[d]).join(', ').toLowerCase()}`).join(' ; ')} ; les autres jours sont des jours de TP, sans garde ; pas de réa (semaine entière).</li>` : ''}
     <li>Congés : ${p.conges} jours par ETP, formation : ${p.formation} jours, RTT : ${p.rtt} — proratisés à la quotité, posés sur des jours hors bloc.</li>
     <li>Récupération : ${p.recupSamedi} jour par samedi de garde, la moitié pour une demi-garde (jour 8h-20h ou nuit seule) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h${p.recupDansSemaineBloc ? ', posé dans le tableau le premier jour libre (hors garde) qui suit, dans la semaine de bloc si possible ; le poste est couvert par un collègue' : ', pris sur un jour hors bloc'}.</li></ul>
   <h3>Temps de travail</h3><ul>
