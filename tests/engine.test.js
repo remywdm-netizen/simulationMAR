@@ -31,17 +31,23 @@ test('fériés de Monaco : bloc fermé', () => {
   assert.equal(S.synthese.joursBloc, 251);
 });
 
-test('réanimation par semaines entières (Réa 1, Réa 2 = Réa 1 de la semaine précédente, Réa 3)', () => {
+test('réanimation : Réa 1 et Réa 3 par semaines entières, Réa 2 = Réa 1 de la semaine précédente (prioritaire)', () => {
   const sem = {};
   R.jours.filter(j => j.statut === 'Ouvert').forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
   const ws = Object.values(sem);
+  let tenus = 0, total = 0;
   ws.forEach((w, n) => {
     assert.ok(w.every(j => j.rea[0] === w[0].rea[0] && j.rea[2] === w[0].rea[2]), w[0].date);
-    const r2 = w[0].recupRea.length ? w[0].recupRea[0] : w[0].rea[1];
-    w.forEach(j => assert.ok(j.recupRea.length ? j.recupRea[0] === r2 : j.rea[1] === r2, j.date));
-    if (n) assert.equal(r2, ws[n - 1][0].rea[0], 'Réa 2 = Réa 1 précédent ' + w[0].date);
-    assert.ok(w.every(j => !j.recupRea.length), 'pas de récupération propre au groupe ' + w[0].date);
+    if (!n) return;
+    const p1 = ws[n - 1][0].rea[0];
+    w.forEach(j => {
+      assert.equal(j.reaPrioritaire, p1);
+      total++;
+      if (j.rea[1] === p1) tenus++;
+      else assert.ok(j.repos.includes(p1) || j.tp.includes(p1) || j.garde.includes(p1) || j.postes.includes(p1) || j.consultation.includes(p1) || (j.recupRea || []).includes(p1), 'remplacé sans raison ' + j.date);
+    });
   });
+  assert.ok(tenus / total > 0.8, `Réa 2 tenue par le MAR prioritaire ${tenus}/${total}`);
 });
 test('pas de garde de WE (MAR 01) et quotité de garde 0 (MAR 04, MAR 05)', () => {
   R.jours.forEach(j => {

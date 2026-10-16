@@ -124,7 +124,7 @@
     const reaCands = P.map((p, i) => i).filter(i => P[i].rea !== false && Q[i] >= cfg.rea.quotiteMin && !fixe[i]);   // la réa demande la semaine entière
     const sqRea = reaCands.reduce((a, i) => a + Q[i], 0);
     const reaDone = Array(n).fill(0), lastRea = Array(n).fill(-9);
-    const reaDay = days.map(() => new Set()), reaOrdre = days.map(() => []), rrDay = days.map(() => []);
+    const reaDay = days.map(() => new Set()), reaOrdre = days.map(() => []), rrDay = days.map(() => []), r2Pref = days.map(() => null);
     // Groupe Réa 1 (case Réa 1 de l'équipe) : chaque MAR fait une semaine en Réa 1 puis enchaîne la semaine suivante
     // en Réa 2, avec des jours de récupération en fin de semaine (poste repris ce jour-là par un autre MAR).
     // Ces MAR ne prennent pas les autres postes de réa. Les autres postes : tous les autres MAR de réa.
@@ -153,6 +153,7 @@
       ks.forEach(k => {
         chosen.forEach((i, pos) => {
           if (deux && pos === 1 && rr.includes(k)) { rrDay[k].push(i); reaOrdre[k].push(null); return; }   // récupération : poste à reprendre
+          if (deux && pos === 1) { r2Pref[k] = i; reaOrdre[k].push(null); return; }   // Réa 2 : semaine non obligatoire, MAR prioritaire s'il est disponible
           reaDay[k].add(i); reaOrdre[k].push(i);
         });
       });
@@ -257,9 +258,10 @@
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
       const wkey = monday(s);
       let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !rrDay[k].includes(i) && !repos[k].has(i) && !tp[k].has(i));
-      reaOrdre[k].forEach((x, pos) => {   // poste de réa libéré par une récupération : repris par un autre MAR de réa
+      reaOrdre[k].forEach((x, pos) => {   // poste de réa libre (Réa 2 du groupe, récupération) : MAR prioritaire, sinon un autre MAR de réa
         if (x !== null) return;
-        const rp = avail.filter(i => P[i].rea !== false && !P[i].rea1 && Q[i] >= cfg.rea.quotiteMin && !garde[k].includes(i))
+        if (r2Pref[k] !== null && avail.includes(r2Pref[k])) { const i = r2Pref[k]; reaOrdre[k][pos] = i; reaDay[k].add(i); avail = avail.filter(a => a !== i); return; }
+        const rp = avail.filter(i => reaCands.includes(i) && !P[i].rea1 && !garde[k].includes(i))
           .sort((a, b) => cmp([rDays[a] / Q[a], a], [rDays[b] / Q[b], b]))[0];
         if (rp === undefined) { warnings.push(`${labelFR(s)} : réa sans remplaçant`); return; }
         reaOrdre[k][pos] = rp; reaDay[k].add(rp); avail = avail.filter(i => i !== rp);
@@ -319,7 +321,7 @@
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: reaOrdre[k].filter(x => x !== null), garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k], maternite: matDay[k], consultation: csDay[k], recupRea: rrDay[k], consultNb: csNb[k], recup: rcDay[k],
+      demi: demi[k], nuit: nuit[k], reaPrioritaire: r2Pref[k], maternite: matDay[k], consultation: csDay[k], recupRea: rrDay[k], consultNb: csNb[k], recup: rcDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
