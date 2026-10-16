@@ -255,6 +255,9 @@
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
+    const ep = etpPourPlafond(result);
+    result.stats.synthese.etpPlafondCharge = ep.charge;
+    result.stats.synthese.etpPlafondConsult = ep.consultations;
     return result;
   }
 
@@ -453,9 +456,24 @@
       };
       r.ecartPlafond = r.hSemAvecGarde - PR.plafond;
       Object.assign(r, consultIndic(cfg.consultations, nOpen, r.marDisponiblesParJour, cfg.finance.ca));
+      // Charge réelle répartie : bloc, réa, maternité, temps de consultation nécessaire, formation et gardes
+      // (la capacité en plus allège chacun au lieu d'être comptée en consultations supplémentaires).
+      const hCharge = (hBloc + hRea + r.heuresConsultation + N * PR.formation * cfg.hb.heures) / N;
+      r.hSemSansGardeCharge = hCharge / sem;
+      r.hSemAvecGardeCharge = (hCharge + hGarde / N) / sem;
+      r.ecartPlafondCharge = r.hSemAvecGardeCharge - PR.plafond;
       r.appreciation = appreciation(r.marDisponiblesParJour);
       return r;
     });
+  }
+
+  // ── Effectif nécessaire pour rester sous le plafond hebdomadaire (temps plein, gardes comprises) ──
+  // charge : charge réelle répartie ; consultations : toute la capacité en plus travaillée en consultation.
+  function etpPourPlafond(result) {
+    const Ns = []; for (let n = 5; n <= 80.001; n += 0.1) Ns.push(Math.round(n * 10) / 10);
+    const sim = simulateETP(result, Ns);
+    const first = k => { const x = sim.find(r => r[k] <= result.cfg.params.plafond); return x ? x.etp : null; };
+    return { charge: first('hSemAvecGardeCharge'), consultations: first('hSemAvecGarde') };
   }
 
   // ── Simulation financière : valeur de la part et revenu selon le CA et le nombre de parts ──
@@ -467,7 +485,7 @@
     }));
   }
 
-  const api = { DEFAULT_CONFIG, JOURS, generate, verify, stats, simulateETP, simulateFinance, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
+  const api = { DEFAULT_CONFIG, JOURS, generate, verify, stats, simulateETP, simulateFinance, etpPourPlafond, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BlocMarEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
