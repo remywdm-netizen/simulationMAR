@@ -29,7 +29,9 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - **Groupe Réa 1 (5 MAR)** : chaque MAR fait une **semaine entière en Réa 1, sans absence** (ni repos, ni temps partiel,
   ni congés), puis **la semaine suivante il est prioritaire sur la Réa 2**, sans obligation de faire toute la semaine :
   garde, repos, temps partiel ou absence possibles, un autre MAR reprend alors la Réa 2.
-  **Pas de jour de récupération propre au groupe** (option réglable, désactivée). Ils ne prennent pas la Réa 3
+  **Pas de jour de récupération propre au groupe** (option réglable, désactivée).
+- **Option Réa 1 jusqu'à 17h** (désactivée par défaut) : la Réa 1 dure 9 h (8h-17h) et donne **1 jour de récupération
+  pour 8 jours de Réa 1** (≈ 6 jours par an et par membre du groupe) ; heures annuelles quasi inchangées. Ils ne prennent pas la Réa 3
   et font moins de bloc : la charge bloc + réa est équilibrée entre tous les MAR.
 - **Réa 3** : répartie entre les autres MAR, au prorata de la quotité.
 - Week-ends et fériés : réa couverte par les MAR de garde.

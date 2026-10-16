@@ -218,3 +218,15 @@ test('option : récupération du groupe Réa 1 pendant la semaine en Réa 2', ()
   const sem = {}; r.jours.filter(j => j.statut === 'Ouvert').forEach(j => { (sem[E.addDays(j.date, -E.dow(j.date))] ||= []).push(j); });
   Object.values(sem).forEach(w => { assert.equal(w[w.length - 1].recupRea.length, 1); assert.equal(w[w.length - 1].rea.length, 3); });
 });
+
+test('option Réa 1 jusqu\'à 17h : 9 h et 1 jour de récupération pour 8 jours', () => {
+  const cfg = E.mergeConfig(); cfg.rea.reaUn.actif = true;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  const P = r.stats.parMar, g = r.equipe.map((m, i) => i).filter(i => r.equipe[i].rea1);
+  const jours = r.jours.filter(j => j.statut === 'Ouvert').length;
+  assert.equal(g.reduce((a, i) => a + P[i].reaUn, 0), jours);                   // un MAR du groupe en Réa 1 chaque jour ouvré
+  g.forEach(i => assert.ok(Math.abs(P[i].recupReaUn - P[i].reaUn / 8) < 1e-9));
+  assert.ok(Math.abs(r.stats.synthese.recupReaUnTotal - jours / 8) < 1e-9);
+  assert.equal(S.synthese.recupReaUnTotal, 0);                                  // désactivée par défaut
+});
