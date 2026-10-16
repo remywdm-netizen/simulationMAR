@@ -64,6 +64,8 @@
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
     finance: { ca: 1200000, parts: 15 },
+    // Consultations d'anesthésie : volume annuel et capacité d'un MAR sur une journée de consultation (hypothèse).
+    consultations: { parAn: 13000, parJourMar: 20 },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -85,7 +87,7 @@
     const base = clone(DEFAULT_CONFIG);
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
-    ['rea', 'hb', 'gardes', 'params', 'finance'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
+    ['rea', 'hb', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
     return out;
   }
 
@@ -349,7 +351,20 @@
       euroHeure: avg(pleinsFin, s => s.euroHeure), euroHeureHorsGarde: avg(pleinsFin, s => s.euroHeureHorsGarde),
       caParHeureEquipe: F.ca / (sum(s => s.heuresSansGarde + s.heuresGarde) || 1),
     });
+    Object.assign(synthese, consultIndic(cfg.consultations, nOpen, synthese.marDisponiblesParJour, F.ca));
     return { parMar: per, synthese };
+  }
+
+  // Besoin en consultations face aux MAR disponibles (jours hors bloc, réa, repos, congés, récupérations, formation)
+  function consultIndic(C, nOpen, dispo, ca) {
+    const parJour = nOpen ? C.parAn / nOpen : 0;
+    const besoin = C.parJourMar > 0 ? parJour / C.parJourMar : 0;
+    return {
+      consultationsParAn: C.parAn, consultationsParJour: parJour,
+      marConsultNecessaires: besoin, margeConsult: dispo - besoin,
+      consultParMarDispo: dispo > 0 ? parJour / dispo : 0,            // consultations par jour pour chaque MAR disponible
+      caParConsultation: C.parAn ? ca / C.parAn : 0,
+    };
   }
 
   const appreciation = x => (x < 1 ? 'Insuffisant' : x < 2 ? 'Tendu' : x < 3 ? 'Juste' : 'Confortable');
@@ -405,6 +420,7 @@
         hSemSansGarde: hSans / sem, hSemAvecGarde: (hSans + hGarde / N) / sem, hSem52: (hSans + hGarde / N) / 52,
       };
       r.ecartPlafond = r.hSemAvecGarde - PR.plafond;
+      Object.assign(r, consultIndic(cfg.consultations, nOpen, r.marDisponiblesParJour, cfg.finance.ca));
       r.appreciation = appreciation(r.marDisponiblesParJour);
       return r;
     });
