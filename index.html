@@ -639,28 +639,32 @@ function groupeRea1(){
     });
     return { lundi, semaine: E.isoWeek(lundi), r1, r2, jours: js.length, tenus, rempl };
   });
-  const S = R.stats.parMar, pl = S.filter((m,i) => m.q === 1 && m.qg > 0 && !R.equipe[i].rea1);
-  const avgO = f => pl.length ? pl.reduce((a,m)=>a+f(m),0)/pl.length : 0;
+  const S = R.stats.parMar, pl = S.filter((m,i) => m.q > 0 && !R.equipe[i].rea1);
+  const sq = pl.reduce((a,m)=>a+m.q,0), sqg = pl.reduce((a,m)=>a+m.qg,0);
+  const avgO = (f, g) => g ? (sqg ? pl.reduce((a,m)=>a+f(m),0)/sqg : 0) : (sq ? pl.reduce((a,m)=>a+f(m),0)/sq : 0);   // par ETP (de garde pour les gardes)
   const membres = g.map(i => {
     const m = S[i], s1 = semaines.filter(w => w.r1 === i), s2 = semaines.filter(w => w.r2 === i);
     return { i, code: R.equipe[i].code, m, semR1: s1.length, joursR1: s1.reduce((a,w)=>a+w.jours,0), semR2: s2.length,
       joursR2: s2.reduce((a,w)=>a+w.tenus,0), joursR2Prevus: s2.reduce((a,w)=>a+w.jours,0),
       rempl: s2.reduce((a,w)=>a+w.rempl.length,0), autres: m.rea - s1.reduce((a,w)=>a+w.jours,0) - s2.reduce((a,w)=>a+w.tenus,0) };
   });
-  return { membres, semaines, autres: { n: pl.length, rea: avgO(m=>m.rea), bloc: avgO(m=>m.bloc), consult: avgO(m=>m.consult), gardes: avgO(m=>m.gardes),
-    gardesWE: avgO(m=>m.gardesWE), libres: avgO(m=>m.hbDisponible), h: avgO(m=>m.heuresSansGarde+m.heuresGarde), hSem: avgO(m=>m.hSemAvecGarde), recup: avgO(m=>m.recup) } };
+  return { membres, semaines, autres: { n: pl.length, etp: sq, rea: avgO(m=>m.rea), bloc: avgO(m=>m.bloc), consult: avgO(m=>m.consult), gardes: avgO(m=>m.gardes,1),
+    gardesWE: avgO(m=>m.gardesWE,1), libres: avgO(m=>m.hbDisponible), h: avgO(m=>m.heuresSansGarde+m.heuresGarde), hSem: sq ? pl.reduce((a,m)=>a+m.hSemAvecGarde*m.q,0)/sq : 0, recup: avgO(m=>m.recup) } };
 }
 function renderGroupeRea1(){
   const el = document.getElementById('grp-rea1'), G = groupeRea1();
   if(!G){ el.innerHTML = ''; return; }
   const nom = i => i == null ? '—' : esc(R.equipe[i].code), A = G.autres;
   const tot = f => G.membres.reduce((a,x)=>a+f(x),0) / G.membres.length;
-  let h = `<h2 style="margin-top:22px">Récapitulatif du groupe Réa 1</h2>
-    <p class="hint">${G.membres.length} MAR : semaine entière en Réa 1 sans absence, puis la semaine suivante prioritaires sur la Réa 2 (non obligatoire : garde, repos, temps partiel ou absence possibles, un autre MAR reprend le poste). Ils ne prennent pas la Réa 3 ; leur bloc est réduit pour équilibrer la charge bloc + réa.</p>
-    <div class="tbl-wrap"><table><tr><th class="l">MAR</th><th>Semaines Réa 1</th><th>Semaines Réa 2</th><th>Jours Réa 2 tenus / prévus</th><th>Jours Réa 2 remplacés</th><th>Jours de réa (total)</th><th>Bloc</th><th>Consult.</th><th>Gardes</th><th>dont WE / fériés</th><th>Récupérations</th><th>Jours libres</th><th>Heures / an</th><th>h/sem avec garde</th></tr>`;
-  G.membres.forEach(x => { h += `<tr><td class="l b">${esc(x.code)}</td><td>${x.semR1}</td><td>${x.semR2}</td><td>${x.joursR2} / ${x.joursR2Prevus}</td><td>${x.rempl}</td><td class="b">${x.m.rea}</td><td>${x.m.bloc}</td><td>${x.m.consult}</td><td>${x.m.gardes}</td><td>${x.m.gardesWE}</td><td>${f1(x.m.recup)}</td><td>${f1(x.m.hbDisponible)}</td><td>${f0(x.m.heuresSansGarde+x.m.heuresGarde)}</td><td>${f1(x.m.hSemAvecGarde)}</td></tr>`; });
-  h += `<tr><td class="l b">Moyenne du groupe</td><td>${f1(tot(x=>x.semR1))}</td><td>${f1(tot(x=>x.semR2))}</td><td>${f1(tot(x=>x.joursR2))} / ${f1(tot(x=>x.joursR2Prevus))}</td><td>${f1(tot(x=>x.rempl))}</td><td class="b">${f1(tot(x=>x.m.rea))}</td><td>${f1(tot(x=>x.m.bloc))}</td><td>${f1(tot(x=>x.m.consult))}</td><td>${f1(tot(x=>x.m.gardes))}</td><td>${f1(tot(x=>x.m.gardesWE))}</td><td>${f1(tot(x=>x.m.recup))}</td><td>${f1(tot(x=>x.m.hbDisponible))}</td><td>${f0(tot(x=>x.m.heuresSansGarde+x.m.heuresGarde))}</td><td>${f1(tot(x=>x.m.hSemAvecGarde))}</td></tr>
-    <tr><td class="l">Autres temps pleins (moyenne, ${A.n} MAR)</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="b">${f1(A.rea)}</td><td>${f1(A.bloc)}</td><td>${f1(A.consult)}</td><td>${f1(A.gardes)}</td><td>${f1(A.gardesWE)}</td><td>${f1(A.recup)}</td><td>${f1(A.libres)}</td><td>${f0(A.h)}</td><td>${f1(A.hSem)}</td></tr></table></div>
+  const e = (x, v, g) => { const q = g ? x.m.qg : x.m.q; return q > 0 ? v / q : 0; };   // ramené à 1 ETP (de garde pour les gardes)
+  const sq = G.membres.reduce((a,x)=>a+x.m.q,0), sqg = G.membres.reduce((a,x)=>a+x.m.qg,0);
+  const grp = (f, g) => (g ? sqg : sq) ? G.membres.reduce((a,x)=>a+f(x),0) / (g ? sqg : sq) : 0;
+  let h = `<h2 style="margin-top:22px">Récapitulatif du groupe Réa 1 — au prorata équivalent temps plein</h2>
+    <p class="hint">${G.membres.length} MAR (${f1(sq)} ETP) : semaine entière en Réa 1 sans absence, puis la semaine suivante prioritaires sur la Réa 2 (non obligatoire). Rotation au prorata de la quotité. <b>Toutes les valeurs sont ramenées à 1 ETP</b> (valeur ÷ quotité ; gardes ÷ quotité de garde), y compris la comparaison avec les ${A.n} autres MAR (${f1(A.etp)} ETP).</p>
+    <div class="tbl-wrap"><table><tr><th class="l">MAR</th><th>Quotité</th><th>Semaines Réa 1 / ETP</th><th>Semaines Réa 2 / ETP</th><th>Jours Réa 2 tenus / prévus</th><th>Jours de réa / ETP</th><th>Bloc / ETP</th><th>Consult. / ETP</th><th>Gardes / ETP garde</th><th>dont WE / fériés</th><th>Récupérations / ETP</th><th>Jours libres / ETP</th><th>Heures / ETP</th><th>h/sem avec garde</th></tr>`;
+  G.membres.forEach(x => { h += `<tr><td class="l b">${esc(x.code)}</td><td>${x.m.q}</td><td>${f1(e(x,x.semR1))}</td><td>${f1(e(x,x.semR2))}</td><td>${x.joursR2} / ${x.joursR2Prevus}</td><td class="b">${f1(e(x,x.m.rea))}</td><td>${f1(e(x,x.m.bloc))}</td><td>${f1(e(x,x.m.consult))}</td><td>${f1(e(x,x.m.gardes,1))}</td><td>${f1(e(x,x.m.gardesWE,1))}</td><td>${f1(e(x,x.m.recup))}</td><td>${f1(e(x,x.m.hbDisponible))}</td><td>${f0(e(x,x.m.heuresSansGarde+x.m.heuresGarde))}</td><td>${f1(x.m.hSemAvecGarde)}</td></tr>`; });
+  h += `<tr><td class="l b">Groupe Réa 1 (par ETP)</td><td>${f1(sq)}</td><td>${f1(grp(x=>x.semR1))}</td><td>${f1(grp(x=>x.semR2))}</td><td>${f1(tot(x=>x.joursR2))} / ${f1(tot(x=>x.joursR2Prevus))}</td><td class="b">${f1(grp(x=>x.m.rea))}</td><td>${f1(grp(x=>x.m.bloc))}</td><td>${f1(grp(x=>x.m.consult))}</td><td>${f1(grp(x=>x.m.gardes,1))}</td><td>${f1(grp(x=>x.m.gardesWE,1))}</td><td>${f1(grp(x=>x.m.recup))}</td><td>${f1(grp(x=>x.m.hbDisponible))}</td><td>${f0(grp(x=>x.m.heuresSansGarde+x.m.heuresGarde))}</td><td>${f1(sq ? G.membres.reduce((a,x)=>a+x.m.hSemAvecGarde*x.m.q,0)/sq : 0)}</td></tr>
+    <tr><td class="l">Autres MAR (par ETP)</td><td>${f1(A.etp)}</td><td>—</td><td>—</td><td>—</td><td class="b">${f1(A.rea)}</td><td>${f1(A.bloc)}</td><td>${f1(A.consult)}</td><td>${f1(A.gardes)}</td><td>${f1(A.gardesWE)}</td><td>${f1(A.recup)}</td><td>${f1(A.libres)}</td><td>${f0(A.h)}</td><td>${f1(A.hSem)}</td></tr></table></div>
     <h2>Rotation semaine par semaine</h2>
     <div class="tbl-wrap" style="max-height:420px"><table><tr><th>Semaine</th><th>Lundi</th><th class="l">Réa 1</th><th class="l">Réa 2 (prioritaire)</th><th>Jours tenus</th><th class="l">Remplacements</th></tr>`;
   G.semaines.forEach(w => { h += `<tr><td>${w.semaine}</td><td>${E.labelFR(w.lundi).slice(0,5)}</td><td class="l k-rea">${nom(w.r1)}</td><td class="l">${nom(w.r2)}</td><td>${w.r2 == null ? '' : w.tenus + ' / ' + w.jours}</td><td class="l">${w.rempl.map(x => `${E.labelFR(x.date).slice(0,5)} : ${nom(x.par)} (${x.why})`).join(' · ')}</td></tr>`; });
@@ -733,8 +737,10 @@ function exportXlsx(){
   const G1 = groupeRea1();
   if(G1){
     const nm = i => i == null ? '' : R.equipe[i].code;
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['MAR','Semaines Réa 1','Semaines Réa 2','Jours Réa 2 tenus','Jours Réa 2 prévus','Jours Réa 2 remplacés','Jours de réa','Bloc','Consultation','Gardes','dont WE/fériés','Récupérations','Jours libres','Heures / an','h/sem avec garde']]
-      .concat(G1.membres.map(x=>[x.code,x.semR1,x.semR2,x.joursR2,x.joursR2Prevus,x.rempl,x.m.rea,x.m.bloc,x.m.consult,x.m.gardes,x.m.gardesWE,+x.m.recup.toFixed(1),+x.m.hbDisponible.toFixed(1),Math.round(x.m.heuresSansGarde+x.m.heuresGarde),+x.m.hSemAvecGarde.toFixed(1)]))
+    const pe = (v, q) => q > 0 ? +(v / q).toFixed(1) : 0;
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Valeurs au prorata équivalent temps plein (÷ quotité ; gardes ÷ quotité de garde)'],['MAR','Quotité','Semaines Réa 1 / ETP','Semaines Réa 2 / ETP','Jours Réa 2 tenus','Jours Réa 2 prévus','Jours Réa 2 remplacés','Jours de réa / ETP','Bloc / ETP','Consultation / ETP','Gardes / ETP garde','dont WE/fériés','Récupérations / ETP','Jours libres / ETP','Heures / ETP','h/sem avec garde']]
+      .concat(G1.membres.map(x=>[x.code,x.m.q,pe(x.semR1,x.m.q),pe(x.semR2,x.m.q),x.joursR2,x.joursR2Prevus,x.rempl,pe(x.m.rea,x.m.q),pe(x.m.bloc,x.m.q),pe(x.m.consult,x.m.q),pe(x.m.gardes,x.m.qg),pe(x.m.gardesWE,x.m.qg),pe(x.m.recup,x.m.q),pe(x.m.hbDisponible,x.m.q),Math.round(pe(x.m.heuresSansGarde+x.m.heuresGarde,x.m.q)),+x.m.hSemAvecGarde.toFixed(1)]))
+      .concat([['Autres MAR (par ETP)',+G1.autres.etp.toFixed(1),'','','','','',+G1.autres.rea.toFixed(1),+G1.autres.bloc.toFixed(1),+G1.autres.consult.toFixed(1),+G1.autres.gardes.toFixed(1),+G1.autres.gardesWE.toFixed(1),+G1.autres.recup.toFixed(1),+G1.autres.libres.toFixed(1),Math.round(G1.autres.h),+G1.autres.hSem.toFixed(1)]])
       .concat([[],['Semaine','Lundi','Réa 1','Réa 2 (prioritaire)','Jours tenus','Remplacements']])
       .concat(G1.semaines.map(w=>[w.semaine,E.labelFR(w.lundi),nm(w.r1),nm(w.r2),w.r2==null?'':w.tenus+' / '+w.jours,w.rempl.map(x=>E.labelFR(x.date)+' : '+nm(x.par)+' ('+x.why+')').join(' ; ')]))), 'Groupe Réa 1');
   }
