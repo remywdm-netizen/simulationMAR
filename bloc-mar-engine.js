@@ -60,6 +60,7 @@
       conges: 32, rtt: 0, formation: 10,         // jours ouvrés par ETP (proratisés à la quotité)
       recupSamedi: 1,                            // jours de récupération par samedi de garde (demi-garde : la moitié)
       joursFin18ParRecup: 4,                     // 1 jour de récupération pour N jours finis à 18h
+      recupDansSemaineBloc: false,               // poser cette récupération dans le tableau, juste après les jours finis à 18h
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
       blocMaxSemaine: 3, tpMaxParJour: 5,
     },
@@ -207,11 +208,18 @@
     const matDay = days.map(() => []), mDone = Array(n).fill(0);
     const bDone = Array(n).fill(0), pc = P.map(() => Array(NP).fill(0));
     const wkBloc = {};
+    const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
+    const credit = Array(n).fill(0), rcDay = days.map(() => []);
     let prev = {}, run = {};
     const postesJour = days.map((s, k) => {
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
       const wkey = monday(s);
       let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !repos[k].has(i) && !tp[k].has(i));
+      if (RECUP_BLOC) {   // récupération des jours finis à 18h : premier jour libre (hors garde) après les avoir accumulés
+        const rc = avail.filter(i => credit[i] >= 1 - 1e-9 && !garde[k].includes(i));
+        rc.forEach(i => { credit[i] -= 1; rcDay[k].push(i); });
+        avail = avail.filter(i => !rc.includes(i));
+      }
       if (MAT.actif && MAT.jours[dow(s)]) {
         const elig = avail.filter(i => P[i].mater !== false)
           .sort((a, b) => cmp([mDone[a] / Q[a], bDone[a] / Q[a], a], [mDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, MAT.nombre);
@@ -242,6 +250,7 @@
       posts.forEach((i, p) => {
         if (i === null) return;
         bDone[i]++; pc[i][p]++; wkBloc[i + wkey] = (wkBloc[i + wkey] || 0) + 1;
+        if (RECUP_BLOC && LONG.has(p)) credit[i] += 1 / PR.joursFin18ParRecup;
         nr[i] = prev[i] === p ? (run[i] || 0) + 1 : 1; np[i] = p;
       });
       prev = np; run = nr;
@@ -251,7 +260,7 @@
     const jours = days.map((s, k) => ({
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: [...reaDay[k]], garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
-      demi: demi[k], nuit: nuit[k], maternite: matDay[k],
+      demi: demi[k], nuit: nuit[k], maternite: matDay[k], recup: rcDay[k],
     }));
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
@@ -273,7 +282,7 @@
     if (j.repos.includes(i)) act = 'REPOS';
     else if (open) {
       const p = j.postes.indexOf(i);
-      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : j.tp.includes(i) ? 'TP' : 'HB';
+      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
     }
     let g = '';
     if (j.demi.includes(i)) g = 'DJ';
@@ -283,7 +292,7 @@
 
   function codeActivite(result, a) {
     const base = a.act[0] === 'P' ? result.postes[+a.act.slice(1)].code
-      : { REA: 'Réa', MAT: 'Mat', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
+      : { REA: 'Réa', MAT: 'Mat', RC: 'Récup', HB: 'HB', REPOS: 'Repos', TP: 'TP', '': '' }[a.act];
     const g = { G16: 'G16h', G24: 'G24h', GN: 'G nuit', DJ: 'Demi-garde', '': '' }[a.garde];
     return base && g ? base + ' + ' + g : base || g;
   }
@@ -295,7 +304,7 @@
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
     const per = P.map((m, i) => {
-      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
+      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, rc: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
         postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
@@ -305,6 +314,7 @@
         else if (a.act === 'MAT') { s.mater++; hj = cfg.maternite.heures - (a.garde === 'G16' ? cfg.maternite.apres16 || 0 : 0); }
         else if (a.act === 'HB') { s.hb++; hj = cfg.hb.heures; }
         else if (a.act === 'TP') s.tp++;
+        else if (a.act === 'RC') s.rc++;
         else if (a.act === 'REPOS' && j.statut === 'Ouvert') s.repos++;
         if (a.garde) {
           if (a.garde === 'DJ') { s.demi++; hg = G.heuresDemiJour; }
@@ -319,9 +329,9 @@
       s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
       s.recup = s.recupSamedis + s.recupFin18;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
-      const absHB = s.conges + s.rtt + s.recup;                         // pris sur des jours HB (formation = jour travaillé)
+      const absHB = s.conges + s.rtt + s.recupSamedis + Math.max(s.recupFin18 - s.rc, 0);   // pris sur des jours HB (formation = jour travaillé ; récup. posées à part)
       s.heuresSansGarde = s.heuresJour - absHB * cfg.hb.heures;
-      s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB) / (5 * m.q) : 0;   // semaines calendaires de présence
+      s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB - s.rc) / (5 * m.q) : 0;   // semaines calendaires de présence
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
       s.hSem52 = (s.heuresSansGarde + s.heuresGarde) / 52;
@@ -418,6 +428,7 @@
         if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
         j.repos.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : repos de sécurité non respecté (${P[i].code})`); });
         j.tp.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : ${P[i].code} travaille un jour de temps partiel`); });
+        (j.recup || []).forEach(i => { if (all.includes(i) || j.garde.includes(i) || j.tp.includes(i)) issues.push(`${d} : ${P[i].code} travaille un jour de récupération`); });
         j.postes.forEach((i, p) => { if (LONG.has(p) && j.garde.includes(i)) issues.push(`${d} : ${P[i].code} de garde au bloc long`); });
       }
       j.garde.forEach(i => {

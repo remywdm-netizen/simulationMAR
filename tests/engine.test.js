@@ -171,3 +171,16 @@ test('effectif pour 48 h : charge répartie', () => {
   const cfg = E.mergeConfig(); cfg.maternite.actif = true;
   assert.ok(E.generate(cfg).stats.synthese.etpPlafondCharge > s.etpPlafondCharge);
 });
+
+test('récupération 18h posée dans la semaine de bloc', () => {
+  const cfg = E.mergeConfig(); cfg.params.recupDansSemaineBloc = true;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  const P = r.stats.parMar;
+  P.forEach(m => { assert.ok(m.rc <= m.recupFin18 + 1e-9 && m.rc >= Math.floor(m.recupFin18) - 1, `${m.code} ${m.rc}/${m.recupFin18}`); });
+  r.jours.forEach(j => (j.recup || []).forEach(i => {
+    assert.ok(!j.postes.includes(i) && !j.garde.includes(i) && !j.rea.includes(i));
+  }));
+  assert.ok(Math.abs(r.stats.synthese.marDisponiblesParJour - S.synthese.marDisponiblesParJour) < 0.05);
+  assert.equal(S.parMar.reduce((a, m) => a + m.rc, 0), 0);                  // option désactivée par défaut
+});
