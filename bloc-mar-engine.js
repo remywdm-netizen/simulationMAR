@@ -70,7 +70,8 @@
     finance: { ca: 1200000, parts: 15 },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
-    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7 },
+    // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 1, null, null] },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -92,7 +93,7 @@
     const base = clone(DEFAULT_CONFIG);
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
-    ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), (cfg || {})[k] || {}); });
+    ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
     return out;
   }
 
@@ -209,7 +210,7 @@
     const matDay = days.map(() => []), mDone = Array(n).fill(0);
     const CS = cfg.consultations, csDay = days.map(() => []), csNb = days.map(() => 0), cDone = Array(n).fill(0);
     const openIdx = {}; days.forEach((s, k) => { if (isOpen[k]) openIdx[k] = Object.keys(openIdx).length; });
-    const csPlan = consultPlan(CS, Object.keys(openIdx).length);
+    const csPlan = consultPlan(CS, days.filter((s, k) => isOpen[k]).map(dow));
     const bDone = Array(n).fill(0), pc = P.map(() => Array(NP).fill(0));
     const wkBloc = {};
     const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
@@ -399,7 +400,7 @@
       euroHeure: avg(pleinsFin, s => s.euroHeure), euroHeureHorsGarde: avg(pleinsFin, s => s.euroHeureHorsGarde),
       caParHeureEquipe: F.ca / (sum(s => s.heuresSansGarde + s.heuresGarde) || 1),
     });
-    Object.assign(synthese, consultIndic(cfg.consultations, nOpen, F.ca),
+    Object.assign(synthese, consultIndic(cfg.consultations, open.map(j => dow(j.date)), F.ca),
       { consultationsAssurees: sum(s => s.consult) * cfg.consultations.parMarJour });
 
     // Jour par jour : MAR sans poste (ni bloc, réa, consultation, maternité, repos, TP, récupération posée),
@@ -433,17 +434,24 @@
 
   // Consultations : marMin MAR chaque jour ouvré, plus des jours à marMax pour couvrir le volume annuel,
   // répartis régulièrement sur l'année.
-  function consultPlan(C, nOpen) {
+  function consultPlan(C, openDows) {
+    const nOpen = openDows.length;
     const min = Math.max(0, Math.round(C.marMin)), max = Math.max(min, Math.round(C.marMax));
+    const fixe = d => { const v = (C.parJourSemaine || [])[d]; return v === null || v === undefined || v === '' ? null : Math.max(0, Math.round(+v)); };
+    const libres = openDows.map((d, t) => (fixe(d) === null ? t : -1)).filter(t => t >= 0);   // jours ajustables
+    const fixes = openDows.reduce((a, d) => a + (fixe(d) === null ? 0 : fixe(d)), 0);
     const besoin = C.parMarJour > 0 ? Math.ceil(C.parAn / C.parMarJour) : 0;          // journées de MAR nécessaires
-    const extra = Math.min(Math.max(besoin - min * nOpen, 0), (max - min) * nOpen);
+    const nL = libres.length;
+    const extra = Math.min(Math.max(besoin - fixes - min * nL, 0), (max - min) * nL);
+    const rang = {}; libres.forEach((t, r) => { rang[t] = r; });
     return {
-      min, max, extra, joursMar: min * nOpen + extra,
-      parJour: t => min + Math.floor((t + 1) * extra / nOpen) - Math.floor(t * extra / nOpen),
+      min, max, extra, joursMar: fixes + min * nL + extra,
+      parJour: t => (fixe(openDows[t]) !== null ? fixe(openDows[t])
+        : min + Math.floor((rang[t] + 1) * extra / nL) - Math.floor(rang[t] * extra / nL)),
     };
   }
-  function consultIndic(C, nOpen, ca) {
-    const plan = consultPlan(C, nOpen), besoinJour = nOpen ? C.parAn / nOpen : 0;
+  function consultIndic(C, openDows, ca) {
+    const nOpen = openDows.length, plan = consultPlan(C, openDows), besoinJour = nOpen ? C.parAn / nOpen : 0;
     const marNec = C.parMarJour > 0 ? besoinJour / C.parMarJour : 0, marMoy = nOpen ? plan.joursMar / nOpen : 0;
     const cap = plan.joursMar * C.parMarJour;
     return {
@@ -503,7 +511,7 @@
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
-    const CS = cfg.consultations, cons = consultPlan(CS, nOpen).joursMar;
+    const CS = cfg.consultations, openDows = open.map(j => dow(j.date)), cons = consultPlan(CS, openDows).joursMar;
     const hRea = rea * cfg.rea.heures + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
       const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup) / N;
@@ -517,7 +525,7 @@
         hSemSansGarde: hSans / sem, hSemAvecGarde: (hSans + hGarde / N) / sem, hSem52: (hSans + hGarde / N) / 52,
       };
       r.ecartPlafond = r.hSemAvecGarde - PR.plafond;
-      Object.assign(r, consultIndic(CS, nOpen, cfg.finance.ca));
+      Object.assign(r, consultIndic(CS, openDows, cfg.finance.ca));
       // Charge réelle répartie : bloc, réa, consultations, maternité, formation et gardes
       // (les jours sans poste ne sont pas comptés comme travaillés).
       const hCharge = (hBloc + hRea + N * PR.formation * cfg.hb.heures) / N;
