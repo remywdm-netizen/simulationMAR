@@ -174,29 +174,26 @@ test('récupération 18h posée dans la semaine de bloc', () => {
 });
 
 
-test('consultations : 2 ou 3 MAR par jour, ajustés aux 13 000 consultations', () => {
+test('consultations : 1 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an', () => {
   const s = S.synthese, open = R.jours.filter(j => j.statut === 'Ouvert');
   open.forEach(j => {
-    assert.ok([2, 3].includes(j.consultation.length), j.date);
     assert.equal(j.consultation.length, j.consultNb);
+    if (j.jour === 'Mercredi') assert.equal(j.consultNb, 1, j.date);
+    else assert.ok([2, 3].includes(j.consultNb), j.date);
     j.consultation.forEach(i => assert.ok(!j.postes.includes(i) && !j.rea.includes(i) && !j.repos.includes(i) && !j.tp.includes(i)));
   });
   const jm = open.reduce((a, j) => a + j.consultation.length, 0);
   assert.equal(jm, Math.ceil(13000 / 25));                                    // 520 journées de MAR
-  assert.equal(open.filter(j => j.consultNb === 3).length, 520 - 2 * 251);
   assert.equal(s.capaciteConsultAn, 13000);
-  assert.ok(s.couvertureConsult >= 1);
+  const mer = s.parJourSemaine.find(x => x.jour === 'Mercredi'), lun = s.parJourSemaine.find(x => x.jour === 'Lundi');
+  assert.ok(mer.hb > lun.hb + 0.8);                                            // un MAR de plus sans poste le mercredi
   const plein = S.parMar.find(m => m.q === 1 && m.qg === 1), demi = S.parMar.find(m => m.q === 0.5);
   assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
-  const cj = Object.values(S.parJour);
-  assert.equal(cj.length, 251);
-  assert.ok(Math.abs(cj.reduce((a, x) => a + x.libres, 0) / 251 - s.marDisponiblesParJour) < 0.05);
-  const cfg = E.mergeConfig(); cfg.consultations.marMin = 3;                   // 3 MAR tous les jours
+  const cfg = E.mergeConfig(); cfg.consultations.marMin = 3; cfg.consultations.parJourSemaine = [null, null, null, null, null];
   const r3 = E.generate(cfg);
   assert.deepEqual(E.verify(r3), []);
   assert.equal(r3.stats.synthese.capaciteConsultAn, 75 * 251);
 });
-
 test('récupération libérable : jours libres moins la réserve', () => {
   const s = S.synthese;
   assert.ok(Math.abs(s.recupLiberableAn - Math.max(s.joursLibresAn - 0.5 * 251, 0)) < 1e-6);

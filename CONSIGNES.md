@@ -63,12 +63,11 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   réglementation applicable).
 
 ## Consultations
-- **2 MAR en consultation chaque jour ouvré**, **25 consultations chacun** (journée de 7 h) ; un **3ᵉ MAR** est ajouté
-  juste le nombre de jours nécessaire pour atteindre le volume annuel (**13 000** → 520 journées de MAR, soit 18 jours
-  à 3 MAR), répartis régulièrement sur l'année.
+- **25 consultations par MAR** et par jour (journée de 7 h), **13 000 par an** → 520 journées de MAR.
+- **Mercredi : 1 seul MAR en consultation**, pour libérer un MAR de plus ce jour-là (absences, récupérations).
+- Autres jours : **2 MAR**, et un **3ᵉ MAR** juste le nombre de jours nécessaire pour atteindre le volume
+  (68 jours en 2027), répartis régulièrement.
 - Réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.
-- Les jours sans poste servent aux congés, à la formation et aux récupérations : avec 21,1 ETP, il reste environ
-  1,3 MAR libre par jour après ces absences.
 
 ## Récupération (objectif)
 - Objectif de l'organisation : **libérer le plus de jours de récupération possible**.
