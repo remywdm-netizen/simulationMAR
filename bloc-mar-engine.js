@@ -46,8 +46,8 @@
       { code: 'G', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 13 + Ch 14 (Risque 4)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
     ],
-    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 0,
-      reaUn: { actif: false, heures: 9, apres16: 1, joursParRecup: 8 } },   // option : Réa 1 jusqu'à 17h (9 h), 1 jour de récupération pour 8 jours de Réa 1   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
+    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5,
+      reaUn: { actif: false, heures: 9, apres16: 1, joursParRecup: 8 } },   // option : Réa 1 jusqu'à 17h (9 h), 1 jour de récupération pour 8 jours de Réa 1   // réa 8h-16h, par semaines entières
     hb: { heures: 8 },                                                    // jour sans poste (hors bloc, administratif)
     // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
     maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },
@@ -97,6 +97,7 @@
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
     ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
+    delete out.rea.recupSemaine2;   // option retirée (pas de récupération propre à la semaine de Réa 2)
     out.rea.reaUn = Object.assign(clone(DEFAULT_CONFIG.rea.reaUn), clone(((cfg || {}).rea || {}).reaUn || {}));
     return out;
   }
@@ -150,7 +151,7 @@
       if (chosen.length < cfg.rea.nombre) warnings.push(`Semaine du ${labelFR(mon)} : pas assez de MAR pour la réa`);
       chosen.forEach(i => { reaDone[i]++; lastRea[i] = wi; });
       const ks = [0, 1, 2, 3, 4].map(j => idx[addDays(mon, j)]).filter(k => k !== undefined && isOpen[k]);
-      const nRr = deux ? Math.max(0, Math.min(Math.round(cfg.rea.recupSemaine2 || 0), ks.length)) : 0;
+      const nRr = 0;   // pas de jour de récupération propre à la semaine de Réa 2
       const rr = nRr ? ks.slice(-nRr) : [];   // derniers jours ouvrés de la semaine en Réa 2
       ks.forEach(k => {
         chosen.forEach((i, pos) => {
