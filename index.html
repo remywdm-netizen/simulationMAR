@@ -108,6 +108,9 @@ body.locked .bar,body.locked .wrap{display:none}
   <div class="view on" id="view-synthese">
     <div class="stats" id="stats"></div>
     <div id="checks"></div>
+    <h2>Consultations par jour de la semaine</h2>
+    <p class="hint">MAR hors bloc ce jour-là (ni bloc, réa, maternité, repos, temps partiel ou récupération posée), moins les absences moyennes (congés, formation, récupérations) ; × consultations par journée de MAR. Le détail jour par jour est dans le tableau de service (vue par poste).</p>
+    <div class="tbl-wrap" style="max-width:900px"><table id="tbl-consult"></table></div>
     <h2>Compteurs et temps de travail par MAR (année)</h2>
     <p class="hint">h/sem = heures par semaine de présence (congés, récupérations et jours de temps partiel retirés). Gardes sur place comptées en temps de travail effectif. Absences en jours ouvrés : congés (+ RTT), formation, récupérations (samedis de garde, jours finis à 18h), temps partiel ; repos de sécurité à part. Écart = h/sem avec garde − plafond. Revenu = parts × valeur de la part ; €/h = revenu ÷ heures de l'année, gardes comprises.</p>
     <div class="tbl-wrap"><table id="tbl-mar"></table></div>
@@ -251,6 +254,13 @@ function renderSynthese(){
     (issues.length ? `<div class="ok bad">⚠ ${issues.length} règle(s) non respectée(s) :<br/>${issues.slice(0,15).map(esc).join('<br/>')}</div>` : '<div class="ok good">✅ Toutes les règles dures sont respectées (gardes, repos de sécurité, réa, bloc long, temps partiel).</div>') +
     (Math.abs(s.partsAttribuees - s.nombreParts) > 0.01 ? `<div class="ok info">Parts attribuées dans l'équipe : ${f1(s.partsAttribuees)} pour ${f1(s.nombreParts)} parts — ${eur(s.partsAttribuees*s.valeurPart)} répartis sur ${eur(s.ca)} de CA.</div>` : '') +
     (w.length ? `<div class="ok info">${w.slice(0,10).map(esc).join('<br/>')}${w.length>10?'<br/>…':''}</div>` : '');
+  const cs = s.consultParJourSemaine;
+  document.getElementById('tbl-consult').innerHTML = `<tr><th class="l"></th>${cs.map(x=>`<th>${x.jour}</th>`).join('')}<th>Année</th></tr>`
+    + `<tr><td class="l">MAR hors bloc (moyenne)</td>${cs.map(x=>`<td>${f1(x.hb)}</td>`).join('')}<td></td></tr>`
+    + `<tr><td class="l">MAR disponibles après absences moyennes</td>${cs.map(x=>`<td>${f1(x.dispo)}</td>`).join('')}<td>${f1(s.marDisponiblesParJour)}</td></tr>`
+    + `<tr><td class="l b">Consultations possibles / jour</td>${cs.map(x=>`<td class="b ${x.possibles<x.besoin?'pos':'neg'}">${f0(x.possibles)}</td>`).join('')}<td class="b">${f0(s.marDisponiblesParJour*s.consultParJourMar)}</td></tr>`
+    + `<tr><td class="l">Besoin / jour (${f0(s.consultationsParAn)} ÷ ${s.joursBloc} jours)</td>${cs.map(x=>`<td>${f1(x.besoin)}</td>`).join('')}<td>${f1(s.consultationsParJour)}</td></tr>`
+    + `<tr><td class="l">Jours où les consultations possibles sont inférieures au besoin</td>${cs.map(x=>`<td class="${x.joursInsuffisants?'pos':''}">${x.joursInsuffisants} / ${x.jours}</td>`).join('')}<td>${s.joursConsultInsuffisants} / ${s.joursBloc}</td></tr>`;
   const P = R.postes;
   let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Mater.</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>HB</th><th>Dispo consult.</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
     + P.map(p=>`<th>${p.code}</th>`).join('') + `<th>h/an hors garde</th><th>h/an garde</th><th>h/sem sans</th><th>h/sem avec</th><th>Sem. max</th><th>Écart</th><th>Parts</th><th>Revenu</th><th>€/h</th></tr>`;
@@ -378,14 +388,14 @@ function renderTableau(){
   const nom = i => i===null||i===undefined ? '' : esc(R.equipe[i].code);
   let h = '';
   if(document.getElementById('vue').value === 'poste'){
-    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th></tr>`;
+    h = `<tr><th>Date</th><th>Jour</th><th class="l">Statut</th>${R.postes.map(p=>`<th title="${esc(p.salles)}">${p.code}</th>`).join('')}${Array.from({length:cfg.rea.nombre},()=>'<th>Réa</th>').join('')}${cfg.maternite.actif?'<th>Maternité</th>':''}<th>Garde</th><th>Demi-garde jour</th><th>Repos</th>${cfg.params.recupDansSemaineBloc?'<th>Récup. 18h</th>':''}<th>TP</th><th title="MAR hors bloc ce jour-là">MAR HB</th><th title="Consultations possibles (après absences moyennes) / besoin">Consult. possibles / besoin</th></tr>`;
     jours.forEach(j => {
       const tr = j.statut==='Week-end'?'we':j.statut==='Férié'?'fe':'';
       const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
       const rea = j.statut==='Ouvert' ? j.rea.map(i=>`<td class="k-rea">${nom(i)}</td>`).join('') : `<td colspan="${cfg.rea.nombre}"></td>`;
       const g = j.garde.map(i=>nom(i)+(j.nuit.includes(i)?' (nuit)':'')).join(', ');
       const mat = cfg.maternite.actif ? `<td class="${j.maternite.length?'k-mat':''}">${j.maternite.map(nom).join(', ')}</td>` : '';
-      h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}${mat}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td>${cfg.params.recupDansSemaineBloc?`<td class="${(j.recup||[]).length?'k-rc':''}">${(j.recup||[]).map(nom).join(', ')}</td>`:''}<td class="k-tp">${j.tp.map(nom).join(', ')}</td></tr>`;
+      h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}${mat}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td>${cfg.params.recupDansSemaineBloc?`<td class="${(j.recup||[]).length?'k-rc':''}">${(j.recup||[]).map(nom).join(', ')}</td>`:''}<td class="k-tp">${j.tp.map(nom).join(', ')}</td>${(()=>{const c=R.stats.consultParJour[j.date]; return c?`<td>${c.hb}</td><td class="b ${c.possibles<c.besoin?'pos':'neg'}">${f0(c.possibles)} / ${f0(c.besoin)}</td>`:'<td></td><td></td>';})()}</tr>`;
     });
   } else {
     h = `<tr><th class="l">MAR</th>${jours.map(j=>`<th title="${j.jour}">${j.jour.slice(0,2)}<br/>${j.date.slice(8)}</th>`).join('')}</tr>`;
@@ -506,10 +516,10 @@ function exportXlsx(){
   const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.mater,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.rc,m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
-  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP']);
+  const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Maternité','Récup. 18h','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR hors bloc','Consultations possibles','Besoin consultations']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
     j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
-    [j.maternite.map(nom).join(', '),(j.recup||[]).map(nom).join(', '),nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')]));
+    [j.maternite.map(nom).join(', '),(j.recup||[]).map(nom).join(', '),nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')].concat((c=>c?[c.hb,Math.round(c.possibles),+c.besoin.toFixed(1)]:['','',''])(R.stats.consultParJour[j.date]))));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([tH].concat(tR)), 'Tableau de service');
   const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));
   const vR = R.jours.map(j=>[E.labelFR(j.date),j.jour].concat(R.equipe.map((p,i)=>E.codeActivite(R,E.activite(R,j,i)))));
