@@ -51,6 +51,11 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).
 
+## Consultations
+- **Environ 13 000 consultations par an**, soit 51,8 par jour ouvré.
+- Assurées par les MAR disponibles : ni bloc, ni réa, ni repos de sécurité, congés, récupération ou formation.
+- Capacité retenue : **20 consultations par jour et par MAR** (hypothèse modifiable) → 2,6 MAR nécessaires chaque jour.
+
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
 - Parts de chaque MAR : saisies dans l'équipe ; à défaut, au prorata de la quotité de travail.

@@ -137,6 +137,9 @@ body.locked .bar,body.locked .wrap{display:none}
     <h2>Part financière</h2>
     <p class="hint">Le chiffre d'affaires est réparti en parts égales. Parts de chaque MAR : colonne « Parts » de l'onglet Équipe (vide = au prorata de la quotité de travail).</p>
     <div class="form" id="f-finance"></div>
+    <h2>Consultations d'anesthésie</h2>
+    <p class="hint">Les consultations sont assurées par les MAR disponibles (jours hors bloc, hors réa, repos, congés, récupérations et formation). La capacité d'un MAR par journée de consultation est une hypothèse à ajuster.</p>
+    <div class="form" id="f-consult"></div>
     <h2>Postes de bloc (1 MAR pour 2 salles)</h2>
     <p class="hint">Heures de présence par jour. « Après 16h » = heures retirées un jour de garde (la garde commence à 16h). « Fin 18h » : poste interdit au MAR de garde, ouvre droit à la récupération des jours finis à 18h.</p>
     <div class="tbl-wrap"><table id="tbl-postes"></table></div>
@@ -230,6 +233,8 @@ function renderSynthese(){
     card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, semaine de présence') +
     card('h/sem avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
     card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`) +
+    card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré · ${f1(s.consultParMarDispo)} par MAR disponible`) +
+    card('MAR nécessaires en consultation', f1(s.marConsultNecessaires)+' / jour', `à ${cfg.consultations.parJourMar} consultations par MAR · marge ${s.margeConsult>=0?'+':''}${f1(s.margeConsult)}`, s.margeConsult < 0 ? 'warn' : s.margeConsult < 0.5 ? 'mid' : 'good') +
     card('Valeur de la part', eur(s.valeurPart), `CA ${eur(s.ca)} ÷ ${f1(s.nombreParts)} parts`) +
     card('Revenu d\'un temps plein', eur(s.revenuTempsPlein), `${f1(s.euroHeure)} €/h gardes comprises · ${f1(s.euroHeureHorsGarde)} €/h hors garde`);
   const issues = E.verify(R), w = R.warnings;
@@ -311,6 +316,8 @@ function renderRegles(){
     field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
   document.getElementById('f-finance').innerHTML =
     field('finance.ca','Chiffre d\'affaires annuel (€)',{step:10000}) + field('finance.parts','Nombre de parts',{step:0.5});
+  document.getElementById('f-consult').innerHTML =
+    field('consultations.parAn','Consultations par an',{step:100}) + field('consultations.parJourMar','Consultations par jour et par MAR (capacité)');
   document.getElementById('f-annee').innerHTML = `<label>Année<input type="number" value="${cfg.annee}" onchange="cfg.annee=+this.value;recompute()"/></label>`;
   let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th></tr>`;
   cfg.postes.forEach((p,i) => {
@@ -374,6 +381,7 @@ const INDIC = [
   ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR dispo / jour',f1],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
+  ['consultationsParAn','Consultations / an',f0],['marConsultNecessaires','MAR consult. nécessaires / j',f1],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
 ];
 function scenarios(){ try{ return JSON.parse(localStorage.getItem(SCEN)||'[]'); }catch(e){ return []; } }
@@ -399,8 +407,9 @@ function renderSimu(){
   etps.sort((a,b)=>a-b);
   const sim = E.simulateETP(R, etps);
   const rows = [['ETP','etp',f1],['Récupérations / MAR / an','recup',f1],['Jours travaillés / MAR','joursTravailles',f1],['MAR disponibles / jour','marDisponiblesParJour',f1],['Appréciation','appreciation',x=>x],
+    ['MAR nécessaires en consultation / jour','marConsultNecessaires',f1],['Marge consultations (MAR / jour)','margeConsult',x=>(x>=0?'+':'')+f1(x)],['Consultations / jour / MAR disponible','consultParMarDispo',f1],
     ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde','hSemSansGarde',f1],['h/sem avec garde','hSemAvecGarde',f1],['h/sem sur 52 sem.','hSem52',f1],['Écart au plafond','ecartPlafond',x=>(x>0?'+':'')+f1(x)]];
-  document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${k==='ecartPlafond'?(x[k]>0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
+  document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${k==='ecartPlafond'?(x[k]>0?'pos':'neg'):k==='margeConsult'?(x[k]<0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
 }
 
 function heuresTempsPlein(){
@@ -453,6 +462,9 @@ function renderConsignes(){
   <h3>Temps de travail</h3><ul>
     <li>Garde sur place comptée en temps de travail effectif. Repère : ${p.plafond} h par semaine en moyenne, gardes comprises (directive 2003/88/CE, à vérifier avec la réglementation applicable).</li>
     <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li></ul>
+  <h3>Consultations</h3><ul>
+    <li>${f0(cfg.consultations.parAn)} consultations par an, soit ${f1(R.stats.synthese.consultationsParJour)} par jour ouvré, assurées par les MAR disponibles (ni bloc, ni réa, ni repos, congés, récupération ou formation).</li>
+    <li>Capacité retenue : ${cfg.consultations.parJourMar} consultations par jour et par MAR, soit ${f1(R.stats.synthese.marConsultNecessaires)} MAR nécessaires chaque jour (disponibles : ${f1(R.stats.synthese.marDisponiblesParJour)}).</li></ul>
   <h3>Part financière</h3><ul>
     <li>Chiffre d'affaires ${eur(cfg.finance.ca)} réparti en ${f1(cfg.finance.parts)} parts égales : ${eur(R.stats.synthese.valeurPart)} la part.</li>
     <li>Parts de chaque MAR saisies dans l'équipe ; à défaut, au prorata de la quotité de travail. Revenu horaire = revenu ÷ heures de l'année, gardes comprises.</li></ul>`;
