@@ -196,7 +196,7 @@ test('consultations : 2 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an'
   assert.equal(s.capaciteConsultAn, 13000);
   const mer = s.parJourSemaine.find(x => x.jour === 'Mercredi'), lun = s.parJourSemaine.find(x => x.jour === 'Lundi');
   assert.ok(mer.consultations === 50);                                         // 2 MAR × 25 le mercredi
-  const plein = S.parMar.find(m => m.q === 1 && m.qg === 1), demi = S.parMar.find(m => m.q === 0.5);
+  const plein = S.parMar.find((m, i) => m.q === 1 && m.qg === 1 && !R.equipe[i].rea1), demi = S.parMar.find(m => m.q === 0.5);
   assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
   const cfg = E.mergeConfig(); cfg.consultations.marMin = 3; cfg.consultations.parJourSemaine = [null, null, null, null, null];
   const r3 = E.generate(cfg);

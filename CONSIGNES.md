@@ -28,11 +28,14 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel : garde possible le vendredi seulement.
 - **Groupe Réa 1 (5 MAR)** : chaque MAR fait une **semaine entière en Réa 1, sans absence** (ni repos, ni temps partiel,
   ni congés), puis **la semaine suivante il est prioritaire sur la Réa 2**, sans obligation de faire toute la semaine :
-  garde, repos, temps partiel ou absence possibles, un autre MAR reprend alors la Réa 2.
-  **Pas de jour de récupération propre au groupe** (option réglable, désactivée).
+  garde, repos, temps partiel ou absence possibles, un autre MAR reprend alors la Réa 2. Rotation au prorata de la quotité.
+  Pas de jour de récupération propre au groupe. Le groupe ne prend pas la Réa 3.
+- **Charge équilibrée** : bloc + réa + consultations au prorata de la quotité pour tous les MAR (le groupe Réa 1 fait
+  moins de bloc).
+- **Consultations du groupe Réa 1 proportionnelles à son temps au bloc** : même nombre de consultations par jour de bloc
+  que les autres MAR (≈ 13 consultations par ETP pour le groupe, ≈ 28 pour les autres).
 - **Option Réa 1 jusqu'à 17h** (désactivée par défaut) : la Réa 1 dure 9 h (8h-17h) et donne **1 jour de récupération
-  pour 8 jours de Réa 1** (≈ 6 jours par an et par membre du groupe) ; heures annuelles quasi inchangées. Ils ne prennent pas la Réa 3
-  et font moins de bloc : la charge bloc + réa est équilibrée entre tous les MAR.
+  pour 8 jours de Réa 1** (≈ 6 jours par an et par membre du groupe) ; heures annuelles quasi inchangées.
 - **Réa 3** : répartie entre les autres MAR, au prorata de la quotité.
 - Week-ends et fériés : réa couverte par les MAR de garde.
 

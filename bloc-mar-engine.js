@@ -74,7 +74,7 @@
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
-    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null] },
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null], rea1ProrataBloc: true },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -103,7 +103,23 @@
   }
 
   // ── Génération du tableau de service ───────────────────────
+  // Consultations du groupe Réa 1 proportionnelles à son temps au bloc : un premier calcul mesure le bloc par ETP
+  // du groupe et des autres MAR, le calcul final pondère la répartition des consultations par ce rapport.
   function generate(userCfg) {
+    const cfg = mergeConfig(userCfg);
+    if (!(cfg.consultations.rea1ProrataBloc && cfg.equipe.some(m => m.rea1))) return generateCore(cfg, null);
+    let poids = null, r;
+    for (let pass = 0; pass < 2; pass++) {
+      r = generateCore(cfg, poids);
+      const P = r.stats.parMar, g = P.filter((m, i) => r.equipe[i].rea1 && m.q > 0), o = P.filter((m, i) => !r.equipe[i].rea1 && m.q > 0);
+      const par = l => l.reduce((a, m) => a + m.bloc, 0) / (l.reduce((a, m) => a + m.q, 0) || 1);
+      const f = par(o) ? Math.min(1, par(g) / par(o)) : 1;
+      poids = r.equipe.map(m => (m.rea1 ? (+m.q || 0) * f : +m.q || 0));
+    }
+    return generateCore(cfg, poids);
+  }
+
+  function generateCore(userCfg, poidsConsult) {
     const cfg = mergeConfig(userCfg);
     const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, rea1: false, mater: true, consult: true, joursFixes: null }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
@@ -117,6 +133,7 @@
     const isOpen = days.map(s => statut(s) === 'Ouvert');
     const idx = Object.fromEntries(days.map((s, k) => [s, k]));
     const Q = P.map(p => p.q), QG = P.map(p => p.qg);
+    const CW = P.map((p, i) => (poidsConsult ? Math.max(poidsConsult[i], 1e-6) : Q[i]));   // poids de répartition des consultations
     // Jours fixes : un MAR qui ne travaille que certains jours de la semaine
     const fixe = P.map(p => Array.isArray(p.joursFixes) && p.joursFixes.some(x => !x) ? p.joursFixes.map(Boolean) : null);
     const off = (i, s) => fixe[i] && dow(s) < 5 && !fixe[i][dow(s)];
@@ -286,12 +303,12 @@
       csNb[k] = nbCs;
       if (nbCs > 0) {   // consultations : au prorata de la quotité
         const elig = avail.filter(i => P[i].consult !== false)
-          .sort((a, b) => cmp([cDone[a] / Q[a], bDone[a] / Q[a], a], [cDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, nbCs);
+          .sort((a, b) => cmp([cDone[a] / CW[a], bDone[a] / Q[a], a], [cDone[b] / CW[b], bDone[b] / Q[b], b])).slice(0, nbCs);
         if (elig.length < nbCs) warnings.push(`${labelFR(s)} : ${nbCs - elig.length} MAR de consultation manquant(s)`);
         elig.forEach(i => { cDone[i]++; csDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
-      const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, (bDone[i] + rDays[i]) / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];
+      const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, (bDone[i] + rDays[i] + cDone[i]) / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];   // charge bloc + réa + consultations équilibrée
       const chosen = avail.sort((a, b) => cmp(key(a), key(b))).slice(0, NP);
       if (chosen.length < NP) warnings.push(`${labelFR(s)} : ${NP - chosen.length} poste(s) de bloc sans MAR`);
       const gard = new Set(garde[k]);
