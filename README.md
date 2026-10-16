@@ -17,7 +17,7 @@ côté navigateur : ne pas mettre de données sensibles dans le dépôt).
 
 ## Utilisation
 - **👨‍⚕️ Équipe** : importer le fichier Excel de l'équipe (A = médecin, B = temps de travail, E = quotité de garde,
-  F = particularité : « pas de garde de WE », « demi-garde de WE »), ou modifier les lignes à la main.
+  F = particularité : « pas de garde de WE », « demi-garde de WE », « réa 1 »), ou modifier les lignes à la main.
   L'équipe reste dans le navigateur (localStorage) ; le dépôt ne contient qu'une équipe anonymisée (MAR 01…).
 - **⚙️ Règles** : maternité (détachement en journée), gardes par jour, horaires, réa, congés, formation, récupérations, plafond, consultations (volume annuel,
   MAR en consultation par jour mini/maxi, consultations par MAR), chiffre d'affaires et nombre de parts, postes, fériés.

@@ -20,6 +20,7 @@
     we: we === undefined ? true : we,          // gardes de week-end / férié
     demiWE: !!demi,                            // demi-gardes de jour le week-end (samedi et dimanche 8h-20h)
     rea: true,                                 // participe à la réanimation
+    rea1: [1, 2, 6, 9, 13].includes(i),         // groupe dédié au poste « Réa 1 » (5 MAR, semaines entières)
     note: we === false ? 'pas de garde de WE' : demi ? 'demi-gardes de WE uniquement' : '',
   }));
 
@@ -100,7 +101,7 @@
   // ── Génération du tableau de service ───────────────────────
   function generate(userCfg) {
     const cfg = mergeConfig(userCfg);
-    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, mater: true, consult: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
+    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, rea1: false, mater: true, consult: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
     const postes = cfg.postes.filter(p => p.actif !== false);
     const NP = postes.length;
@@ -120,9 +121,16 @@
     const sqRea = reaCands.reduce((a, i) => a + Q[i], 0);
     const reaDone = Array(n).fill(0), lastRea = Array(n).fill(-9);
     const reaDay = days.map(() => new Set());
+    // Poste « Réa 1 » : groupe dédié (case Réa 1 de l'équipe) qui se relaie par semaines entières ;
+    // ces MAR ne prennent pas les autres postes de réa. Les autres postes : tous les autres MAR de réa.
+    const groupe1 = cfg.rea.nombre > 0 ? reaCands.filter(i => P[i].rea1) : [];
+    const autres = groupe1.length ? reaCands.filter(i => !P[i].rea1) : reaCands;
+    const sqAutres = autres.reduce((a, i) => a + Q[i], 0), nAutres = cfg.rea.nombre - (groupe1.length ? 1 : 0);
     weeks.forEach((mon, wi) => {
-      const key = i => [wi - lastRea[i] < 4 ? 1 : 0, -(Q[i] / sqRea * cfg.rea.nombre * (wi + 1) - reaDone[i]), -(wi - lastRea[i]), i];
-      const chosen = reaCands.slice().sort((a, b) => cmp(key(a), key(b))).slice(0, cfg.rea.nombre);
+      const key = i => [wi - lastRea[i] < 4 ? 1 : 0, -(Q[i] / sqAutres * nAutres * (wi + 1) - reaDone[i]), -(wi - lastRea[i]), i];
+      const key1 = i => [wi - lastRea[i] < 2 ? 1 : 0, reaDone[i] / Q[i], -(wi - lastRea[i]), i];
+      const chosen = (groupe1.length ? groupe1.slice().sort((a, b) => cmp(key1(a), key1(b))).slice(0, 1) : [])
+        .concat(autres.slice().sort((a, b) => cmp(key(a), key(b))).slice(0, nAutres));
       if (chosen.length < cfg.rea.nombre) warnings.push(`Semaine du ${labelFR(mon)} : pas assez de MAR pour la réa`);
       chosen.forEach(i => { reaDone[i]++; lastRea[i] = wi; });
       for (let j = 0; j < 5; j++) { const k = idx[addDays(mon, j)]; if (k !== undefined && isOpen[k]) chosen.forEach(i => reaDay[k].add(i)); }
@@ -215,10 +223,12 @@
     const wkBloc = {};
     const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
     const credit = Array(n).fill(0), rcDay = days.map(() => []);
+    const rDays = Array(n).fill(0);   // jours de réa déjà faits : la charge bloc + réa est équilibrée
     let prev = {}, run = {};
     const postesJour = days.map((s, k) => {
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
       const wkey = monday(s);
+      reaDay[k].forEach(i => { rDays[i]++; });
       let avail = P.map((p, i) => i).filter(i => Q[i] > 0 && !reaDay[k].has(i) && !repos[k].has(i) && !tp[k].has(i));
       if (RECUP_BLOC) {   // récupération des jours finis à 18h : premier jour libre (hors garde) après les avoir accumulés
         const rc = avail.filter(i => credit[i] >= 1 - 1e-9 && !garde[k].includes(i));
@@ -241,7 +251,7 @@
         elig.forEach(i => { cDone[i]++; csDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
-      const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, bDone[i] / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];
+      const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, (bDone[i] + rDays[i]) / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];
       const chosen = avail.sort((a, b) => cmp(key(a), key(b))).slice(0, NP);
       if (chosen.length < NP) warnings.push(`${labelFR(s)} : ${NP - chosen.length} poste(s) de bloc sans MAR`);
       const gard = new Set(garde[k]);
@@ -482,6 +492,7 @@
         if (new Set(all).size !== all.length) issues.push(`${d} : un MAR a deux postes`);
         if (j.postes.includes(null)) issues.push(`${d} : poste de bloc sans MAR`);
         if (j.rea.length !== cfg.rea.nombre) issues.push(`${d} : ${j.rea.length} MAR en réa`);
+        if (P.some(m => m.rea1) && j.rea.length && !P[j.rea[0]].rea1) issues.push(`${d} : Réa 1 hors du groupe dédié`);
         if ((j.consultation || []).length !== j.consultNb) issues.push(`${d} : ${(j.consultation || []).length} MAR en consultation`);
         const mat = cfg.maternite.actif && cfg.maternite.jours[dow(j.date)] ? cfg.maternite.nombre : 0;
         if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
