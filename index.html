@@ -109,7 +109,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <div class="stats" id="stats"></div>
     <div id="checks"></div>
     <h2>Compteurs et temps de travail par MAR (année)</h2>
-    <p class="hint">h/sem = heures par semaine de présence (congés, récupérations et jours de temps partiel retirés). Gardes sur place comptées en temps de travail effectif. Écart = h/sem avec garde − plafond. Revenu = parts × valeur de la part ; €/h = revenu ÷ heures de l'année, gardes comprises.</p>
+    <p class="hint">h/sem = heures par semaine de présence (congés, récupérations et jours de temps partiel retirés). Gardes sur place comptées en temps de travail effectif. Absences en jours ouvrés : congés (+ RTT), formation, récupérations (samedis de garde, jours finis à 18h), temps partiel ; repos de sécurité à part. Écart = h/sem avec garde − plafond. Revenu = parts × valeur de la part ; €/h = revenu ÷ heures de l'année, gardes comprises.</p>
     <div class="tbl-wrap"><table id="tbl-mar"></table></div>
   </div>
 
@@ -233,6 +233,8 @@ function renderSynthese(){
     card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, semaine de présence') +
     card('h/sem avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
     card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`) +
+    card('Absences (jours ouvrés / an)', f0(s.absencesTotal), `${f1(s.absentsParJour)} MAR absents / jour · congés ${f0(s.congesTotal+s.rttTotal)} · formation ${f0(s.formationTotal)} · récup. ${f0(s.recupSamedisTotal+s.recupFin18Total)} · TP ${f0(s.tpTotal)}`) +
+    card('Un temps plein', f1(s.congesTempsPlein + s.recupTempsPlein)+' j', `${s.congesTempsPlein} j de congés + ${f1(s.recupTempsPlein)} j de récupération (+ ${cfg.params.formation} j de formation)`) +
     card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré · ${f1(s.dureeMoyenne)} min en moyenne · ${f1(s.consultParJourMar)} par journée`) +
     card('MAR nécessaires en consultation', f1(s.marConsultNecessaires)+' / jour', `fourchette ${f1(s.marConsultMin)} à ${f1(s.marConsultMax)} · ${f0(s.joursMarConsultation)} journées de ${cfg.consultations.heuresJour} h / an`) +
     card('Marge consultations', (s.margeConsult>=0?'+':'')+f1(s.margeConsult)+' MAR / jour', `${f1(s.marDisponiblesParJour)} disponibles · au pire ${s.margeConsultPire>=0?'+':''}${f1(s.margeConsultPire)}`, s.margeConsult < 0 ? 'warn' : s.margeConsultPire < 0 ? 'mid' : 'good') +
@@ -244,10 +246,10 @@ function renderSynthese(){
     (Math.abs(s.partsAttribuees - s.nombreParts) > 0.01 ? `<div class="ok info">Parts attribuées dans l'équipe : ${f1(s.partsAttribuees)} pour ${f1(s.nombreParts)} parts — ${eur(s.partsAttribuees*s.valeurPart)} répartis sur ${eur(s.ca)} de CA.</div>` : '') +
     (w.length ? `<div class="ok info">${w.slice(0,10).map(esc).join('<br/>')}${w.length>10?'<br/>…':''}</div>` : '');
   const P = R.postes;
-  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>TP</th><th>HB</th><th>Dispo consult.</th><th>Récup.</th>`
+  let h = `<tr><th class="l">MAR</th><th>Quotité</th><th>Q. garde</th><th>Bloc</th><th>Réa</th><th>Gardes</th><th>dont WE/fér.</th><th>Nuits seules</th><th>Demi-gardes</th><th>Repos</th><th>HB</th><th>Dispo consult.</th><th>Congés</th><th>Formation</th><th>Récup. samedis</th><th>Récup. 18h</th><th>Temps partiel</th><th>Total absences</th>`
     + P.map(p=>`<th>${p.code}</th>`).join('') + `<th>h/an hors garde</th><th>h/an garde</th><th>h/sem sans</th><th>h/sem avec</th><th>Sem. max</th><th>Écart</th><th>Parts</th><th>Revenu</th><th>€/h</th></tr>`;
   R.stats.parMar.forEach(m => {
-    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.tp}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.recup)}</td>`
+    h += `<tr><td class="l b">${esc(m.code)}</td><td>${m.q}</td><td>${m.qg}</td><td>${m.bloc}</td><td>${m.rea}</td><td>${m.gardes}</td><td>${m.gardesWE}</td><td>${m.nuits}</td><td>${m.demi}</td><td>${m.repos}</td><td>${m.hb}</td><td>${f0(m.hbDisponible)}</td><td>${f1(m.conges+m.rtt)}</td><td>${f1(m.formation)}</td><td>${f1(m.recupSamedis)}</td><td>${f1(m.recupFin18)}</td><td>${m.tp}</td><td class="b">${f1(m.absences)}</td>`
       + m.postes.map(x=>`<td>${x}</td>`).join('')
       + `<td>${f0(m.heuresSansGarde)}</td><td>${f0(m.heuresGarde)}</td><td>${f1(m.hSemSansGarde)}</td><td class="b">${f1(m.hSemAvecGarde)}</td><td>${f1(m.semaineMax)}</td><td class="${m.ecartPlafond>0?'pos':'neg'}">${m.ecartPlafond>0?'+':''}${f1(m.ecartPlafond)}</td><td>${(Math.round(m.parts*100)/100).toLocaleString('fr-FR')}</td><td>${eur(m.revenu)}</td><td>${f1(m.euroHeure)}</td></tr>`;
   });
@@ -385,6 +387,7 @@ const INDIC = [
   ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR dispo / jour',f1],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
   ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
+  ['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
   ['consultationsParAn','Consultations / an',f0],['marConsultNecessaires','MAR consult. nécessaires / j',f1],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
 ];
@@ -480,8 +483,8 @@ function exportXlsx(){
   const wb = XLSX.utils.book_new(), S = R.stats;
   const syn = [['Indicateur','Valeur']].concat(INDIC.map(([k,l])=>[l, S.synthese[k]]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(syn), 'Synthèse');
-  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','TP','HB','Dispo consult.','Récup.'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond','Parts','Revenu (€)','€/h']);
-  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.tp,m.hb,Math.round(m.hbDisponible),+m.recup.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
+  const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','HB','Dispo consult.','Congés','Formation','Récup. samedis','Récup. 18h','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart plafond','Parts','Revenu (€)','€/h']);
+  const cR = S.parMar.map(m=>[m.code,m.q,m.qg,m.bloc,m.rea,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupFin18.toFixed(1),m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1),+m.parts.toFixed(3),Math.round(m.revenu),+m.euroHeure.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
   const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)), ['Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP']);

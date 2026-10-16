@@ -300,7 +300,10 @@
         const w = j.semaine; s.semaines[w] = (s.semaines[w] || 0) + hj + hg;
       });
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
-      s.recup = s.samedis * PR.recupSamedi + s.fin18 / PR.joursFin18ParRecup;
+      s.recupSamedis = s.samedis * PR.recupSamedi;
+      s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
+      s.recup = s.recupSamedis + s.recupFin18;
+      s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
       const absHB = s.conges + s.rtt + s.recup;                         // pris sur des jours HB (formation = jour travaillé)
       s.heuresSansGarde = s.heuresJour - absHB * cfg.hb.heures;
       s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB) / (5 * m.q) : 0;   // semaines calendaires de présence
@@ -325,6 +328,10 @@
       hSemSansGarde: avg(pleins, s => s.hSemSansGarde), hSemAvecGarde: avg(pleins, s => s.hSemAvecGarde),
       hSem52: avg(pleins, s => s.hSem52), semaineMax: Math.max(...per.map(s => s.semaineMax)),
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
+      congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
+      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), tpTotal: sum(s => s.tp),
+      absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
+      congesTempsPlein: PR.conges, recupTempsPlein: avg(pleins, s => s.recup),
     };
     synthese.appreciation = appreciation(synthese.marDisponiblesParJour);
 
