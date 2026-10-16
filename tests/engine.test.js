@@ -110,11 +110,13 @@ test('part financière : CA 1 200 000 € et 15 parts', () => {
   assert.equal(g[0][0].euroHeure, 40);
 });
 
-test('consultations : 13 000 par an face aux MAR disponibles', () => {
+test('consultations : 13 000 par an, journée de 7 h, créneaux de 10 min et 15-30 min', () => {
   const s = S.synthese;
   assert.equal(s.consultationsParAn, 13000);
-  assert.ok(Math.abs(s.consultationsParJour - 13000 / 251) < 1e-9);
-  assert.ok(Math.abs(s.marConsultNecessaires - 13000 / 251 / 20) < 1e-9);
+  assert.ok(Math.abs(s.joursMarConsultation - (5000 * 10 + 8000 * 22.5) / 420) < 1e-9);
+  assert.ok(Math.abs(s.marConsultNecessaires - (5000 * 10 + 8000 * 22.5) / 420 / 251) < 1e-9);
+  assert.ok(Math.abs(s.marConsultMin - (5000 * 10 + 8000 * 15) / 420 / 251) < 1e-9);
+  assert.ok(Math.abs(s.marConsultMax - (5000 * 10 + 8000 * 30) / 420 / 251) < 1e-9);
   assert.ok(Math.abs(s.margeConsult - (s.marDisponiblesParJour - s.marConsultNecessaires)) < 1e-9);
   const sim = E.simulateETP(R, [18, 24]);
   assert.ok(sim[0].margeConsult < 0 && sim[1].margeConsult > 0);

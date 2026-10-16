@@ -64,8 +64,9 @@
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
     finance: { ca: 1200000, parts: 15 },
-    // Consultations d'anesthésie : volume annuel et capacité d'un MAR sur une journée de consultation (hypothèse).
-    consultations: { parAn: 13000, parJourMar: 20 },
+    // Consultations d'anesthésie : journée de consultation de 7 h ; créneaux de 10 min pour une partie,
+    // 15 à 30 min pour le reste (durée moyenne retenue pour le besoin, mini et maxi pour la fourchette).
+    consultations: { parAn: 13000, heuresJour: 7, courtes: 5000, minCourtes: 10, minLonguesMin: 15, minLonguesMax: 30, minLongues: 22.5 },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -358,10 +359,17 @@
   // Besoin en consultations face aux MAR disponibles (jours hors bloc, réa, repos, congés, récupérations, formation)
   function consultIndic(C, nOpen, dispo, ca) {
     const parJour = nOpen ? C.parAn / nOpen : 0;
-    const besoin = C.parJourMar > 0 ? parJour / C.parJourMar : 0;
+    const longues = Math.max(C.parAn - C.courtes, 0), jour = C.heuresJour * 60;
+    const joursMar = minL => (jour > 0 ? (C.courtes * C.minCourtes + longues * minL) / jour : 0);
+    const jm = joursMar(C.minLongues), jmMin = joursMar(C.minLonguesMin), jmMax = joursMar(C.minLonguesMax);
+    const besoin = nOpen ? jm / nOpen : 0;
     return {
       consultationsParAn: C.parAn, consultationsParJour: parJour,
-      marConsultNecessaires: besoin, margeConsult: dispo - besoin,
+      heuresConsultation: jm * C.heuresJour, joursMarConsultation: jm,
+      dureeMoyenne: C.parAn ? (C.courtes * C.minCourtes + longues * C.minLongues) / C.parAn : 0,
+      consultParJourMar: jm ? C.parAn / jm : 0,                       // consultations par journée de 7 h
+      marConsultNecessaires: besoin, marConsultMin: nOpen ? jmMin / nOpen : 0, marConsultMax: nOpen ? jmMax / nOpen : 0,
+      margeConsult: dispo - besoin, margeConsultPire: dispo - (nOpen ? jmMax / nOpen : 0),
       consultParMarDispo: dispo > 0 ? parJour / dispo : 0,            // consultations par jour pour chaque MAR disponible
       caParConsultation: C.parAn ? ca / C.parAn : 0,
     };

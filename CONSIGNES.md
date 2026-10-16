@@ -53,8 +53,11 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Consultations
 - **Environ 13 000 consultations par an**, soit 51,8 par jour ouvré.
+- Journée de consultation : **7 h**. Créneaux de **10 min pour 5 000 consultations**, de **15 à 30 min pour les 8 000 autres**
+  (moyenne retenue 22,5 min).
+- Besoin = durée des créneaux ÷ 7 h : 548 journées de MAR par an, soit **2,2 MAR par jour ouvré**
+  (1,6 avec des créneaux longs de 15 min, 2,75 avec 30 min).
 - Assurées par les MAR disponibles : ni bloc, ni réa, ni repos de sécurité, congés, récupération ou formation.
-- Capacité retenue : **20 consultations par jour et par MAR** (hypothèse modifiable) → 2,6 MAR nécessaires chaque jour.
 
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
