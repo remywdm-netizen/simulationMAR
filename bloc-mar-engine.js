@@ -21,6 +21,7 @@
     demiWE: !!demi,                            // demi-gardes de jour le week-end (samedi et dimanche 8h-20h)
     rea: true,                                 // participe à la réanimation
     rea1: [1, 2, 6, 9, 13].includes(i),         // groupe dédié au poste « Réa 1 » (5 MAR, semaines entières)
+    joursFixes: i === 3 ? [true, true, true, false, false] : null,   // jours travaillés fixes (lun..ven), null = jours de TP variables
     note: we === false ? 'pas de garde de WE' : demi ? 'demi-gardes de WE uniquement' : '',
   }));
 
@@ -101,7 +102,7 @@
   // ── Génération du tableau de service ───────────────────────
   function generate(userCfg) {
     const cfg = mergeConfig(userCfg);
-    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, rea1: false, mater: true, consult: true }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
+    const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, rea1: false, mater: true, consult: true, joursFixes: null }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
     const postes = cfg.postes.filter(p => p.actif !== false);
     const NP = postes.length;
@@ -113,11 +114,14 @@
     const isOpen = days.map(s => statut(s) === 'Ouvert');
     const idx = Object.fromEntries(days.map((s, k) => [s, k]));
     const Q = P.map(p => p.q), QG = P.map(p => p.qg);
+    // Jours fixes : un MAR qui ne travaille que certains jours de la semaine
+    const fixe = P.map(p => Array.isArray(p.joursFixes) && p.joursFixes.some(x => !x) ? p.joursFixes.map(Boolean) : null);
+    const off = (i, s) => fixe[i] && dow(s) < 5 && !fixe[i][dow(s)];
     const warnings = [];
 
     // 1. Réanimation par semaines entières
     const weeks = [...new Set(days.filter((s, k) => isOpen[k]).map(monday))];
-    const reaCands = P.map((p, i) => i).filter(i => P[i].rea !== false && Q[i] >= cfg.rea.quotiteMin);
+    const reaCands = P.map((p, i) => i).filter(i => P[i].rea !== false && Q[i] >= cfg.rea.quotiteMin && !fixe[i]);   // la réa demande la semaine entière
     const sqRea = reaCands.reduce((a, i) => a + Q[i], 0);
     const reaDone = Array(n).fill(0), lastRea = Array(n).fill(-9);
     const reaDay = days.map(() => new Set()), reaOrdre = days.map(() => []), rrDay = days.map(() => []);
@@ -163,7 +167,7 @@
     days.forEach((s, k) => {
       const spec = !isOpen[k];
       if (spec) nSpec++;
-      const ok = i => QG[i] > 0 && !(spec && !P[i].we) && k - lastG[i] >= G.ecartMin && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
+      const ok = i => QG[i] > 0 && !(spec && !P[i].we) && !off(i, s) && k - lastG[i] >= G.ecartMin && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
         && !(k + 1 < days.length && reaDay[k + 1].has(i))              // le repos ne coupe pas une semaine de réa
         && !(reaDay[k].has(i) && dow(s) !== 4);                         // garde en semaine de réa : le vendredi
       const key = i => {
@@ -217,7 +221,13 @@
     // 3. Temps partiel : jours non travaillés (TP)
     const tp = days.map(() => new Set());
     const owed = Array(n).fill(0);
-    const pt = P.map((p, i) => i).filter(i => Q[i] < 1);
+    const pt = P.map((p, i) => i).filter(i => Q[i] < 1 && !fixe[i]);
+    P.forEach((p, i) => {   // jours fixes : les autres jours ouvrés sont des jours de TP
+      if (!fixe[i]) return;
+      days.forEach((s, k) => { if (isOpen[k] && off(i, s)) tp[k].add(i); });
+      const nb = fixe[i].filter(Boolean).length / 5;
+      if (Math.abs(nb - Q[i]) > 0.01) warnings.push(`${p.code} : ${fixe[i].filter(Boolean).length} jours fixes pour une quotité de ${Q[i]}`);
+    });
     const pref = {}; pt.forEach((i, r) => { pref[i] = [0, 1, 2, 3, 4].map(s => (r + s) % 5); });
     weeks.forEach(mon => {
       const wk = [0, 1, 2, 3, 4].map(j => idx[addDays(mon, j)]).filter(k => k !== undefined && isOpen[k]);
@@ -226,7 +236,7 @@
         const need = Math.floor(owed[i] + 1e-9);
         if (need <= 0) return;
         const free = wk.filter(k => !reaDay[k].has(i) && !rrDay[k].includes(i) && !repos[k].has(i) && !garde[k].includes(i) && tp[k].size < PR.tpMaxParJour)
-          .sort((a, b) => cmp([pref[i].indexOf(dow(days[a])), tp[a].size], [pref[i].indexOf(dow(days[b])), tp[b].size]));
+          .sort((a, b) => cmp([tp[a].size, pref[i].indexOf(dow(days[a]))], [tp[b].size, pref[i].indexOf(dow(days[b]))]));   // jours les moins chargés en TP d'abord
         free.slice(0, need).forEach(k => { tp[k].add(i); owed[i]--; });
       });
     });
@@ -524,6 +534,8 @@
         if ((j.maternite || []).length !== mat) issues.push(`${d} : ${(j.maternite || []).length} MAR à la maternité`);
         j.repos.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : repos de sécurité non respecté (${P[i].code})`); });
         j.tp.forEach(i => { if (all.includes(i) || j.garde.includes(i)) issues.push(`${d} : ${P[i].code} travaille un jour de temps partiel`); });
+        P.forEach((m, i) => { const f = Array.isArray(m.joursFixes) && m.joursFixes.some(x => !x) ? m.joursFixes : null;
+          if (f && !f[dow(j.date)] && (all.includes(i) || j.garde.includes(i))) issues.push(`${d} : ${m.code} travaille en dehors de ses jours fixes`); });
         (j.recup || []).forEach(i => { if (all.includes(i) || j.garde.includes(i) || j.tp.includes(i)) issues.push(`${d} : ${P[i].code} travaille un jour de récupération`); });
         j.postes.forEach((i, p) => { if (LONG.has(p) && j.garde.includes(i)) issues.push(`${d} : ${P[i].code} de garde au bloc long`); });
       }

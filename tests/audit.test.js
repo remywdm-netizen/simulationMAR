@@ -100,10 +100,10 @@ const pl = PM.filter(m => m.q === 1 && m.qg > 0);
 chk('h/sem avec garde = moyenne des temps pleins', near(s.hSemAvecGarde, pl.reduce((a,m)=>a+m.hSemAvecGarde,0)/pl.length));
 // 8. Équité
 const rng = (f, g) => { const v = PM.filter(g).map(f); return [Math.min(...v), Math.max(...v)]; };
-const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1), cq = rng(m => m.consult / m.q, m => m.q > 0);
+const gq = rng(m => m.gardes / m.qg, m => m.qg > 0), bq = rng(m => (m.bloc + m.rea) / m.q, m => m.q > 0), rq = rng(m => m.rea / m.q, m => m.q >= 0.5 && !P[PM.indexOf(m)].rea1 && !P[PM.indexOf(m)].joursFixes), cq = rng(m => m.consult / m.q, m => m.q > 0);
 chk('Gardes / quotité de garde homogènes (écart ≤ 2)', gq[1] - gq[0] <= 2, gq.map(x=>x.toFixed(1)).join(' à '));
 chk('(Bloc + réa) / quotité homogène (écart ≤ 6)', bq[1] - bq[0] <= 6, bq.map(x=>x.toFixed(1)).join(' à '));
-chk('Réa / quotité hors groupe Réa 1 (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
+chk('Réa / quotité hors groupe Réa 1 et jours fixes (écart ≤ 12)', rq[1] - rq[0] <= 12, rq.map(x=>x.toFixed(1)).join(' à '));
 chk('Consultations / quotité (écart ≤ 4)', cq[1] - cq[0] <= 4, cq.map(x=>x.toFixed(1)).join(' à '));
 // Réa 1 : groupe dédié, rotation par semaines entières
 const g1 = P.map((m, i) => i).filter(i => P[i].rea1);
@@ -116,6 +116,12 @@ chk('Réa 2 = MAR de la Réa 1 de la semaine précédente (2 semaines enchaîné
 chk('Récupération de réa : 1 jour en fin de semaine de Réa 2, poste repris', wl.every(w => w[w.length-1].recupRea.length === 1 && w[w.length-1].rea.length === 3), String(PM.reduce((x,m)=>x+m.recupRea,0)) + ' jours');
 const parG = g1.map(i => r1.filter(x => x === i).length);
 chk('Réa 1 : rotation équilibrée dans le groupe', Math.max(...parG) - Math.min(...parG) <= 1, parG.join(' / ') + ' semaines');
+// Jours fixes : le MAR à 0,6 travaille lundi, mardi, mercredi
+const jf = P.map((m, i) => i).filter(i => P[i].joursFixes);
+chk('Jours fixes respectés (aucun poste ni garde hors jours travaillés, pas de réa)', jf.length === 1 && jf.every(i => open.every(j => {
+  const a = E.activite(r, j, i).act, d = dow(j.date);
+  return P[i].joursFixes[d] ? a !== 'TP' : a === 'TP' && !j.garde.includes(i);
+}) && PM[i].rea === 0), jf.map(i => P[i].code).join());
 // 9. Analytique vs planning
 const sim = E.simulateETP(r, [s.etp])[0];
 chk('Simulation ETP (21,1) ≈ planning : MAR libres / jour', near(sim.marDisponiblesParJour, s.marDisponiblesParJour, 0.15), sim.marDisponiblesParJour.toFixed(2) + ' / ' + s.marDisponiblesParJour.toFixed(2));
