@@ -46,7 +46,8 @@
       { code: 'G', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 13 + Ch 14 (Risque 4)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
     ],
-    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 0 },   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
+    rea: { nombre: 3, heures: 8, apres16: 0, quotiteMin: 0.5, recupSemaine2: 0,
+      reaUn: { actif: false, heures: 9, apres16: 1, joursParRecup: 8 } },   // option : Réa 1 jusqu'à 17h (9 h), 1 jour de récupération pour 8 jours de Réa 1   // 8h-16h, par semaines entières ; recupSemaine2 : jours de récupération du groupe Réa 1 pendant sa semaine en Réa 2
     hb: { heures: 8 },                                                    // jour sans poste (hors bloc, administratif)
     // Détachement à la maternité en journée (option) : MAR par jour, jours (lun..ven), horaires 8h-16h par défaut.
     maternite: { actif: false, nombre: 1, jours: [true, true, true, true, true], heures: 8, apres16: 0 },
@@ -96,6 +97,7 @@
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
     ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
+    out.rea.reaUn = Object.assign(clone(DEFAULT_CONFIG.rea.reaUn), clone(((cfg || {}).rea || {}).reaUn || {}));
     return out;
   }
 
@@ -364,14 +366,20 @@
     const G = cfg.gardes, PR = cfg.params;
     const open = jours.filter(j => j.statut === 'Ouvert');
     const nOpen = open.length, nOuvres = jours.filter(j => dow(j.date) < 5).length;
+    const R1 = cfg.rea.reaUn && cfg.rea.reaUn.actif && P.some(m => m.rea1) ? cfg.rea.reaUn : null;   // option Réa 1 jusqu'à 17h
     const per = P.map((m, i) => {
-      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, recupRea: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
+      const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, recupRea: 0, reaUn: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
         postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
         if (a.act[0] === 'P') { const p = +a.act.slice(1); s.bloc++; s.postes[p]++; hj = postes[p].heures[d]; if (postes[p].fin18) s.fin18++; if (a.garde === 'G16') hj -= postes[p].apres16 || 0; }
-        else if (a.act === 'REA') { s.rea++; hj = cfg.rea.heures - (a.garde === 'G16' ? cfg.rea.apres16 || 0 : 0); }
+        else if (a.act === 'REA') {
+          s.rea++;
+          const un = R1 && j.rea[0] === i;   // poste Réa 1 du groupe
+          if (un) s.reaUn++;
+          hj = un ? R1.heures - (a.garde === 'G16' ? R1.apres16 || 0 : 0) : cfg.rea.heures - (a.garde === 'G16' ? cfg.rea.apres16 || 0 : 0);
+        }
         else if (a.act === 'CS') { s.consult++; hj = cfg.consultations.heuresJour; }
         else if (a.act === 'MAT') { s.mater++; hj = cfg.maternite.heures - (a.garde === 'G16' ? cfg.maternite.apres16 || 0 : 0); }
         else if (a.act === 'HB') { s.hb++; hj = cfg.hb.heures; }
@@ -390,9 +398,10 @@
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
       s.recupSamedis = (s.samedis + s.samedisDemi / 2) * PR.recupSamedi;
       s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
-      s.recup = s.recupSamedis + s.recupFin18 + s.recupRea;
+      s.recupReaUn = R1 && R1.joursParRecup > 0 ? s.reaUn / R1.joursParRecup : 0;
+      s.recup = s.recupSamedis + s.recupFin18 + s.recupRea + s.recupReaUn;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
-      const absHB = s.conges + s.rtt + s.recupSamedis + Math.max(s.recupFin18 - s.rc, 0);   // pris sur des jours HB (formation = jour travaillé ; récup. posées à part)
+      const absHB = s.conges + s.rtt + s.recupSamedis + s.recupReaUn + Math.max(s.recupFin18 - s.rc, 0);   // pris sur des jours HB (formation = jour travaillé ; récup. posées à part)
       s.heuresSansGarde = s.heuresJour - absHB * cfg.hb.heures;
       s.semainesPresence = m.q > 0 ? (nOpen - s.tp - absHB - s.rc - s.recupRea) / (5 * m.q) : 0;   // semaines calendaires de présence
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
@@ -418,7 +427,7 @@
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
       materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
-      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), tpTotal: sum(s => s.tp),
+      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), recupReaUnTotal: sum(s => s.recupReaUn), tpTotal: sum(s => s.tp),
       absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
       congesTempsPlein: PR.conges, recupTempsPlein: avg(pleins, s => s.recup),
     };
@@ -566,9 +575,11 @@
       ? jours.reduce((a, j) => a + (j.recupRea || []).length, 0) : 0;   // récupérations du groupe Réa 1 (semaine en Réa 2)
     const hBloc = open.reduce((a, j) => a + postes.reduce((b, p) => b + p.heures[dow(j.date)], 0), 0);
     const CS = cfg.consultations, openDows = open.map(j => dow(j.date)), cons = consultPlan(CS, openDows).joursMar;
-    const hRea = rea * cfg.rea.heures + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
+    const R1 = cfg.rea.reaUn && cfg.rea.reaUn.actif && result.equipe.some(m => m.rea1) ? cfg.rea.reaUn : null;
+    const reaUn = R1 ? open.length : 0, recupReaUn = R1 && R1.joursParRecup > 0 ? reaUn / R1.joursParRecup : 0;
+    const hRea = rea * cfg.rea.heures + reaUn * (R1 ? R1.heures - cfg.rea.heures : 0) + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
-      const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup + recupRea) / N;
+      const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
       const reste = N * jt - (bloc + rea + mat + cons + repos);
       const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * PR.formation) * cfg.hb.heures) / N;
