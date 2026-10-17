@@ -427,7 +427,9 @@
       s.semainesPresence = m.q > 0 ? (nOpen - s.tp) / (5 * m.q) : 0;   // semaines de l'année (hors fériés et jours de TP)
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
-      s.hSem52 = (s.heuresSansGarde + s.heuresGarde) / 52;
+      // moyenne hors vacances : semaines de congés retirées (et leurs heures)
+      s.semainesHorsVac = m.q > 0 ? s.semainesPresence - s.conges / (5 * m.q) : 0;
+      s.hSemHorsVac = s.semainesHorsVac > 0 ? (s.heuresSansGarde + s.heuresGarde - s.conges * cfg.hb.heures) / s.semainesHorsVac : 0;
       s.semaineMax = Math.max(0, ...Object.values(s.semaines));
       s.ecartPlafond = s.hSemAvecGarde - PR.plafond;
       s.hbDisponible = s.hb - absHB - s.formation;                      // jours sans poste restant libres après les absences
@@ -444,7 +446,7 @@
       gardesParEtpGarde: sum(s => s.gardes) / (etpGarde || 1),
       marDisponiblesParJour: sum(s => s.hbDisponible) / nOpen,
       hSemSansGarde: avg(pleins, s => s.hSemSansGarde), hSemAvecGarde: avg(pleins, s => s.hSemAvecGarde),
-      hSem52: avg(pleins, s => s.hSem52), semaineMax: Math.max(...per.map(s => s.semaineMax)),
+      hSemHorsVac: avg(pleins, s => s.hSemHorsVac), semaineMax: Math.max(...per.map(s => s.semaineMax)),
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
       materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
@@ -609,7 +611,7 @@
       const r = {
         etp: N, recup, joursTravailles: jt, reste, marDisponiblesParJour: reste / nOpen,
         gardesParMar: (gSem + gWE) / N, gardeTousLes: jours.length / ((gSem + gWE) / N),
-        hSemSansGarde: hSans / sem, hSemAvecGarde: (hSans + hGarde / N) / sem, hSem52: (hSans + hGarde / N) / 52,
+        hSemSansGarde: hSans / sem, hSemAvecGarde: (hSans + hGarde / N) / sem, hSemHorsVac: (hSans + hGarde / N - PR.conges * cfg.hb.heures) / (sem - PR.conges / 5),
       };
       r.ecartPlafond = r.hSemAvecGarde - PR.plafond;
       Object.assign(r, consultIndic(CS, openDows, cfg.finance.ca));
