@@ -443,7 +443,7 @@ function renderTableau(){
 const INDIC = [
   ['etp','ETP',f1],['nMar','MAR',f0],['marDisponiblesParJour','MAR libres / jour',f1],['recupTotaleTempsPlein','Récup. / MAR TP (j/an)',f1],['recupTotaleService','Récup. service (j/an)',f0],['appreciation','Appréciation',x=>x],
   ['gardesParEtpGarde','Gardes / ETP garde',f1],['demiGardes','Demi-gardes WE',f0],['hSemSansGarde','h/sem sans garde',f1],
-  ['hSemAvecGarde','h/sem avec garde',f1],['hSem52','h/sem sur 52 sem.',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
+  ['hSemAvecGarde','h/sem avec garde',f1],['hSemHorsVac','h/sem hors vacances',f1],['semaineMax','Semaine max',f1],['marAuDessusPlafond','MAR > plafond',f0],
   ['etpPlafondCharge','ETP pour le plafond',x=>x?f1(x):'> 80'],['materniteTotal','Jours maternité',f0],['absencesTotal','Absences (j / an)',f0],['absentsParJour','Absents / jour',f1],
   ['consultationsParAn','Consultations / an',f0],['marConsultMoyen','MAR consult. / jour',f1],['capaciteConsultAn','Capacité consult. / an',f0],['margeConsult','Marge consult. (MAR / j)',x=>(x>=0?'+':'')+f1(x)],
   ['ca','CA',eur],['nombreParts','Parts',f1],['valeurPart','Valeur de la part',eur],['revenuTempsPlein','Revenu temps plein',eur],['euroHeure','€/h temps plein',f1],
@@ -472,7 +472,7 @@ function renderSimu(){
   document.getElementById('etp-plafond').innerHTML = `Effectif pour ${sy.plafond} h par semaine (temps plein, gardes comprises, congés 8 h, récupérations 0 h) : <b>${sy.etpPlafondCharge ? f1(sy.etpPlafondCharge) : '> 80'} ETP</b> si la charge actuelle est répartie (équipe : ${f1(sy.etp)} ETP) ; ${sy.etpPlafondConsult ? f1(sy.etpPlafondConsult) : '> 80'} ETP si la capacité en plus est travaillée en consultation.`;
   const rows = [['ETP','etp',f1],['Récupérations / MAR / an','recup',f1],['Jours travaillés / MAR','joursTravailles',f1],['MAR libres / jour','marDisponiblesParJour',f1],['Appréciation','appreciation',x=>x],
     ['Capacité de consultation / an','capaciteConsultAn',f0],['MAR nécessaires en consultation / jour','marConsultNecessaires',f1],
-    ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde / MAR','hSemSansGarde',f1],['h/sem avec garde / MAR','hSemAvecGarde',f1],['h/sem sur 52 sem. / MAR','hSem52',f1],['Écart au plafond / MAR temps plein (h/sem)','ecartPlafond',x=>(x>0?'+':'')+f1(x)],
+    ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde / MAR','hSemSansGarde',f1],['h/sem avec garde / MAR','hSemAvecGarde',f1],['h/sem hors vacances / MAR','hSemHorsVac',f1],['Écart au plafond / MAR temps plein (h/sem)','ecartPlafond',x=>(x>0?'+':'')+f1(x)],
     ['h/sem avec garde — charge actuelle répartie','hSemAvecGardeCharge',f1],['Écart au plafond / MAR — charge répartie (h/sem)','ecartPlafondCharge',x=>(x>0?'+':'')+f1(x)]];
   document.getElementById('tbl-etp').innerHTML = rows.map(([lab,k,fmt],r) => `<tr>${r?`<td class="l">${lab}</td>`:`<th class="l">${lab}</th>`}${sim.map(x=>r?`<td class="${(k==='ecartPlafond'||k==='ecartPlafondCharge')?(x[k]>0?'pos':'neg'):k==='marDisponiblesParJour'?(x[k]<0?'pos':'neg'):''}">${fmt(x[k])}</td>`:`<th>${fmt(x[k])} ETP${Math.abs(x.etp-cur)<0.05?' (équipe)':''}</th>`).join('')}</tr>`).join('');
 }
@@ -608,7 +608,7 @@ function orgData(){
       ['Heures par an', f0(avg(m=>m.heuresSansGarde+m.heuresGarde)), `dont ${f0(avg(m=>m.heuresGarde))} h de garde`],
       ['h / semaine, sans garde', f1(s.hSemSansGarde), ''],
       ['h / semaine, avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h · écart / MAR ${plus(s.hSemAvecGarde - s.plafond)} h`],
-      ['h / semaine sur 52 semaines', f1(s.hSem52), 'congés et formation 8 h, récupérations 0 h, ÷ 52'],
+      ['h / semaine hors vacances', f1(s.hSemHorsVac), 'semaines de congés retirées · formation 8 h, récupérations 0 h'],
       ['Semaine la plus chargée', f1(s.semaineMax) + ' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond en moyenne`],
     ]],
     ['Récupération (objectif)', [
