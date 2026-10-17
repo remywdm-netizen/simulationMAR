@@ -121,7 +121,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <p class="hint">MAR sans poste ce jour-là (ni bloc, réa, consultation, maternité, repos, temps partiel ou récupération posée), puis MAR libres après les absences moyennes (congés, formation, récupérations). Un nombre négatif signifie que les absences ne peuvent pas toutes être posées ce jour-là. Le détail jour par jour est dans le tableau de service.</p>
     <div class="tbl-wrap" style="max-width:900px"><table id="tbl-consult"></table></div>
     <h2>Compteurs et temps de travail par MAR (année)</h2>
-    <p class="hint">h/sem = heures par semaine de présence (congés, récupérations et jours de temps partiel retirés). Gardes sur place comptées en temps de travail effectif. Absences en jours ouvrés : congés (+ RTT), formation, récupérations (samedis de garde, jours finis à 18h), temps partiel ; repos de sécurité à part. Écart / MAR = h/sem avec garde de ce MAR − plafond (ce n'est pas un total du service).</p>
+    <p class="hint">h/sem = heures de l'année ÷ semaines de l'année (hors fériés et jours de temps partiel). Congés et formation comptés 8 h ; jours de récupération (samedis de garde, jours finis à 18h, Réa 1 17h) comptés 0 h. Gardes sur place comptées en temps de travail effectif. Absences en jours ouvrés : congés (+ RTT), formation, récupérations (samedis de garde, jours finis à 18h), temps partiel ; repos de sécurité à part. Écart / MAR = h/sem avec garde de ce MAR − plafond (ce n'est pas un total du service).</p>
     <div class="tbl-wrap"><table id="tbl-mar"></table></div>
   </div>
 
@@ -263,7 +263,7 @@ function renderSynthese(){
     card('Effectif', f1(s.etp)+' ETP', `${s.nMar} MAR · ${f1(s.etpGarde)} ETP de garde`) +
     card('MAR libres / jour', f1(s.marDisponiblesParJour), s.appreciation+' · après bloc, réa, consultations et absences', cls) +
     card('Gardes / ETP de garde', f1(s.gardesParEtpGarde), `${s.gardesParAn} gardes/an · ${s.demiGardes} demi-gardes WE`) +
-    card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, semaine de présence') +
+    card('h/sem sans garde', f1(s.hSemSansGarde), 'temps plein, congés 8 h, récup. 0 h') +
     card('h/sem avec garde', f1(s.hSemAvecGarde), `par MAR temps plein · plafond ${s.plafond} h · écart / MAR ${s.hSemAvecGarde-s.plafond>=0?'+':''}${f1(s.hSemAvecGarde-s.plafond)} h`, s.hSemAvecGarde > s.plafond ? 'warn' : 'good') +
     card('Semaine la plus chargée', f1(s.semaineMax)+' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond`) +
     card(`ETP pour ${s.plafond} h / semaine`, s.etpPlafondCharge ? f1(s.etpPlafondCharge)+' ETP' : '> 80', `${s.etpPlafondCharge ? (s.etpPlafondCharge-s.etp>=0?'+':'')+f1(s.etpPlafondCharge-s.etp)+' ETP pour le service · ' : ''}charge actuelle répartie ; ${s.etpPlafondConsult ? f1(s.etpPlafondConsult) : '> 80'} si la capacité en plus va en consultations`, s.etpPlafondCharge && s.etpPlafondCharge <= s.etp ? 'good' : 'mid') +
@@ -469,7 +469,7 @@ function renderSimu(){
   const cur = R.stats.synthese.etp; if(!etps.some(x=>Math.abs(x-cur)<1e-6)) etps.push(Math.round(cur*10)/10);
   etps.sort((a,b)=>a-b);
   const sim = E.simulateETP(R, etps), sy = R.stats.synthese;
-  document.getElementById('etp-plafond').innerHTML = `Effectif pour ${sy.plafond} h par semaine de présence (temps plein, gardes comprises) : <b>${sy.etpPlafondCharge ? f1(sy.etpPlafondCharge) : '> 80'} ETP</b> si la charge actuelle est répartie (équipe : ${f1(sy.etp)} ETP) ; ${sy.etpPlafondConsult ? f1(sy.etpPlafondConsult) : '> 80'} ETP si la capacité en plus est travaillée en consultation.`;
+  document.getElementById('etp-plafond').innerHTML = `Effectif pour ${sy.plafond} h par semaine (temps plein, gardes comprises, congés 8 h, récupérations 0 h) : <b>${sy.etpPlafondCharge ? f1(sy.etpPlafondCharge) : '> 80'} ETP</b> si la charge actuelle est répartie (équipe : ${f1(sy.etp)} ETP) ; ${sy.etpPlafondConsult ? f1(sy.etpPlafondConsult) : '> 80'} ETP si la capacité en plus est travaillée en consultation.`;
   const rows = [['ETP','etp',f1],['Récupérations / MAR / an','recup',f1],['Jours travaillés / MAR','joursTravailles',f1],['MAR libres / jour','marDisponiblesParJour',f1],['Appréciation','appreciation',x=>x],
     ['Capacité de consultation / an','capaciteConsultAn',f0],['MAR nécessaires en consultation / jour','marConsultNecessaires',f1],
     ['Gardes / MAR / an','gardesParMar',f1],['1 garde tous les … jours','gardeTousLes',f1],['h/sem sans garde / MAR','hSemSansGarde',f1],['h/sem avec garde / MAR','hSemAvecGarde',f1],['h/sem sur 52 sem. / MAR','hSem52',f1],['Écart au plafond / MAR temps plein (h/sem)','ecartPlafond',x=>(x>0?'+':'')+f1(x)],
@@ -606,9 +606,9 @@ function orgData(){
     ]],
     ['Temps de travail (temps plein)', [
       ['Heures par an', f0(avg(m=>m.heuresSansGarde+m.heuresGarde)), `dont ${f0(avg(m=>m.heuresGarde))} h de garde`],
-      ['h / semaine de présence, sans garde', f1(s.hSemSansGarde), ''],
-      ['h / semaine de présence, avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h · écart / MAR ${plus(s.hSemAvecGarde - s.plafond)} h`],
-      ['h / semaine sur 52 semaines', f1(s.hSem52), 'congés et récupérations comptés à 0 h'],
+      ['h / semaine, sans garde', f1(s.hSemSansGarde), ''],
+      ['h / semaine, avec garde', f1(s.hSemAvecGarde), `plafond ${s.plafond} h · écart / MAR ${plus(s.hSemAvecGarde - s.plafond)} h`],
+      ['h / semaine sur 52 semaines', f1(s.hSem52), 'congés et formation 8 h, récupérations 0 h, ÷ 52'],
       ['Semaine la plus chargée', f1(s.semaineMax) + ' h', `${s.marAuDessusPlafond} MAR au-dessus du plafond en moyenne`],
     ]],
     ['Récupération (objectif)', [
@@ -710,7 +710,7 @@ function renderConsignes(){
     <li>Récupération : ${p.recupSamedi} jour par samedi de garde, la moitié pour une demi-garde (jour 8h-20h ou nuit seule) ; 1 jour pour ${p.joursFin18ParRecup} jours finis à 18h${p.recupDansSemaineBloc ? ', posé dans le tableau le premier jour libre (hors garde) qui suit, dans la semaine de bloc si possible ; le poste est couvert par un collègue' : ', pris sur un jour hors bloc'}.</li></ul>
   <h3>Temps de travail</h3><ul>
     <li>Garde sur place comptée en temps de travail effectif. Repère : ${p.plafond} h par semaine en moyenne, gardes comprises (directive 2003/88/CE, à vérifier avec la réglementation applicable).</li>
-    <li>h/sem = heures de l'année ÷ semaines de présence (hors congés, récupérations et jours de TP).</li>
+    <li>h/sem = heures de l'année ÷ semaines de l'année (hors fériés et jours de TP) ; congés et formation comptés 8 h, jours de récupération 0 h.</li>
     <li>Effectif pour ${cfg.params.plafond} h par semaine (temps plein, gardes comprises) : ${R.stats.synthese.etpPlafondCharge ? f1(R.stats.synthese.etpPlafondCharge) : '> 80'} ETP si la charge actuelle est répartie entre plus de MAR.</li></ul>
   <h3>Consultations</h3><ul>
     <li>MAR en consultation : ${consultTexte()} (${cfg.consultations.heuresJour} h, ${cfg.consultations.parMarJour} consultations chacun), ajusté pour atteindre ${f0(cfg.consultations.parAn)} consultations par an (capacité ${f0(R.stats.synthese.capaciteConsultAn)}).</li>
