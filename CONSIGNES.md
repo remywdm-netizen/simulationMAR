@@ -83,6 +83,10 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Autres jours : **2 MAR**, et un **3ᵉ MAR** juste le nombre de jours nécessaire pour atteindre le volume
   (jours à 3 MAR répartis du lundi au vendredi hors mercredi), répartis régulièrement.
 - Réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.
+- **Option roulement consultation → bloc** (désactivée par défaut) : le MAR qui consulte un jour J voit les patients
+  qu'il endormira à partir de **J+7**, sur **2 jours ouvrés consécutifs au même poste** (délai et nombre de jours
+  réglables). Le MAR de consultation est choisi parmi ceux qui sont libres ces jours-là (ni réa, ni repos de sécurité,
+  ni temps partiel) ; ces jours de bloc lui sont réservés. Tenu pour ≈ 98 % des consultations, sans changer la charge.
 
 ## Récupération (objectif)
 - Objectif de l'organisation : **libérer le plus de jours de récupération possible**.

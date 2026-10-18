@@ -77,7 +77,10 @@
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
-    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null], rea1ProrataBloc: true },
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null], rea1ProrataBloc: true,
+      // option : roulement consultation → bloc ; le MAR voit les patients qu'il endormira, opérés à partir de « delai » jours
+      // calendaires plus tard, sur « joursBloc » jours ouvrés consécutifs, sur le même poste
+      suivi: { actif: false, delai: 7, joursBloc: 2 } },
     equipe: EQUIPE_DEFAUT,
   };
 
@@ -111,6 +114,7 @@
     }
     out.versionHoraires = 2;
     delete out.rea.recupSemaine2;   // option retirée (pas de récupération propre à la semaine de Réa 2)
+    out.consultations.suivi = Object.assign(clone(DEFAULT_CONFIG.consultations.suivi), clone(((cfg || {}).consultations || {}).suivi || {}));
     out.rea.reaUn = Object.assign(clone(DEFAULT_CONFIG.rea.reaUn), clone(((cfg || {}).rea || {}).reaUn || {}));
     return out;
   }
@@ -296,6 +300,18 @@
     const RECUP_BLOC = !!PR.recupDansSemaineBloc && PR.joursFin18ParRecup > 0;
     const credit = Array(n).fill(0), rcDay = days.map(() => []);
     const rDays = Array(n).fill(0);   // jours de réa déjà faits : la charge bloc + réa est équilibrée
+    // Roulement consultation → bloc : jours de bloc promis au MAR de consultation (ses patients), poste retenu le 1er jour
+    const SV = CS.suivi && CS.suivi.actif ? CS.suivi : null;
+    const promis = days.map(() => []);            // [{ i, d: jour de consultation, n: rang du jour de bloc }]
+    const suiviPoste = {};                        // jour de consultation + MAR → poste retenu
+    const cibles = k => {
+      if (!SV) return [];
+      const out = [];
+      for (let m = k + Math.max(1, +SV.delai || 1); m < days.length && out.length < Math.max(1, +SV.joursBloc || 1); m++) if (isOpen[m]) out.push(m);
+      return out;
+    };
+    const libreBloc = (i, m) => !reaDay[m].has(i) && !rrDay[m].includes(i) && !repos[m].has(i) && !tp[m].has(i) && r2Pref[m] !== i
+      && !promis[m].some(x => x.i === i);
     let prev = {}, run = {};
     const postesJour = days.map((s, k) => {
       if (!isOpen[k]) { prev = {}; run = {}; return null; }
@@ -311,12 +327,12 @@
       });
       reaDay[k].forEach(i => { rDays[i]++; });
       if (RECUP_BLOC) {   // récupération des jours finis à 18h : premier jour libre (hors garde) après les avoir accumulés
-        const rc = avail.filter(i => credit[i] >= 1 - 1e-9 && !garde[k].includes(i));
+        const rc = avail.filter(i => credit[i] >= 1 - 1e-9 && !garde[k].includes(i) && !promis[k].some(x => x.i === i));
         rc.forEach(i => { credit[i] -= 1; rcDay[k].push(i); });
         avail = avail.filter(i => !rc.includes(i));
       }
       if (MAT.actif && MAT.jours[dow(s)]) {
-        const elig = avail.filter(i => P[i].mater !== false)
+        const elig = avail.filter(i => P[i].mater !== false && !promis[k].some(x => x.i === i))
           .sort((a, b) => cmp([mDone[a] / Q[a], bDone[a] / Q[a], a], [mDone[b] / Q[b], bDone[b] / Q[b], b])).slice(0, MAT.nombre);
         if (elig.length < MAT.nombre) warnings.push(`${labelFR(s)} : maternité sans MAR`);
         elig.forEach(i => { mDone[i]++; matDay[k].push(i); });
@@ -325,14 +341,19 @@
       const nbCs = csPlan.parJour(openIdx[k]);
       csNb[k] = nbCs;
       if (nbCs > 0) {   // consultations : au prorata de la quotité
-        const elig = avail.filter(i => P[i].consult !== false)
-          .sort((a, b) => cmp([cDone[a] / CW[a], bDone[a] / Q[a], a], [cDone[b] / CW[b], bDone[b] / Q[b], b])).slice(0, nbCs);
+        const cb = cibles(k), dispo = i => (cb.length && cb.every(m => libreBloc(i, m)) ? 0 : SV ? 1 : 0);   // libre les jours où il opère ses patients
+        const elig = avail.filter(i => P[i].consult !== false && !promis[k].some(x => x.i === i))
+          .sort((a, b) => cmp([dispo(a), cDone[a] / CW[a], bDone[a] / Q[a], a], [dispo(b), cDone[b] / CW[b], bDone[b] / Q[b], b])).slice(0, nbCs);
+        if (SV) elig.forEach(i => { if (!dispo(i)) cb.forEach((m, n) => promis[m].push({ i, d: k, n })); });
         if (elig.length < nbCs) warnings.push(`${labelFR(s)} : ${nbCs - elig.length} MAR de consultation manquant(s)`);
         elig.forEach(i => { cDone[i]++; csDay[k].push(i); });
         avail = avail.filter(i => !elig.includes(i));
       }
       const key = i => [(wkBloc[i + wkey] || 0) >= PR.blocMaxSemaine ? 1 : 0, (bDone[i] + rDays[i] + cDone[i]) / Q[i] + (i in prev && run[i] === 1 ? -0.6 : 0), i];   // charge bloc + réa + consultations équilibrée
-      const chosen = avail.sort((a, b) => cmp(key(a), key(b))).slice(0, NP);
+      const engages = new Set(promis[k].map(x => x.i).filter(i => avail.includes(i)));   // MAR qui opèrent leurs patients vus en consultation
+      const chosen = [...engages].concat(avail.filter(i => !engages.has(i)).sort((a, b) => cmp(key(a), key(b)))).slice(0, NP);
+      const posteVoulu = {};
+      promis[k].forEach(x => { const p = suiviPoste[x.d + ':' + x.i]; if (p !== undefined && engages.has(x.i)) posteVoulu[x.i] = p; });
       if (chosen.length < NP) warnings.push(`${labelFR(s)} : ${NP - chosen.length} poste(s) de bloc sans MAR`);
       const gard = new Set(garde[k]);
       const cost = [];
@@ -340,7 +361,7 @@
         if (gard.has(i) && LONG.has(p)) continue;
         let c = pc[i][p] / Q[i];
         if (prev[i] === p) c += run[i] === 1 ? -3 : 2;
-        cost.push([gard.has(i) ? 0 : 1, c, i, p]);
+        cost.push([posteVoulu[i] === p ? -1 : gard.has(i) ? 0 : 1, c, i, p]);
       } });
       cost.sort(cmp);
       const posts = Array(NP).fill(null), used = new Set();
@@ -356,6 +377,7 @@
         bDone[i]++; pc[i][p]++; wkBloc[i + wkey] = (wkBloc[i + wkey] || 0) + 1;
         if (RECUP_BLOC && LONG.has(p)) credit[i] += 1 / PR.joursFin18ParRecup;
         nr[i] = prev[i] === p ? (run[i] || 0) + 1 : 1; np[i] = p;
+        promis[k].forEach(x => { if (x.i === i && x.n === 0) suiviPoste[x.d + ':' + i] = p; });
       });
       prev = np; run = nr;
       return posts;
@@ -365,9 +387,22 @@
       date: s, jour: JOURS[dow(s)], semaine: isoWeek(s), statut: statut(s), ferie: cfg.feries[s] || '',
       postes: postesJour[k], rea: reaOrdre[k].filter(x => x !== null), garde: garde[k], repos: [...repos[k]], tp: [...tp[k]],
       demi: demi[k], nuit: nuit[k], reaPrioritaire: r2Pref[k], maternite: matDay[k], consultation: csDay[k], recupRea: rrDay[k], consultNb: csNb[k], recup: rcDay[k],
+      consultPour: SV ? csDay[k].map(i => { const p = suiviPoste[k + ':' + i]; return p === undefined ? null : { poste: p, jours: promis.map((l, m) => (l.some(x => x.i === i && x.d === k) ? days[m] : null)).filter(Boolean) }; }) : null,
     }));
+    // Suivi : jours de bloc promis tenus (MAR au bloc) et sur le poste retenu
+    let suiviPromis = 0, suiviTenus = 0, suiviMemePoste = 0, suiviConsult = 0, suiviConsultOk = 0;
+    if (SV) days.forEach((s, k) => {
+      promis[k].forEach(x => {
+        suiviPromis++;
+        const p = postesJour[k] ? postesJour[k].indexOf(x.i) : -1;
+        if (p >= 0) { suiviTenus++; if (suiviPoste[x.d + ':' + x.i] === p) suiviMemePoste++; }
+      });
+      csDay[k].forEach(i => { suiviConsult++; if (suiviPoste[k + ':' + i] !== undefined) suiviConsultOk++; });
+    });
     const result = { cfg, equipe: P, postes, jours, demiWeekends, warnings };
     result.stats = stats(result);
+    Object.assign(result.stats.synthese, { suiviActif: !!SV, suiviConsult, suiviConsultOk, suiviPromis, suiviTenus, suiviMemePoste,
+      suiviTaux: suiviConsult ? suiviConsultOk / suiviConsult : 0, suiviTauxJours: suiviPromis ? suiviMemePoste / suiviPromis : 0 });
     const ep = etpPourPlafond(result);
     result.stats.synthese.etpPlafondCharge = ep.charge;
     result.stats.synthese.etpPlafondConsult = ep.consultations;

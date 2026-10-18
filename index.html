@@ -272,7 +272,8 @@ function renderSynthese(){
     card('Un temps plein', f1(s.congesTempsPlein + s.recupTempsPlein)+' j', `${s.congesTempsPlein} j de congés + ${f1(s.recupTempsPlein)} j de récupération (+ ${cfg.params.formation} j de formation)`) +
     card('Consultations', f0(s.consultationsParAn)+' / an', `${f1(s.consultationsParJour)} par jour ouvré`) +
     card('MAR en consultation', f1(s.marConsultMoyen)+' / jour', `${consultTexte()} · besoin ${f1(s.marConsultNecessaires)} à ${cfg.consultations.parMarJour} consultations par MAR`) +
-    card('Capacité de consultation', f0(s.capaciteConsultAn)+' / an', `${f1(s.capaciteConsultJour)} par jour · couverture ${f0(s.couvertureConsult*100)} %`, s.couvertureConsult < 0.999 ? 'warn' : 'good');
+    card('Capacité de consultation', f0(s.capaciteConsultAn)+' / an', `${f1(s.capaciteConsultJour)} par jour · couverture ${f0(s.couvertureConsult*100)} %`, s.couvertureConsult < 0.999 ? 'warn' : 'good') +
+    (s.suiviActif ? card('Patients endormis par leur MAR de consultation', f0(s.suiviTaux*100)+' %', `${s.suiviConsultOk} consultations sur ${s.suiviConsult} · ${f0(s.suiviTauxJours*100)} % des jours de bloc prévus tenus sur le même poste`, s.suiviTaux >= 0.95 ? 'good' : 'warn') : '');
   const issues = E.verify(R), w = R.warnings;
   document.getElementById('checks').innerHTML =
     (issues.length ? `<div class="ok bad">⚠ ${issues.length} règle(s) non respectée(s) :<br/>${issues.slice(0,15).map(esc).join('<br/>')}</div>` : '<div class="ok good">✅ Toutes les règles dures sont respectées (gardes, repos de sécurité, réa, bloc long, temps partiel).</div>') +
@@ -345,6 +346,8 @@ function field(path, label, opts={}){
   return `<label>${label}<input type="number" step="${opts.step||1}" value="${v}" onchange="setP('${path}',+this.value)"/></label>`;
 }
 function setReaUn(k,v){ cfg.rea.reaUn[k] = v; recompute(); }
+function setSuivi(k,v){ cfg.consultations.suivi[k] = v; recompute(); }
+const suiviTxt = (j,k) => { const x = (j.consultPour||[])[k]; return x ? ' → ' + R.postes[x.poste].code + ' ' + x.jours.map(d=>E.labelFR(d).slice(0,5)).join(', ') : ''; };
 function setP(path,v){ const [o,k] = path.split('.'); cfg[o][k] = v; recompute(); }
 function renderRegles(){
   document.getElementById('f-gardes').innerHTML =
@@ -376,6 +379,9 @@ function renderRegles(){
     field('consultations.parAn','Consultations par an (besoin)',{step:100}) + field('consultations.marMin','MAR en consultation par jour (minimum)') + field('consultations.marMax','MAR en consultation par jour (maximum)') +
     field('consultations.parMarJour','Consultations par MAR et par jour') +
     `<label>Groupe Réa 1 : consultations au prorata du temps au bloc<select onchange="setP('consultations.rea1ProrataBloc',this.value==='Oui')"><option ${cfg.consultations.rea1ProrataBloc?'selected':''}>Oui</option><option ${cfg.consultations.rea1ProrataBloc?'':'selected'}>Non</option></select></label>` + field('consultations.heuresJour','Heures d\'une journée de consultation',{step:0.5}) +
+    `<label>Roulement consultation → bloc (le MAR endort les patients qu'il a vus)<select onchange="setSuivi('actif',this.value==='Oui')"><option ${cfg.consultations.suivi.actif?'selected':''}>Oui</option><option ${cfg.consultations.suivi.actif?'':'selected'}>Non</option></select></label>` +
+    `<label>Délai consultation → intervention (jours)<input type="number" min="1" value="${cfg.consultations.suivi.delai}" onchange="setSuivi('delai',+this.value)"/></label>` +
+    `<label>Jours de bloc pour les patients d'une consultation<input type="number" min="1" max="5" value="${cfg.consultations.suivi.joursBloc}" onchange="setSuivi('joursBloc',+this.value)"/></label>` +
     `<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:13px">MAR imposés en consultation (vide = ajusté) :${E.JOURS.slice(0,5).map((j,d)=>{const v=(cfg.consultations.parJourSemaine||[])[d];return `<span style="white-space:nowrap">${j} <input type="number" min="0" style="width:52px;padding:4px 6px;border:1px solid var(--bd);border-radius:4px" value="${v===null||v===undefined?'':v}" onchange="setConsultJour(${d},this.value)"/></span>`;}).join('')}</div>`;
   document.getElementById('f-annee').innerHTML = `<label>Année<input type="number" value="${cfg.annee}" onchange="cfg.annee=+this.value;recompute()"/></label>`;
   let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th><th title="Salles de 8h : un MAR dans chaque salle au lieu d'un MAR pour 2 salles">1 MAR / salle</th></tr>`;
@@ -427,7 +433,7 @@ function renderTableau(){
       const posts = j.postes ? j.postes.map((i,p)=>`<td class="${R.postes[p].fin18?'k-long':'k-bloc'}">${nom(i)}</td>`).join('') : `<td colspan="${R.postes.length}">${esc(j.ferie||'')}</td>`;
       const rea = j.statut==='Ouvert' ? j.rea.map(i=>`<td class="k-rea">${nom(i)}</td>`).join('') : `<td colspan="${cfg.rea.nombre}"></td>`;
       const g = j.garde.map(i=>nom(i)+(j.nuit.includes(i)?' (nuit)':'')).join(', ');
-      const csn = cfg.consultations.marMax, cs = j.statut==='Ouvert' ? Array.from({length:csn},(_,k)=>`<td class="k-cs">${nom((j.consultation||[])[k])}</td>`).join('') : `<td colspan="${csn}"></td>`;
+      const csn = cfg.consultations.marMax, cs = j.statut==='Ouvert' ? Array.from({length:csn},(_,k)=>`<td class="k-cs">${nom((j.consultation||[])[k])}${suiviTxt(j,k)}</td>`).join('') : `<td colspan="${csn}"></td>`;
       const mat = cfg.maternite.actif ? `<td class="${j.maternite.length?'k-mat':''}">${j.maternite.map(nom).join(', ')}</td>` : '';
       h += `<tr class="${tr}"><td>${E.labelFR(j.date).slice(0,5)}</td><td class="l">${j.jour}</td><td class="l">${esc(j.statut==='Ouvert'?'':j.ferie||j.statut)}</td>${posts}${rea}${cs}${mat}<td class="k-garde">${g}</td><td class="${j.demi.length?'k-demi':''}">${j.demi.map(nom).join(', ')}</td><td class="k-repos">${j.repos.map(nom).join(', ')}</td>${R.stats.synthese.recupReaTotal?`<td class="${(j.recupRea||[]).length?'k-rc':''}">${(j.recupRea||[]).map(nom).join(', ')}</td>`:''}${cfg.params.recupDansSemaineBloc?`<td class="${(j.recup||[]).length?'k-rc':''}">${(j.recup||[]).map(nom).join(', ')}</td>`:''}<td class="k-tp">${j.tp.map(nom).join(', ')}</td>${(()=>{const c=R.stats.parJour[j.date]; return c?`<td>${c.hb}</td><td class="b ${c.libres<0?'pos':'neg'}">${f1(c.libres)}</td>`:'<td></td><td></td>';})()}</tr>`;
     });
@@ -492,6 +498,7 @@ function leviers(){
   L.push([C.params.recupDansSemaineBloc ? 'Récupération 18h prise hors bloc' : 'Récupération 18h posée dans la semaine de bloc', c => { c.params.recupDansSemaineBloc = !C.params.recupDansSemaineBloc; }]);
   const dbl = C.postes.findIndex(p => p.actif !== false && !p.fin18 && !p.unParSalle && /\+/.test(p.salles) && p.heures.every(h => h >= 8));
   if(dbl >= 0) L.push([`1 MAR par salle sur ${C.postes[dbl].code} (${C.postes[dbl].salles})`, c => { c.postes[dbl].unParSalle = true; }]);
+  L.push([C.consultations.suivi.actif ? 'Sans roulement consultation → bloc' : 'Roulement consultation → bloc (le MAR endort ses patients)', c => { c.consultations.suivi.actif = !C.consultations.suivi.actif; }]);
   L.push(['+1 MAR à temps plein', c => { c.equipe.push({code:'MAR +1',q:1,qg:1,we:true,demiWE:false,rea:true,consult:true,mater:true,note:'simulation'}); }]);
   if(C.params.reserveImprevus > 0) L.push(['Sans réserve pour imprévus', c => { c.params.reserveImprevus = 0; }]);
   return L;
@@ -594,6 +601,7 @@ function orgData(){
       ['Journées de bloc', f0(P.reduce((a,m)=>a+m.bloc,0)), `dont ${f0(P.reduce((a,m)=>a+m.fin18,0))} finies à 18h (${longs.map(p=>p.code).join(', ')})`],
       ['Journées de réa', f0(P.reduce((a,m)=>a+m.rea,0)), ''],
       ['Journées de consultation', f0(P.reduce((a,m)=>a+m.consult,0)), `${f0(s.capaciteConsultAn)} consultations pour un besoin de ${f0(s.consultationsParAn)} (${f0(s.couvertureConsult*100)} %)`],
+      ...(s.suiviActif ? [['Roulement consultation → bloc', f0(s.suiviTaux*100) + ' %', `consultations dont le MAR endort les patients ${c.consultations.suivi.delai} jours plus tard, sur ${c.consultations.suivi.joursBloc} jours de bloc au même poste (${f0(s.suiviTauxJours*100)} % des jours tenus)`]] : []),
       ['Journées de maternité', f0(s.materniteTotal), ''],
       ['Gardes', f0(s.gardesParAn), `${f0(P.reduce((a,m)=>a+m.gardes-m.gardesWE,0))} en semaine · ${f0(P.reduce((a,m)=>a+m.gardesWE,0))} WE / fériés · ${f1(s.gardesParEtpGarde)} par ETP de garde`],
     ]],
@@ -717,7 +725,8 @@ function renderConsignes(){
     <li>Effectif pour ${cfg.params.plafond} h par semaine (temps plein, gardes comprises) : ${R.stats.synthese.etpPlafondCharge ? f1(R.stats.synthese.etpPlafondCharge) : '> 80'} ETP si la charge actuelle est répartie entre plus de MAR.</li></ul>
   <h3>Consultations</h3><ul>
     <li>MAR en consultation : ${consultTexte()} (${cfg.consultations.heuresJour} h, ${cfg.consultations.parMarJour} consultations chacun), ajusté pour atteindre ${f0(cfg.consultations.parAn)} consultations par an (capacité ${f0(R.stats.synthese.capaciteConsultAn)}).</li>
-    <li>Poste réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.</li></ul>
+    <li>Poste réparti au prorata de la quotité entre les MAR qui consultent ; le MAR de consultation peut prendre la garde à 16h.</li>${cfg.consultations.suivi.actif ? `
+    <li>Roulement consultation → bloc : le MAR qui consulte un jour J voit les patients qu'il endormira à partir de J+${cfg.consultations.suivi.delai}, sur ${cfg.consultations.suivi.joursBloc} jours ouvrés consécutifs au même poste (choisi parmi les MAR libres ces jours-là : ni réa, ni repos, ni temps partiel). Tenu pour ${f0(R.stats.synthese.suiviTaux*100)} % des consultations.</li>` : ''}</ul>
   <h3>Récupération (objectif)</h3><ul>
     <li>Objectif : libérer le plus de jours de récupération. Jours libérables = jours sans poste restant libres après congés, formation et récupérations, moins une réserve de ${cfg.params.reserveImprevus} MAR par jour pour les imprévus, répartis au prorata de la quotité.</li>
     <li>Actuellement : ${f1(R.stats.synthese.recupTotaleTempsPlein)} jours de récupération possibles par temps plein et par an (${f1(R.stats.synthese.recupReglementaireTempsPlein)} réglementaires + ${f1(R.stats.synthese.recupLiberableParEtp)} libérables). Leviers : onglet Simulations.</li></ul>
@@ -737,7 +746,7 @@ function exportXlsx(){
   const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)+(k<2&&R.equipe.some(m=>m.rea1)?' (groupe)':'')), Array.from({length:cfg.consultations.marMax},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Récup. réa','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(
     j.postes?j.postes.map(nom):R.postes.map(()=>''), j.statut==='Ouvert'?j.rea.map(nom):Array(cfg.rea.nombre).fill(''),
-    j.statut==='Ouvert'?Array.from({length:cfg.consultations.marMax},(_,k)=>nom((j.consultation||[])[k])):Array(cfg.consultations.marMax).fill(''),
+    j.statut==='Ouvert'?Array.from({length:cfg.consultations.marMax},(_,k)=>nom((j.consultation||[])[k])+suiviTxt(j,k)):Array(cfg.consultations.marMax).fill(''),
     [j.maternite.map(nom).join(', '),(j.recup||[]).map(nom).join(', '),(j.recupRea||[]).map(nom).join(', '),nom(j.garde[0]),nom(j.garde[1]),j.nuit.map(nom).join(', '),j.demi.map(nom).join(', '),j.repos.map(nom).join(', '),j.tp.map(nom).join(', ')].concat((c=>c?[c.hb,+c.libres.toFixed(1)]:['',''])(R.stats.parJour[j.date]))));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([tH].concat(tR)), 'Tableau de service');
   const vH = ['Date','Jour'].concat(R.equipe.map(p=>p.code));

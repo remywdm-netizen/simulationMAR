@@ -244,3 +244,18 @@ test('option 1 MAR par salle sur une salle de 8h', () => {
   r.jours.filter(j => j.statut === 'Ouvert').forEach(j => assert.equal(j.postes.length, 9));
   assert.ok(r.stats.synthese.marDisponiblesParJour < S.synthese.marDisponiblesParJour - 0.9);
 });
+
+test('option roulement consultation → bloc : le MAR endort les patients qu\'il a vus', () => {
+  assert.equal(S.synthese.suiviActif, false);
+  const cfg = E.mergeConfig(); cfg.consultations.suivi.actif = true;
+  const r = E.generate(cfg), s = r.stats.synthese;
+  assert.deepEqual(E.verify(r), []);
+  assert.ok(s.suiviTaux > 0.9 && s.suiviTauxJours > 0.9, s.suiviTaux + ' / ' + s.suiviTauxJours);
+  let ok = 0, tot = 0;
+  r.jours.forEach(j => (j.consultPour || []).forEach((x, k) => {
+    if (!x) return;
+    x.jours.forEach(d => { tot++; const jb = r.jours.find(y => y.date === d); if (jb.postes && jb.postes[x.poste] === j.consultation[k]) ok++; });
+    assert.ok(x.jours[0] >= E.addDays(j.date, 7));
+  }));
+  assert.ok(tot > 900 && ok / tot > 0.9, ok + ' / ' + tot);
+});
