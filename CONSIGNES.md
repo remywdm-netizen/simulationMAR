@@ -64,14 +64,14 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   autres MAR sont posés de préférence les jours où le moins de MAR sont déjà absents.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
-- **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long).
+- **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long). Option : 1 jour par **dimanche de garde** (½ pour une demi-garde), désactivée par défaut (onglet Règles, « Récupération par dimanche de garde »).
 - Option « récupération posée dans la semaine de bloc » : ce jour est placé dans le tableau dès que les 4 jours
   sont atteints (premier jour libre hors garde, dans la même semaine si possible) ; un collègue couvre le poste.
   Moyennes inchangées, mais semaines de bloc long allégées (≈ 46 h au lieu de 51 h gardes comprises).
 
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
-- h/sem = moyenne hors vacances : heures travaillées ÷ semaines de l'année hors fériés, congés et jours de temps partiel ; formation comptée 8 h, jours de récupération (samedis de garde, 18h, Réa 1 17h) comptés 0 h : une récupération baisse le temps de travail.
+- h/sem = moyenne hors vacances : heures travaillées ÷ semaines de l'année hors fériés, congés et jours de temps partiel ; formation comptée 8 h, jours de récupération (samedis et dimanches de garde, 18h, Réa 1 17h) comptés 0 h : une récupération baisse le temps de travail.
 - Effectif pour 48 h (temps plein, gardes comprises, charge actuelle répartie) : environ **21,5 ETP** avec les règles par défaut.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la
   réglementation applicable).

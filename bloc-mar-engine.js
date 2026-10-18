@@ -62,6 +62,7 @@
     params: {
       conges: 32, rtt: 0, formation: 10,         // jours ouvrés par ETP (proratisés à la quotité)
       recupSamedi: 1,                            // jours de récupération par samedi de garde (demi-garde : la moitié)
+      recupDimanche: 0,                          // jours de récupération par dimanche de garde (0 = non ; demi-garde : la moitié)
       joursFin18ParRecup: 4,                     // 1 jour de récupération pour N jours finis à 18h
       recupDansSemaineBloc: false,               // poser cette récupération dans le tableau, juste après les jours finis à 18h
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
@@ -387,7 +388,7 @@
     const R1 = cfg.rea.reaUn && cfg.rea.reaUn.actif && P.some(m => m.rea1) ? cfg.rea.reaUn : null;   // option Réa 1 jusqu'à 17h
     const per = P.map((m, i) => {
       const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, recupRea: 0, reaUn: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
-        postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
+        postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, dimanches: 0, dimanchesDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
@@ -409,19 +410,21 @@
           if (a.garde === 'DJ') { s.demi++; hg = G.heuresDemiJour; }
           else { s.gardes++; if (j.statut !== 'Ouvert') s.gardesWE++; if (a.garde === 'GN') s.nuits++; hg = { G16: G.heuresSemaine, G24: G.heuresWE, GN: G.heuresNuit }[a.garde]; }
           if (d === 5) { if (a.garde === 'DJ' || a.garde === 'GN') s.samedisDemi++; else s.samedis++; }   // demi-garde : demi-récupération
+          if (d === 6) { if (a.garde === 'DJ' || a.garde === 'GN') s.dimanchesDemi++; else s.dimanches++; }
         }
         s.heuresJour += hj; s.heuresGarde += hg;
         const w = j.semaine; s.semaines[w] = (s.semaines[w] || 0) + hj + hg;
       });
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
       s.recupSamedis = (s.samedis + s.samedisDemi / 2) * PR.recupSamedi;
+      s.recupDimanches = (s.dimanches + s.dimanchesDemi / 2) * (PR.recupDimanche || 0);
       s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
       s.recupReaUn = R1 && R1.joursParRecup > 0 ? s.reaUn / R1.joursParRecup : 0;
-      s.recup = s.recupSamedis + s.recupFin18 + s.recupRea + s.recupReaUn;
+      s.recup = s.recupSamedis + s.recupDimanches + s.recupFin18 + s.recupRea + s.recupReaUn;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
       // Absences prises sur les jours sans poste. Temps de travail : formation comptée 8 h, récupérations 0 h (elles font
       // baisser le temps de travail) ; moyenne hors vacances : semaines de congés (et RTT) retirées avec leurs heures.
-      const recupHB = s.recupSamedis + s.recupReaUn + Math.max(s.recupFin18 - s.rc, 0);
+      const recupHB = s.recupSamedis + s.recupDimanches + s.recupReaUn + Math.max(s.recupFin18 - s.rc, 0);
       const absHB = s.conges + s.rtt + recupHB;
       s.heuresSansGarde = s.heuresJour - (recupHB + s.conges + s.rtt) * cfg.hb.heures;
       s.semainesPresence = m.q > 0 ? (nOpen - s.tp - s.conges - s.rtt) / (5 * m.q) : 0;   // semaines hors vacances (fériés, congés et TP retirés)
@@ -447,7 +450,7 @@
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
       materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
-      recupSamedisTotal: sum(s => s.recupSamedis), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), recupReaUnTotal: sum(s => s.recupReaUn), tpTotal: sum(s => s.tp),
+      recupSamedisTotal: sum(s => s.recupSamedis), recupDimanchesTotal: sum(s => s.recupDimanches), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), recupReaUnTotal: sum(s => s.recupReaUn), tpTotal: sum(s => s.tp),
       absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
       congesTempsPlein: PR.conges, recupTempsPlein: avg(pleins, s => s.recup),
     };
@@ -590,6 +593,7 @@
     const mat = MAT.actif ? MAT.nombre * open.filter(j => MAT.jours[dow(j.date)]).length : 0;
     const gSem = G.parJour * nOpen, gWE = G.parJour * (jours.length - nOpen);
     const samedis = G.parJour * jours.filter(j => dow(j.date) === 5).length;
+    const dimanches = G.parJour * jours.filter(j => dow(j.date) === 6).length;
     const fin18 = postes.filter(p => p.fin18).length * nOpen;
     const recupRea = result.equipe.filter(m => m.rea1).length >= 2 && cfg.rea.nombre >= 2
       ? jours.reduce((a, j) => a + (j.recupRea || []).length, 0) : 0;   // récupérations du groupe Réa 1 (semaine en Réa 2)
@@ -599,7 +603,7 @@
     const reaUn = R1 ? open.length : 0, recupReaUn = R1 && R1.joursParRecup > 0 ? reaUn / R1.joursParRecup : 0;
     const hRea = rea * cfg.rea.heures + reaUn * (R1 ? R1.heures - cfg.rea.heures : 0) + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
-      const recup = (samedis * PR.recupSamedi + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N;
+      const recup = (samedis * PR.recupSamedi + dimanches * (PR.recupDimanche || 0) + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
       const reste = N * jt - (bloc + rea + mat + cons + repos);
       // formation : 8 h ; récupérations : 0 h ; semaines hors vacances (fériés, congés et RTT retirés)

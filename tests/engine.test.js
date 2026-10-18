@@ -222,3 +222,15 @@ test('option Réa 1 jusqu\'à 17h : 9 h et 1 jour de récupération pour 8 jours
   assert.ok(Math.abs(r.stats.synthese.recupReaUnTotal - jours / 8) < 1e-9);
   assert.equal(S.synthese.recupReaUnTotal, 0);                                  // désactivée par défaut
 });
+
+test('option récupération par dimanche de garde', () => {
+  assert.equal(S.synthese.recupDimanchesTotal, 0);                              // désactivée par défaut
+  const cfg = E.mergeConfig(); cfg.params.recupDimanche = 1;
+  const r = E.generate(cfg), s = r.stats.synthese;
+  assert.deepEqual(E.verify(r), []);
+  r.stats.parMar.forEach(m => assert.equal(m.recupDimanches, m.dimanches + m.dimanchesDemi / 2));
+  const dim = r.jours.filter(j => E.dow(j.date) === 6).length;
+  assert.ok(Math.abs(s.recupDimanchesTotal - 2 * dim) < 1e-9, String(s.recupDimanchesTotal));
+  assert.ok(s.hSemAvecGarde < S.synthese.hSemAvecGarde);                         // la récupération baisse le temps de travail
+  assert.ok(s.recupReglementaireTempsPlein > S.synthese.recupReglementaireTempsPlein);
+});
