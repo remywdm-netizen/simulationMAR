@@ -152,7 +152,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <h2>Consultations d'anesthésie</h2>
     <p class="hint">Un nombre imposé peut être fixé pour certains jours (par exemple 1 seul MAR le mercredi pour y regrouper les absences). Les autres jours, le minimum de MAR est en consultation ; un MAR de plus (jusqu'au maximum) est ajouté juste le nombre de jours nécessaire pour atteindre le volume annuel, répartis régulièrement sur l'année. Affectation au prorata de la quotité parmi les MAR cochés « Consult. » dans l'équipe.</p>
     <div class="form" id="f-consult"></div>
-    <h2>Postes de bloc (1 MAR pour 2 salles)</h2>
+    <h2>Postes de bloc (1 MAR pour 2 salles ; option 1 MAR par salle sur les salles de 8h)</h2>
     <p class="hint">Heures de présence par jour. « Après 16h » = heures retirées un jour de garde (la garde commence à 16h). « Fin 18h » : poste interdit au MAR de garde, ouvre droit à la récupération des jours finis à 18h.</p>
     <div class="tbl-wrap"><table id="tbl-postes"></table></div>
     <h2>Année et jours fériés</h2>
@@ -378,13 +378,14 @@ function renderRegles(){
     `<label>Groupe Réa 1 : consultations au prorata du temps au bloc<select onchange="setP('consultations.rea1ProrataBloc',this.value==='Oui')"><option ${cfg.consultations.rea1ProrataBloc?'selected':''}>Oui</option><option ${cfg.consultations.rea1ProrataBloc?'':'selected'}>Non</option></select></label>` + field('consultations.heuresJour','Heures d\'une journée de consultation',{step:0.5}) +
     `<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:13px">MAR imposés en consultation (vide = ajusté) :${E.JOURS.slice(0,5).map((j,d)=>{const v=(cfg.consultations.parJourSemaine||[])[d];return `<span style="white-space:nowrap">${j} <input type="number" min="0" style="width:52px;padding:4px 6px;border:1px solid var(--bd);border-radius:4px" value="${v===null||v===undefined?'':v}" onchange="setConsultJour(${d},this.value)"/></span>`;}).join('')}</div>`;
   document.getElementById('f-annee').innerHTML = `<label>Année<input type="number" value="${cfg.annee}" onchange="cfg.annee=+this.value;recompute()"/></label>`;
-  let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th></tr>`;
+  let h = `<tr><th>Actif</th><th>Poste</th><th class="l">Bloc</th><th class="l">Salles</th>${E.JOURS.slice(0,5).map(j=>`<th>${j}</th>`).join('')}<th>Après 16h</th><th>Fin 18h</th><th title="Salles de 8h : un MAR dans chaque salle au lieu d'un MAR pour 2 salles">1 MAR / salle</th></tr>`;
   cfg.postes.forEach((p,i) => {
     h += `<tr><td><input type="checkbox" ${p.actif!==false?'checked':''} onchange="setPoste(${i},'actif',this.checked)"/></td><td class="b">${esc(p.code)}</td><td class="l">${esc(p.bloc)}</td>
       <td class="l"><input class="w" type="text" value="${esc(p.salles)}" onchange="setPoste(${i},'salles',this.value)"/></td>
       ${p.heures.map((x,d)=>`<td><input type="number" step="0.5" value="${x}" onchange="setHeure(${i},${d},+this.value)"/></td>`).join('')}
       <td><input type="number" step="0.5" value="${p.apres16}" onchange="setPoste(${i},'apres16',+this.value)"/></td>
-      <td><input type="checkbox" ${p.fin18?'checked':''} onchange="setPoste(${i},'fin18',this.checked)"/></td></tr>`;
+      <td><input type="checkbox" ${p.fin18?'checked':''} onchange="setPoste(${i},'fin18',this.checked)"/></td>
+      <td>${!p.fin18 && /\+/.test(p.salles) ? `<input type="checkbox" ${p.unParSalle?'checked':''} onchange="setPoste(${i},'unParSalle',this.checked)"/>` : ''}</td></tr>`;
   });
   document.getElementById('tbl-postes').innerHTML = h;
   document.getElementById('feries').value = Object.entries(cfg.feries).map(([d,l])=>d+' '+l).join('\n');
@@ -412,7 +413,7 @@ function kcls(code){
   if(/G16h|G24h|G nuit/.test(code)) return 'k-garde';
   if(/^Consult/.test(code)) return 'k-cs';
   if(code==='Repos') return 'k-repos'; if(/^Mat/.test(code)) return 'k-mat'; if(/^Récup/.test(code)) return 'k-rc'; if(code==='TP') return 'k-tp'; if(code==='HB') return 'k-hb'; if(code==='Réa') return 'k-rea';
-  const p = R.postes.find(x=>x.code===code[0]); return p ? (p.fin18 ? 'k-long' : 'k-bloc') : '';
+  const p = R.postes.find(x=>x.code===code.split(' ')[0]); return p ? (p.fin18 ? 'k-long' : 'k-bloc') : '';
 }
 function renderTableau(){
   const m = +document.getElementById('mois').value, mm = String(m+1).padStart(2,'0');
@@ -489,6 +490,8 @@ function leviers(){
   L.push([C.maternite.actif ? 'Sans détachement à la maternité' : 'Avec 1 MAR à la maternité (lun-ven)', c => { c.maternite.actif = !C.maternite.actif; }]);
   L.push([C.params.recupDimanche ? 'Sans récupération pour un dimanche de garde' : '1 jour de récupération par dimanche de garde', c => { c.params.recupDimanche = C.params.recupDimanche ? 0 : 1; }]);
   L.push([C.params.recupDansSemaineBloc ? 'Récupération 18h prise hors bloc' : 'Récupération 18h posée dans la semaine de bloc', c => { c.params.recupDansSemaineBloc = !C.params.recupDansSemaineBloc; }]);
+  const dbl = C.postes.findIndex(p => p.actif !== false && !p.fin18 && !p.unParSalle && /\+/.test(p.salles) && p.heures.every(h => h >= 8));
+  if(dbl >= 0) L.push([`1 MAR par salle sur ${C.postes[dbl].code} (${C.postes[dbl].salles})`, c => { c.postes[dbl].unParSalle = true; }]);
   L.push(['+1 MAR à temps plein', c => { c.equipe.push({code:'MAR +1',q:1,qg:1,we:true,demiWE:false,rea:true,consult:true,mater:true,note:'simulation'}); }]);
   if(C.params.reserveImprevus > 0) L.push(['Sans réserve pour imprévus', c => { c.params.reserveImprevus = 0; }]);
   return L;
@@ -571,7 +574,7 @@ function orgData(){
       ['MAR libres par jour ouvré', f1(s.marDisponiblesParJour), `${s.appreciation} · après bloc, réa, consultations, repos et absences moyennes`],
     ]],
     ['Journée type (jour ouvré)', [
-      ['Bloc', f0(R.postes.length) + ' MAR', '1 MAR pour 2 salles : ' + R.postes.map(p => p.code + ' ' + p.salles).join(' · ')],
+      ['Bloc', f0(R.postes.length) + ' MAR', (R.postes.some(p => p.parent) ? '1 MAR pour 2 salles, 1 MAR par salle sur ' + [...new Set(R.postes.filter(p => p.parent).map(p => p.parent))].join(', ') + ' : ' : '1 MAR pour 2 salles : ') + R.postes.map(p => p.code + ' ' + p.salles).join(' · ')],
       ['Réanimation', f0(c.rea.nombre) + ' MAR', `${c.rea.heures} h (8h-16h)${c.rea.reaUn.actif && R.equipe.some(m=>m.rea1) ? `, Réa 1 ${c.rea.reaUn.heures} h (jusqu'à 17h, 1 j de récupération pour ${c.rea.reaUn.joursParRecup} jours)` : ''}, par semaines entières${R.equipe.some(m=>m.rea1) ? ` · groupe de ${R.equipe.filter(m=>m.rea1).length} MAR (${R.equipe.filter(m=>m.rea1).map(m=>m.code).join(', ')}) : Réa 1 (semaine entière) puis Réa 2 la semaine suivante (prioritaire, non obligatoire), 2 semaines sur ${R.equipe.filter(m=>m.rea1).length}` : ''}`],
       ['Consultation', f1(s.marConsultMoyen) + ' MAR', `${consultTexte()} · ${CS.parMarJour} consultations par MAR`],
       ['Maternité', M.actif ? f0(M.nombre) + ' MAR' : '—', M.actif ? `${M.heures} h, ${E.JOURS.slice(0,5).filter((j,d)=>M.jours[d]).join(', ').toLowerCase()}` : 'option désactivée'],
@@ -687,7 +690,7 @@ function renderConsignes(){
   const longs = R.postes.filter(x=>x.fin18).map(x=>x.code).join(', ');
   document.getElementById('consignes').innerHTML = `
   <h3>Bloc opératoire</h3><ul>
-    <li>1 MAR pour 2 salles ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR (règle appliquée par étage).</li>
+    <li>1 MAR pour 2 salles ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR (règle appliquée par étage).${R.postes.some(x=>x.parent) ? ` 1 MAR par salle sur ${[...new Set(R.postes.filter(x=>x.parent).map(x=>x.parent))].join(', ')} (salles de 8h).` : ''}</li>
     <li>${R.postes.length} postes par jour ouvré : ${R.postes.map(x=>`<b>${x.code}</b> ${esc(x.salles)}`).join(' · ')}.</li>
     <li>Bloc court : fin entre 13h et 16h30 ; bloc long (${longs}) : 8h-18h. Au plus ${p.blocMaxSemaine} jours de bloc par semaine et par MAR ; 2 jours consécutifs sur le même poste privilégiés.</li></ul>
   <h3>Réanimation</h3><ul>
