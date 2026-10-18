@@ -11,7 +11,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 | Poste | Bloc | Salles | Horaires |
 |---|---|---|---|
-| A | court (4ᵉ) | Endo 6 + Endo 5 | 8h-16h |
+| A | court (4ᵉ) | Endo 6 + Endo 5 | lun-mar 8h-16h ; mer-ven 8h-13h (Endo Pneumo sans MAR l'après-midi) |
 | B | court | Endo Inter 2 + Scanner 8 Inter | 8h-16h |
 | C | court | Cardio 9 Rythmo + Cardio/Chir 10 | 8h-16h |
 | D | court | Chir 3 + Chir 4 | 8h-16h |

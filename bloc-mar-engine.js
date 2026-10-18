@@ -35,10 +35,11 @@
       '2027-12-25': 'Noël',
     },
     // Postes de bloc : 1 MAR pour 2 salles (nombre impair : la dernière salle a son MAR).
-    // Blocs courts (A à E) : 8h-16h ; bloc long (F, G, H) : 8h-18h.
+    // Blocs courts : B à E 8h-16h, A lun-mar 8h-16h et mer-ven 8h-13h ; bloc long (F, G, H) : 8h-18h.
     // heures = lun..ven ; apres16 = heures au-delà de 16h (retirées un jour de garde) ; fin18 = finit à 18h.
+    versionHoraires: 2,
     postes: [
-      { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
+      { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 5, 5, 5], apres16: 0, fin18: false, unParSalle: false, actif: true },
       { code: 'B', bloc: 'Bloc court (4ᵉ)', salles: 'Endo Inter 2 + Scanner 8 Inter', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
       { code: 'C', bloc: 'Bloc court (4ᵉ)', salles: 'Cardio 9 Rythmo + Cardio/Chir 10', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
       { code: 'D', bloc: 'Bloc court (4ᵉ)', salles: 'Chir 3 + Chir 4', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
@@ -99,11 +100,16 @@
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
     ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
-    // anciens horaires par défaut des blocs courts (A 5 h mer-ven, C/D/E au-delà de 16h) → 8h-16h
-    const ANCIENS = { A: '8,8,5,5,5|0', C: '8,8,8,8,8|0.5', D: '8.5,8.5,8.5,8.5,8.5|0.5', E: '8.5,8.5,8.5,8.5,8.5|0.5' };
-    (out.postes || []).forEach(p => {
-      if (ANCIENS[p.code] && ANCIENS[p.code] === (p.heures || []).join() + '|' + p.apres16) { p.heures = [8, 8, 8, 8, 8]; p.apres16 = 0; }
-    });
+    // Configurations enregistrées avant les horaires 8h-16h : anciens horaires par défaut de C, D, E (au-delà de 16h)
+    // → 8h-16h ; A garde ses horaires (5 h du mercredi au vendredi), y compris s'il avait été passé à 8 h.
+    if (cfg.versionHoraires !== 2) {
+      const ANCIENS = { A: '8,8,8,8,8|0', C: '8,8,8,8,8|0.5', D: '8.5,8.5,8.5,8.5,8.5|0.5', E: '8.5,8.5,8.5,8.5,8.5|0.5' };
+      (out.postes || []).forEach(p => {
+        if (ANCIENS[p.code] !== (p.heures || []).join() + '|' + p.apres16) return;
+        p.heures = p.code === 'A' ? [8, 8, 5, 5, 5] : [8, 8, 8, 8, 8]; p.apres16 = 0;
+      });
+    }
+    out.versionHoraires = 2;
     delete out.rea.recupSemaine2;   // option retirée (pas de récupération propre à la semaine de Réa 2)
     out.rea.reaUn = Object.assign(clone(DEFAULT_CONFIG.rea.reaUn), clone(((cfg || {}).rea || {}).reaUn || {}));
     return out;
