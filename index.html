@@ -692,7 +692,7 @@ function renderConsignes(){
   <h3>Bloc opératoire</h3><ul>
     <li>1 MAR pour 2 salles ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR (règle appliquée par étage).${R.postes.some(x=>x.parent) ? ` 1 MAR par salle sur ${[...new Set(R.postes.filter(x=>x.parent).map(x=>x.parent))].join(', ')} (salles de 8h).` : ''}</li>
     <li>${R.postes.length} postes par jour ouvré : ${R.postes.map(x=>`<b>${x.code}</b> ${esc(x.salles)}`).join(' · ')}.</li>
-    <li>Bloc court : fin entre 13h et 16h30 ; bloc long (${longs}) : 8h-18h. Au plus ${p.blocMaxSemaine} jours de bloc par semaine et par MAR ; 2 jours consécutifs sur le même poste privilégiés.</li></ul>
+    <li>Bloc court (A à E) : 8h-16h ; bloc long (${longs}) : 8h-18h. Au plus ${p.blocMaxSemaine} jours de bloc par semaine et par MAR ; 2 jours consécutifs sur le même poste privilégiés.</li></ul>
   <h3>Réanimation</h3><ul>
     <li>${r.nombre} MAR en réanimation chaque jour ouvré, ${r.heures} h par jour (8h-16h), par semaines entières du lundi au vendredi.</li>
     <li>Une semaine de réa n'est jamais coupée par un repos de sécurité ni un jour de temps partiel (garde possible le vendredi seulement) ; pas de congés pendant une semaine de réa. Quotité minimale : ${r.quotiteMin}.</li>
