@@ -5,6 +5,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Bloc opératoire
 - **1 MAR pour 2 salles** ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR.
+- Option **1 MAR par salle** sur les salles de 8h (postes A à E, hors bloc long) : onglet Règles, colonne « 1 MAR / salle » ; le poste est dédoublé (B → B1, B2).
   La règle s'applique par étage (un MAR ne supervise pas deux étages).
 - 15 salles avec MAR → **8 postes par jour ouvré** :
 

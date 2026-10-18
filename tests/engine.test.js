@@ -234,3 +234,13 @@ test('option récupération par dimanche de garde', () => {
   assert.ok(s.hSemAvecGarde < S.synthese.hSemAvecGarde);                         // la récupération baisse le temps de travail
   assert.ok(s.recupReglementaireTempsPlein > S.synthese.recupReglementaireTempsPlein);
 });
+
+test('option 1 MAR par salle sur une salle de 8h', () => {
+  const cfg = E.mergeConfig(); cfg.postes.find(p => p.code === 'B').unParSalle = true;
+  cfg.postes.find(p => p.code === 'F').unParSalle = true;                       // bloc long : sans effet
+  const r = E.generate(cfg);
+  assert.deepEqual(r.postes.map(p => p.code), ['A', 'B1', 'B2', 'C', 'D', 'E', 'F', 'G', 'H']);
+  assert.deepEqual(r.postes.slice(1, 3).map(p => p.salles), ['Endo Inter 2', 'Scanner 8 Inter']);
+  r.jours.filter(j => j.statut === 'Ouvert').forEach(j => assert.equal(j.postes.length, 9));
+  assert.ok(r.stats.synthese.marDisponiblesParJour < S.synthese.marDisponiblesParJour - 0.9);
+});

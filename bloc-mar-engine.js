@@ -37,11 +37,11 @@
     // Postes de bloc : 1 MAR pour 2 salles (nombre impair : la dernière salle a son MAR).
     // heures = lun..ven ; apres16 = heures au-delà de 16h (retirées un jour de garde) ; fin18 = finit à 18h.
     postes: [
-      { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 5, 5, 5], apres16: 0, fin18: false, actif: true },
-      { code: 'B', bloc: 'Bloc court (4ᵉ)', salles: 'Endo Inter 2 + Scanner 8 Inter', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, actif: true },
-      { code: 'C', bloc: 'Bloc court (4ᵉ)', salles: 'Cardio 9 Rythmo + Cardio/Chir 10', heures: [8, 8, 8, 8, 8], apres16: 0.5, fin18: false, actif: true },
-      { code: 'D', bloc: 'Bloc court (4ᵉ)', salles: 'Chir 3 + Chir 4', heures: [8.5, 8.5, 8.5, 8.5, 8.5], apres16: 0.5, fin18: false, actif: true },
-      { code: 'E', bloc: 'Bloc court (4ᵉ)', salles: 'Chir 1 + Chir 7', heures: [8.5, 8.5, 8.5, 8.5, 8.5], apres16: 0.5, fin18: false, actif: true },
+      { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 5, 5, 5], apres16: 0, fin18: false, unParSalle: false, actif: true },
+      { code: 'B', bloc: 'Bloc court (4ᵉ)', salles: 'Endo Inter 2 + Scanner 8 Inter', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
+      { code: 'C', bloc: 'Bloc court (4ᵉ)', salles: 'Cardio 9 Rythmo + Cardio/Chir 10', heures: [8, 8, 8, 8, 8], apres16: 0.5, fin18: false, unParSalle: false, actif: true },
+      { code: 'D', bloc: 'Bloc court (4ᵉ)', salles: 'Chir 3 + Chir 4', heures: [8.5, 8.5, 8.5, 8.5, 8.5], apres16: 0.5, fin18: false, unParSalle: false, actif: true },
+      { code: 'E', bloc: 'Bloc court (4ᵉ)', salles: 'Chir 1 + Chir 7', heures: [8.5, 8.5, 8.5, 8.5, 8.5], apres16: 0.5, fin18: false, unParSalle: false, actif: true },
       { code: 'F', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 11 Robot + Ch 12 Robot', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'G', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 13 + Ch 14 (Risque 4)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
       { code: 'H', bloc: 'Bloc long (3ᵉ)', salles: 'Ch 15 (seule)', heures: [10, 10, 10, 10, 10], apres16: 2, fin18: true, actif: true },
@@ -120,11 +120,21 @@
     return generateCore(cfg, poids);
   }
 
+  // Postes du jour : un poste par MAR. « 1 MAR par salle » (salles de 8h, hors bloc long) : le poste est
+  // dédoublé, un MAR par salle (A → A1, A2).
+  function postesActifs(cfg) {
+    return cfg.postes.filter(p => p.actif !== false).flatMap(p => {
+      const salles = String(p.salles || '').split(/\s*\+\s*/).filter(Boolean);
+      if (!p.unParSalle || p.fin18 || salles.length < 2) return [p];
+      return salles.map((s, k) => Object.assign({}, p, { code: p.code + (k + 1), salles: s, heures: p.heures.slice(), unParSalle: false, parent: p.code }));
+    });
+  }
+
   function generateCore(userCfg, poidsConsult) {
     const cfg = mergeConfig(userCfg);
     const P = cfg.equipe.map(m => Object.assign({ we: true, demiWE: false, rea: true, rea1: false, mater: true, consult: true, joursFixes: null }, m, { q: +m.q || 0, qg: +m.qg || 0 }));
     const n = P.length;
-    const postes = cfg.postes.filter(p => p.actif !== false);
+    const postes = postesActifs(cfg);
     const NP = postes.length;
     const LONG = new Set(postes.map((p, i) => (p.fin18 ? i : -1)).filter(i => i >= 0));
     const G = cfg.gardes, PR = cfg.params;
