@@ -324,7 +324,7 @@ function renderPjCtrls(){
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
     .sort((a,b) => a[0].naissance - b[0].naissance);
-  document.getElementById('pj-indiv').innerHTML = vieux.length ? `<div class="pj-ih">Gardes après ${p.ageFinGardes} ans, par praticien <span class="hint" style="margin:0">(règle générale : ${p.gardesApresPct} %)</span></div><div class="pj-il">` +
+  document.getElementById('pj-indiv').innerHTML = vieux.length ? `<div class="pj-ih">Gardes après ${p.ageFinGardes} ans, par praticien <span class="hint" style="margin:0">(règle générale : ${p.gardesApresPct} % ; un MAR qui continue les gardes ne fait pas de demi-garde)</span></div><div class="pj-il">` +
     vieux.map(([m,i]) => { const v = m.gardesApres === null || m.gardesApres === undefined || m.gardesApres === '' ? '' : String(m.gardesApres);
       return `<label class="pj-i ${v !== '' ? 'on' : ''}" title="${p.ageFinGardes} ans en ${m.naissance + p.ageFinGardes} · retraite en ${m.naissance + p.ageRetraite}">${esc(m.code)} <small>${m.naissance + p.ageFinGardes}</small>
         <select onchange="setGardesApres(${i},this.value)"><option value="" ${v===''?'selected':''}>règle</option>${[0,25,50,75,100].map(x=>`<option value="${x}" ${v===String(x)?'selected':''}>${x} %</option>`).join('')}</select></label>`; }).join('') + `</div>`

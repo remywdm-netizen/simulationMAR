@@ -322,6 +322,10 @@ test('projection : gardes forcées pour un praticien de 60 ans et plus', () => {
   cfg.equipe[1].gardesApres = 0;                                                 // forcé à 0 malgré la règle générale
   assert.equal(E.equipeAnnee(cfg, 2030, false).find(m => m.code === 'MAR 02').qg, 0);
   assert.equal(E.projectionAnnee(cfg, 2030, false, {}, true).alertes, 0);
+  const avec = E.equipeAnnee(cfg, 2030, true);                                   // demi-gardes : seulement ceux qui ne gardent plus
+  assert.equal(avec.find(m => m.code === 'MAR 02').demiWE, true);                // forcé à 0 % : demi-gardes
+  assert.equal(avec.find(m => m.code === 'MAR 03').demiWE, false);               // 50 % : continue les gardes, pas de demi-garde
+  assert.equal(avec.find(m => m.code === 'MAR 06').demiWE, false);               // règle générale 100 % (MAR 04 : pas de quotité de garde)
 });
 
 test('projection : demi-gardes des fêtes (jours fériés ou de week-end)', () => {

@@ -465,7 +465,7 @@
       if (age !== null && age >= PJ.ageFinGardes) {
         // part des gardes conservée : réglage individuel (gardesApres, en %) sinon règle générale
         const pct = m.gardesApres !== null && m.gardesApres !== undefined && m.gardesApres !== '' ? +m.gardesApres : +PJ.gardesApresPct || 0;
-        r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(pct, 0), 100)) / 100; r.demiWE = !!demi60 || !!m.demiWE; r.plus60 = true; }
+        r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(pct, 0), 100)) / 100; r.demiWE = r.qg > 0 ? false : !!demi60 || !!m.demiWE; r.plus60 = true; }   // continue les gardes : pas de demi-garde
       out.push(r);
     };
     const retraits = new Set((PJ.mouvements || []).filter(x => x.type === 'retrait' && +x.annee <= annee).map(x => x.code));
