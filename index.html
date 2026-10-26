@@ -445,28 +445,30 @@ function pjRenduAnnee(sansGraphes){
   const i = PJ.ans.indexOf(pjAnnee); document.getElementById('pj-yv').textContent = pjAnnee;
   if(i < 0){ document.getElementById('pj-eq').innerHTML = '<span class="hint">Calcul en cours…</span>'; return; }
   if(!sansGraphes){ renderProjection(true); return; }
-  const sc = pjChart === 'avec' ? PJ.avec : PJ.sans, r = sc[i], S = PJ.sans[i], p = cfg.projection, y0 = cfg.annee;
+  const sc = pjChart === 'avec' ? PJ.avec : PJ.sans, r = sc[i], S = sc[i], p = cfg.projection, y0 = cfg.annee;
   // saison de fin d'année : 24, 25 et 31 décembre de l'année, 1er janvier de l'année suivante
-  const j1s = PJ.sans[i+1] ? PJ.sans[i+1].nouvelAn[y0+'-01-01'] : null;
+  const j1s = sc[i+1] ? sc[i+1].nouvelAn[y0+'-01-01'] : null, j1d = sc[i+1] ? sc[i+1].nouvelAnDemi[y0+'-01-01'] : null;
   const noel = Object.values(S.noel).flat(), na = (S.nouvelAn[y0+'-12-31'] || []).concat(j1s || []);
+  const demiF = Object.values(S.noelDemi).flat().concat(S.nouvelAnDemi[y0+'-12-31'] || [], j1d || []);
   const M = r.membres.slice().sort((a,b) => (b.age ?? -1) - (a.age ?? -1));
   const col = m => m.q === 0 ? '#cbd5e1' : m.plus60 ? (m.qg > 0 ? '#f59e0b' : m.demi > 0 ? '#c084fc' : '#e5e7eb') : /\(rempl\./.test(m.code) ? '#86efac' : '#93c5fd';
   const w = a => a == null ? 0 : Math.max(4, Math.min(100, (a - 25) / (p.ageRetraite - 25) * 100));
-  document.getElementById('pj-eq').innerHTML = `<div class="pj-leg"><i style="background:#93c5fd"></i>garde · <i style="background:#86efac"></i>remplaçant · ${p.gardesApresPct ? `<i style="background:#f59e0b"></i>${p.ageFinGardes} ans et +, garde ${p.gardesApresPct} % · ` : ''}<i style="background:#c084fc"></i>${p.ageFinGardes} ans et +, demi-gardes · <i style="background:#e5e7eb"></i>${p.ageFinGardes} ans et +, sans garde · 🎄 Noël · 🥂 Nouvel An (31 déc. ou 1er janv. suivant)</div>` +
+  document.getElementById('pj-eq').innerHTML = `<div class="pj-leg"><i style="background:#93c5fd"></i>garde · <i style="background:#86efac"></i>remplaçant · ${p.gardesApresPct ? `<i style="background:#f59e0b"></i>${p.ageFinGardes} ans et +, garde ${p.gardesApresPct} % · ` : ''}<i style="background:#c084fc"></i>${p.ageFinGardes} ans et +, demi-gardes · <i style="background:#e5e7eb"></i>${p.ageFinGardes} ans et +, sans garde · 🎄 Noël · 🥂 Nouvel An (31 déc. ou 1er janv. suivant) · ½ demi-garde de fête</div>` +
     M.map(m => `<div class="pj-m" title="${esc(m.code)} · ${m.age != null ? m.age + ' ans' : 'âge inconnu'} · ${f0(m.gardes)} gardes${m.demi ? ' · ' + f0(m.demi) + ' demi-gardes' : ''} · ${f1(m.hAvec)} h/sem avec garde, ${f1(m.hSans)} sans">
       <span class="pj-n">${esc(m.code.replace(/ \(rempl\. (\d+)\)/, ' ↻$1'))}</span><span class="pj-b"><span style="width:${w(m.age)}%;background:${col(m)}"></span><em>${m.age != null ? m.age + ' ans' : '—'}</em></span>
-      <span class="pj-g">${f0(m.gardes)}${m.demi ? '+' + f0(m.demi) + '½' : ''}</span><span class="pj-f">${noel.includes(m.code) ? '🎄' : ''}${na.includes(m.code) ? '🥂' : ''}</span></div>`).join('');
+      <span class="pj-g">${f0(m.gardes)}${m.demi ? '+' + f0(m.demi) + '½' : ''}</span><span class="pj-f">${noel.includes(m.code) ? '🎄' : ''}${na.includes(m.code) ? '🥂' : ''}${demiF.includes(m.code) ? '½' : ''}</span></div>`).join('');
   const age = p.ageFinGardes, n = x => x == null ? '—' : f1(x), l = x => (x || []).map(esc).join(', ') || '—';
+  const fl = (g, d) => l(g) + ((d || []).length ? ` · <span title="demi-garde de jour (8h-20h)">½ ${d.map(esc).join(', ')}</span>` : '');
   document.getElementById('pj-ykpi').innerHTML = `<div class="pj-yk" style="justify-content:flex-start"><b>${pjAnnee}</b>&nbsp;· ${r.effectif} MAR · ${r.gardeurs} qui gardent · ${r.nbPlus60} de ${age} ans et + · ${r.nbRemplacants} remplaçants</div>
     <div class="pj-yk"><span>Gardes / an d'un temps plein</span><b>${n(r.gardesTempsPlein)}</b></div>
     <div class="pj-yk"><span>Moins de ${age} ans : h/sem avec garde</span><b>${n(r.hAvecMoins60)}</b></div>
     <div class="pj-yk"><span>Moins de ${age} ans : h/sem sans garde</span><b>${n(r.hSansMoins60)}</b></div>
     <div class="pj-yk"><span>${age} ans et + : h/sem ${pjChart === 'avec' ? 'avec demi-gardes' : 'avec gardes'}</span><b>${n(r.hAvecPlus60)}</b></div>
     <div class="pj-yk"><span>MAR libres / jour</span><b>${f1(r.marDisponiblesParJour)}</b></div>
-    <div class="pj-yk"><span>🎄 24 décembre ${pjAnnee}</span>${l(S.noel[y0+'-12-24'])}</div>
-    <div class="pj-yk"><span>🎄 25 décembre ${pjAnnee}</span>${l(S.noel[y0+'-12-25'])}</div>
-    <div class="pj-yk"><span>🥂 31 décembre ${pjAnnee}</span>${l(S.nouvelAn[y0+'-12-31'])}</div>
-    <div class="pj-yk"><span>🥂 1er janvier ${pjAnnee + 1}</span>${j1s ? l(j1s) : '—'}</div>
+    <div class="pj-yk"><span>🎄 24 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-24'], S.noelDemi[y0+'-12-24'])}</div>
+    <div class="pj-yk"><span>🎄 25 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-25'], S.noelDemi[y0+'-12-25'])}</div>
+    <div class="pj-yk"><span>🥂 31 décembre ${pjAnnee}</span>${fl(S.nouvelAn[y0+'-12-31'], S.nouvelAnDemi[y0+'-12-31'])}</div>
+    <div class="pj-yk"><span>🥂 1er janvier ${pjAnnee + 1}</span>${j1s ? fl(j1s, j1d) : '—'}</div>
     ${r.alertes ? `<div class="pj-yk warn">⚠ ${r.alertes} alerte(s) dans le planning de cette année</div>` : ''}`;
 }
 function renderProjectionTables(){
@@ -475,19 +477,19 @@ function renderProjectionTables(){
   let h = `<h2>Par année</h2><p class="hint">« sans / avec ½ » = sans ou avec demi-gardes de jour le week-end pour les MAR de ${age} ans et plus. h/sem = moyenne hors vacances. Temps plein = MAR à 100 % qui gardent à 100 %.</p>
     <div class="tbl-wrap"><table><tr><th>Année</th><th>MAR</th><th>ETP</th><th>MAR qui gardent</th><th>${age} ans et +</th><th>Remplaçants</th><th>Gardes / an temps plein</th><th>Heures de garde / an temps plein (sans / avec ½)</th><th>&lt; ${age} ans h/sem avec garde (sans / avec ½)</th><th>&lt; ${age} ans h/sem sans garde</th><th>${age} ans et + h/sem (sans / avec ½)</th><th>Demi-gardes / an (${age} ans et +)</th><th>MAR libres / jour</th><th>Alertes</th></tr>` +
     A.map((a,i) => `<tr><td class="b">${a}</td><td>${S[i].effectif}</td><td>${f1(S[i].etp)}</td><td>${S[i].gardeurs}</td><td>${S[i].nbPlus60}</td><td>${S[i].nbRemplacants}</td><td class="b">${n(S[i].gardesTempsPlein)}</td><td>${f0(S[i].heuresGardeMoins60||0)} / ${f0(D[i].heuresGardeMoins60||0)}</td><td class="b">${n(S[i].hAvecMoins60)} / ${n(D[i].hAvecMoins60)}</td><td>${n(S[i].hSansMoins60)}</td><td>${n(S[i].hAvecPlus60)} / ${n(D[i].hAvecPlus60)}</td><td>${n(D[i].demiPlus60)}</td><td>${f1(S[i].marDisponiblesParJour)}</td><td class="${S[i].alertes+D[i].alertes?'pos':''}">${S[i].alertes + D[i].alertes}</td></tr>`).join('') + `</table></div>`;
-  const nm = c => esc(c), y0 = cfg.annee;
-  h += `<h2>Gardes de Noël et du Nouvel An</h2><p class="hint">Rotation sur les années entre les MAR qui gardent le week-end : priorité à ceux qui en ont fait le moins, rapporté à leur quotité de garde et à leurs années de présence, puis à la plus ancienne. Noël = 24 et 25 décembre ; Nouvel An = 31 décembre et 1er janvier suivant. Un MAR ne fait pas Noël et Nouvel An la même saison, ni deux jours de suite.</p>
+  const nm = c => esc(c), y0 = cfg.annee, F = pjChart === 'avec' ? D : S;
+  h += `<h2>Gardes de Noël et du Nouvel An</h2><p class="hint">Rotation sur les années entre les MAR qui gardent le week-end : priorité à ceux qui en ont fait le moins, rapporté à leur quotité de garde et à leurs années de présence, puis à la plus ancienne. Noël = 24 et 25 décembre ; Nouvel An = 31 décembre et 1er janvier suivant. Un MAR ne fait pas Noël et Nouvel An la même saison, ni deux jours de suite. « ½ » = demi-garde de jour (8h-20h) les jours fériés ou de week-end, par les MAR en demi-gardes, même rotation (le collègue de garde ne fait que la nuit). Scénario ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et +.</p>
     <div class="tbl-wrap" style="max-width:1000px"><table><tr><th>Année</th><th class="l">1er janvier</th><th class="l">24 décembre</th><th class="l">25 décembre</th><th class="l">31 décembre</th></tr>` +
-    A.map((a,i) => { const no = S[i].noel, na = S[i].nouvelAn, l = x => (x||[]).map(nm).join(', ');
-      return `<tr><td class="b">${a}</td><td class="l">${l(na[y0+'-01-01'])}</td><td class="l">${l(no[y0+'-12-24'])}</td><td class="l">${l(no[y0+'-12-25'])}</td><td class="l">${l(na[y0+'-12-31'])}</td></tr>`; }).join('') + `</table></div>`;
-  h += `<h2>Par praticien</h2><div class="row"><select onchange="pjVal=this.value;renderProjectionTables()">${[['gardes','Gardes / an'],['hAvec','h/sem avec garde'],['hSans','h/sem sans garde'],['demi','Demi-gardes / an'],['noelCumul','Gardes de Noël (cumul)'],['nouvelAnCumul','Gardes du Nouvel An (cumul)']].map(([k,l])=>`<option value="${k}" ${pjVal===k?'selected':''}>${l}</option>`).join('')}</select>
+    A.map((a,i) => { const no = F[i].noel, na = F[i].nouvelAn, dn = F[i].noelDemi, dna = F[i].nouvelAnDemi, l = (x, d) => (x||[]).map(nm).join(', ') + ((d||[]).length ? ` · ½ ${d.map(nm).join(', ')}` : '');
+      return `<tr><td class="b">${a}</td><td class="l">${l(na[y0+'-01-01'], dna[y0+'-01-01'])}</td><td class="l">${l(no[y0+'-12-24'], dn[y0+'-12-24'])}</td><td class="l">${l(no[y0+'-12-25'], dn[y0+'-12-25'])}</td><td class="l">${l(na[y0+'-12-31'], dna[y0+'-12-31'])}</td></tr>`; }).join('') + `</table></div>`;
+  h += `<h2>Par praticien</h2><div class="row"><select onchange="pjVal=this.value;renderProjectionTables()">${[['gardes','Gardes / an'],['hAvec','h/sem avec garde'],['hSans','h/sem sans garde'],['demi','Demi-gardes / an'],['noelCumul','Gardes de Noël (cumul)'],['nouvelAnCumul','Gardes du Nouvel An (cumul)'],['feteDemiCumul','Demi-gardes de fêtes (cumul)']].map(([k,l])=>`<option value="${k}" ${pjVal===k?'selected':''}>${l}</option>`).join('')}</select>
     <select onchange="pjSc=this.value;renderProjectionTables()"><option value="sans" ${pjSc==='sans'?'selected':''}>sans demi-garde des ${age} ans et +</option><option value="avec" ${pjSc==='avec'?'selected':''}>avec demi-gardes des ${age} ans et +</option></select>
-    <span class="hint" style="margin:0">Orange : ${age} ans et plus · vert : remplaçant · souligné rouge : garde de Noël, bleu : garde du Nouvel An cette année-là · vide : pas dans l'équipe.</span></div>`;
+    <span class="hint" style="margin:0">Orange : ${age} ans et plus · vert : remplaçant · souligné rouge : garde de Noël, bleu : garde du Nouvel An, violet : demi-garde de fête cette année-là · vide : pas dans l'équipe.</span></div>`;
   const src = pjSc === 'avec' ? D : S, pas = A.length > 14 ? 2 : 1, cols = A.map((a,i)=>i).filter(i => i % pas === 0 || i === A.length - 1);
   const noms = []; src.forEach(r => r.membres.forEach(m => { if(!noms.includes(m.code)) noms.push(m.code); }));
   h += `<div class="tbl-wrap"><table><tr><th class="l">MAR</th>${cols.map(i=>`<th>${A[i]}</th>`).join('')}</tr>` + noms.map(c => `<tr><td class="l b">${esc(c)}</td>${cols.map(i => {
     const m = src[i].membres.find(x => x.code === c); if(!m) return '<td></td>';
-    const val = m[pjVal]; return `<td class="${m.plus60?'k-pj60':/\(rempl\./.test(c)?'k-pjr':''}" style="${m.noel?'box-shadow:inset 0 -3px #dc2626':m.nouvelAn?'box-shadow:inset 0 -3px #0891b2':''}" title="${m.age!=null?m.age+' ans':''}${m.noel?' · garde de Noël':''}${m.nouvelAn?' · garde du Nouvel An':''}">${/^(gardes|demi|noelCumul|nouvelAnCumul)$/.test(pjVal) ? f0(val) : f1(val)}</td>`; }).join('')}</tr>`).join('') + `</table></div>`;
+    const val = m[pjVal]; return `<td class="${m.plus60?'k-pj60':/\(rempl\./.test(c)?'k-pjr':''}" style="${m.noel?'box-shadow:inset 0 -3px #dc2626':m.nouvelAn?'box-shadow:inset 0 -3px #0891b2':m.feteDemi?'box-shadow:inset 0 -3px #9333ea':''}" title="${m.age!=null?m.age+' ans':''}${m.noel?' · garde de Noël':''}${m.nouvelAn?' · garde du Nouvel An':''}">${/^(gardes|demi|noelCumul|nouvelAnCumul|feteDemiCumul)$/.test(pjVal) ? f0(val) : f1(val)}</td>`; }).join('')}</tr>`).join('') + `</table></div>`;
   document.getElementById('pj-res').innerHTML = h;
 }
 

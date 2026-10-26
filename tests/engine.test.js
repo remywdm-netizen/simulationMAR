@@ -323,3 +323,18 @@ test('projection : gardes forcées pour un praticien de 60 ans et plus', () => {
   assert.equal(E.equipeAnnee(cfg, 2030, false).find(m => m.code === 'MAR 02').qg, 0);
   assert.equal(E.projectionAnnee(cfg, 2030, false, {}, true).alertes, 0);
 });
+
+test('projection : demi-gardes des fêtes (jours fériés ou de week-end)', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });                     // plusieurs MAR de 60 ans et plus
+  const h = {};
+  for (let y = 2027; y <= 2030; y++) {
+    const p = E.projectionAnnee(cfg, y, true, h, true);
+    assert.equal(p.alertes, 0);
+    assert.equal(p.noelDemi['2027-12-24'].length, 0);                            // vendredi ouvré : pas de demi-garde
+    assert.equal(p.noelDemi['2027-12-25'].length, 1);                            // samedi férié : une demi-garde
+    const d = p.noelDemi['2027-12-25'][0], m = E.equipeAnnee(cfg, y, true).find(x => x.code === d);
+    assert.ok(m.demiWE);
+    assert.ok(!p.nouvelAnDemi['2027-12-31'].includes(d));                        // pas Noël et Nouvel An la même saison
+  }
+});

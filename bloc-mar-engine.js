@@ -252,6 +252,15 @@
     const demi = days.map(() => []), nuit = days.map(() => []);
     const demiMembers = P.map((p, i) => i).filter(i => P[i].demiWE);
     let demiWeekends = 0;
+    // demi-gardes imposées (fêtes de fin d'année : jour férié ou week-end), posées avant les week-ends répartis
+    days.forEach((s, k) => {
+      if (isOpen[k]) return;
+      ((G.demiImposees || {})[s] || []).map(c => P.findIndex(p => p.code === c)).filter(i => i >= 0).forEach(i => {
+        if (garde[k].includes(i) || repos[k].has(i) || demi[k].includes(i) || demi[k].length >= garde[k].length) return;
+        const night = garde[k].slice().reverse().find(g => !nuit[k].includes(g));
+        demi[k].push(i); nuit[k].push(night);
+      });
+    });
     if (demiMembers.length) {
       const full = P.map((p, i) => i).filter(i => Q[i] === 1 && QG[i] === 1 && P[i].we);
       const avgWE = full.length ? full.reduce((a, i) => a + gsDone[i], 0) / full.length : 10;
@@ -265,7 +274,7 @@
           let pos = Math.floor(step * m + step / 2 + r * step / (demiMembers.length + 1)) % sats.length;
           for (let t = 0; t < sats.length; t++, pos = (pos + 1) % sats.length) {
             const k0 = sats[pos];
-            if ([k0, k0 + 1].every(k => !garde[k].includes(i) && !repos[k].has(i) && demi[k].length < garde[k].length)) {
+            if ([k0, k0 + 1].every(k => !garde[k].includes(i) && !repos[k].has(i) && !demi[k].includes(i) && demi[k].length < garde[k].length && !(G.demiImposees || {})[days[k]])) {   // jours de fête : rotation à part
               [k0, k0 + 1].forEach(k => {
                 const night = garde[k].slice().reverse().find(g => !nuit[k].includes(g));
                 demi[k].push(i); nuit[k].push(night);
@@ -482,24 +491,52 @@
     out[y + '-12-31'] = choisir(y + '-12-31', na);
     // 1er janvier suivant (posé dans le planning de l'année suivante, même calendrier)
     const suiv = choisir(j1, na);
-    Object.defineProperty(histo, '_jan1', { value: suiv, writable: true, enumerable: false, configurable: true });
-    Object.defineProperty(histo, '_noelPrec', { value: out[y + '-12-24'].concat(out[y + '-12-25']), writable: true, enumerable: false, configurable: true });
-    return out;
+    // Demi-gardes de jour des fêtes (jours fériés ou de week-end) : MAR en demi-gardes de week-end, même rotation
+    // (dn : Noëls, dna : Nouvels Ans), un par jour, pas Noël et Nouvel An la même saison
+    const ferme = d => dow(d) >= 5 || !!cfg.feries[d];
+    const delig = equipe.filter(m => m.demiWE && m.q > 0 && m.we !== false);
+    delig.forEach(m => { const h = histo[m.code] || (histo[m.code] = { n: 0, na: 0, der: -99, derNa: -99, debut: annee }); if (h.dn === undefined) Object.assign(h, { dn: 0, dna: 0, derDn: -99, derDna: -99 }); });
+    const dj1prevu = new Set(histo._jan1demi || []);
+    const dnb = (m, k) => histo[m.code][k] + (k === 'dna' && dj1prevu.has(m.code) ? 1 : 0);
+    const dtaux = (m, k) => dnb(m, k) / (annee - histo[m.code].debut + 1);
+    const dordre = (k, d) => delig.slice().sort((a, b) => cmp([dtaux(a, k), histo[a.code][d], a.code], [dtaux(b, k), histo[b.code][d], b.code]));
+    const demi = {}, dpris = new Set(), dn = dordre('dn', 'derDn'), dna = dordre('dna', 'derDna');
+    const dchoisir = (d, liste) => { if (!ferme(d)) return []; const m = liste.find(x => !dpris.has(x.code) && !pris.has(x.code)); if (!m) return []; dpris.add(m.code); return [m.code]; };
+    (histo._noelDemiPrec || []).forEach(c => dpris.add(c));
+    demi[j1] = (histo._jan1demi || []).filter(c => delig.some(m => m.code === c));
+    if (!demi[j1].length && !histo._jan1demi) demi[j1] = dchoisir(j1, dna);
+    dpris.clear();
+    demi[y + '-12-24'] = dchoisir(y + '-12-24', dn);
+    demi[y + '-12-25'] = dchoisir(y + '-12-25', dn);
+    demi[y + '-12-31'] = dchoisir(y + '-12-31', dna);
+    const dsuiv = dchoisir(j1, dna);
+    const def = (k, v) => Object.defineProperty(histo, k, { value: v, writable: true, enumerable: false, configurable: true });
+    def('_jan1', suiv); def('_noelPrec', out[y + '-12-24'].concat(out[y + '-12-25']));
+    def('_jan1demi', dsuiv); def('_noelDemiPrec', demi[y + '-12-24'].concat(demi[y + '-12-25']));
+    return { gardes: out, demi };
   }
 
   function projectionAnnee(cfg, annee, demi60, histoNoel, rapide) {
     const equipe = equipeAnnee(cfg, annee, demi60);
     const fetes = histoNoel ? fetesAnnee(cfg, equipe, histoNoel, annee) : null;
-    const gardes = fetes ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, fetes) }) : cfg.gardes;
+    const gardes = fetes ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, fetes.gardes),
+      demiImposees: Object.assign({}, cfg.gardes.demiImposees || {}, fetes.demi) }) : cfg.gardes;
     const r = generate(Object.assign({}, cfg, { equipe, gardes }), rapide);
     // Gardes des fêtes réellement tenues dans le planning, ajoutées à l'historique
-    const y = cfg.annee, fait = d => { const j = r.jours.find(x => x.date === d); return j ? j.garde.map(i => r.equipe[i].code) : []; };
+    const y = cfg.annee, jour = d => r.jours.find(x => x.date === d);
+    const fait = d => { const j = jour(d); return j ? j.garde.map(i => r.equipe[i].code) : []; };
+    const faitDemi = d => { const j = jour(d); return j ? j.demi.map(i => r.equipe[i].code) : []; };
+    const noelDemi = { [y + '-12-24']: faitDemi(y + '-12-24'), [y + '-12-25']: faitDemi(y + '-12-25') };
+    const nouvelAnDemi = { [y + '-01-01']: faitDemi(y + '-01-01'), [y + '-12-31']: faitDemi(y + '-12-31') };
     const noelFait = { [y + '-12-24']: fait(y + '-12-24'), [y + '-12-25']: fait(y + '-12-25') };
     const nouvelAnFait = { [y + '-01-01']: fait(y + '-01-01'), [y + '-12-31']: fait(y + '-12-31') };
     if (histoNoel) {
       const h = c => histoNoel[c] || (histoNoel[c] = { n: 0, na: 0, der: -99, derNa: -99, debut: annee });
       Object.values(noelFait).flat().forEach(c => { h(c).n++; h(c).der = annee; });
       Object.values(nouvelAnFait).flat().forEach(c => { h(c).na++; h(c).derNa = annee; });
+      const hd = c => { const x = h(c); if (x.dn === undefined) Object.assign(x, { dn: 0, dna: 0, derDn: -99, derDna: -99 }); return x; };
+      Object.values(noelDemi).flat().forEach(c => { hd(c).dn++; hd(c).derDn = annee; });
+      Object.values(nouvelAnDemi).flat().forEach(c => { hd(c).dna++; hd(c).derDna = annee; });
     }
     const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60 }));
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
@@ -514,11 +551,13 @@
       hAvecPlus60: avg(plus, m => m.hSemAvecGarde), hSansPlus60: avg(plus, m => m.hSemSansGarde),
       demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
-      nouvelAn: nouvelAnFait,
+      nouvelAn: nouvelAnFait, noelDemi, nouvelAnDemi,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
         noel: Object.values(noelFait).some(l => l.includes(m.code)) ? 1 : 0, noelCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].n : 0,
         nouvelAn: Object.values(nouvelAnFait).some(l => l.includes(m.code)) ? 1 : 0, nouvelAnCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].na : 0,
+        feteDemi: Object.values(noelDemi).concat(Object.values(nouvelAnDemi)).some(l => l.includes(m.code)) ? 1 : 0,
+        feteDemiCumul: histoNoel && histoNoel[m.code] ? (histoNoel[m.code].dn || 0) + (histoNoel[m.code].dna || 0) : 0,
         hAvec: m.hSemAvecGarde, hSans: m.hSemSansGarde })),
     };
   }

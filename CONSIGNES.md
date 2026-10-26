@@ -120,6 +120,9 @@ gardes assurées.
   années entre les MAR qui gardent le week-end, au prorata de la quotité de garde et des années de présence (priorité à
   ceux qui en ont fait le moins, puis à la plus ancienne). **Un MAR ne fait pas Noël et Nouvel An la même saison**, ni
   deux de ces jours à la suite.
+- **Demi-gardes des fêtes** : les jours de fête fériés ou de week-end (25 décembre, 1er janvier…), un MAR en demi-gardes de
+  week-end (60 ans et plus, ou demi-gardes uniquement) assure le jour (8h-20h), le collègue de garde ne fait que la nuit ;
+  même rotation sur les années, pas Noël et Nouvel An la même saison.
 - Graphique du temps de travail : moins de 60 ans et 60 ans et plus ensemble (avec et sans garde), au choix sans ou avec
   demi-gardes de week-end pour les 60 ans et plus.
 
