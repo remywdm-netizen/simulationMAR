@@ -291,3 +291,19 @@ test('projection : option continuer les gardes après 60 ans', () => {
   assert.equal(a.alertes, 0);
   assert.ok(a.gardesTempsPlein < b.gardesTempsPlein);                             // les 60 ans et + soulagent les autres
 });
+
+test('projection : rotation des gardes de Noël sur les années', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1975 + (i % 15); });
+  const h = {}, vus = new Set();
+  for (let y = 2027; y <= 2031; y++) {
+    const p = E.projectionAnnee(cfg, y, false, h);
+    assert.equal(p.alertes, 0);
+    const [a, b] = Object.values(p.noel);
+    assert.equal(a.length, 2); assert.equal(b.length, 2);
+    assert.ok(!a.some(c => b.includes(c)));                                      // jamais le 24 et le 25
+    a.concat(b).forEach(c => vus.add(c));
+  }
+  assert.ok(vus.size >= 18, String(vus.size));                                   // 20 gardes de Noël réparties
+  assert.ok(Object.values(h).every(x => x.n <= 2));
+});
