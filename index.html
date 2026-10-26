@@ -184,7 +184,7 @@ body.locked .bar,body.locked .wrap{display:none}
 
   <!-- ── PROJECTION DANS LE TEMPS ── -->
   <div class="view" id="view-projection">
-    <p class="hint">Évolution année par année à effectif constant : chaque MAR vieillit (année de naissance), part en retraite à l'âge choisi et est remplacé par un MAR plus jeune ; à partir de l'âge de fin des gardes, plus de garde (ou seulement des demi-gardes de jour le week-end). Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence), deux fois : sans puis avec demi-gardes pour les MAR qui ne gardent plus. Les MAR sans année de naissance ne vieillissent pas.</p>
+    <p class="hint">Évolution année par année à effectif constant : chaque MAR vieillit (année de naissance), part en retraite à l'âge choisi et est remplacé par un MAR plus jeune ; à partir de l'âge de fin des gardes, plus de garde (ou seulement des demi-gardes de jour le week-end) ; option : continuer tout ou partie des gardes. Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence), deux fois : sans puis avec demi-gardes pour les MAR qui ne gardent plus. Les MAR sans année de naissance ne vieillissent pas.</p>
     <h2>Paramètres</h2>
     <div class="form" id="f-projection"></div>
     <h2>Années de naissance</h2>
@@ -276,6 +276,7 @@ function renderProjectionForm(){
   document.getElementById('f-projection').innerHTML =
     sel('ageRetraite','Âge de départ en retraite',[[65,'65 ans'],[66,'66 ans'],[67,'67 ans']]) +
     `<label>Âge de fin des gardes<input type="number" min="50" max="70" value="${p.ageFinGardes}" onchange="setPJ('ageFinGardes',+this.value)"/></label>` +
+    sel('gardesApresPct','Après cet âge, gardes conservées',[[0,'aucune (0 %)'],[25,'25 %'],[50,'50 %'],[75,'75 %'],[100,'toutes (continue les gardes)']]) +
     `<label>Projection jusqu'en<input type="number" min="${cfg.annee+1}" max="2070" value="${p.fin}" onchange="setPJ('fin',+this.value)"/></label>` +
     sel('remplacement','Départs en retraite remplacés (effectif constant)',[[true,'Oui'],[false,'Non']]) +
     sel('remplacantTempsPlein','Remplaçant',[[true,'à temps plein (sauf jours fixes)'],[false,'à la quotité du poste']]) +
@@ -365,8 +366,8 @@ function renderProjection(){
       {label:'avec garde, avec demi-garde des ' + cfg.projection.ageFinGardes + ' ans et +', color:c3, data:v(D,'hAvecMoins60')},
       {label:'sans garde', color:'#64748b', data:v(S,'hSansMoins60'), dash:true}], 'h/sem') +
     lineChart('Temps de travail — MAR de ' + cfg.projection.ageFinGardes + ' ans et plus (h / semaine)', A, [
-      {label:'sans demi-garde (aucune garde)', color:c2, data:v(S,'hAvecPlus60')},
-      {label:'avec demi-gardes de jour le WE', color:c4, data:v(D,'hAvecPlus60')},
+      {label:'sans demi-garde' + (cfg.projection.gardesApresPct ? ` (${cfg.projection.gardesApresPct} % des gardes)` : ' (aucune garde)'), color:c2, data:v(S,'hAvecPlus60')},
+      {label:'avec demi-gardes de jour le WE' + (cfg.projection.gardesApresPct ? ` (+ ${cfg.projection.gardesApresPct} % des gardes)` : ''), color:c4, data:v(D,'hAvecPlus60')},
       {label:'sans garde', color:'#64748b', data:v(S,'hSansPlus60'), dash:true}], 'h/sem') +
     `</div>`;
   const n = x => x === null || x === undefined ? '—' : f1(x);

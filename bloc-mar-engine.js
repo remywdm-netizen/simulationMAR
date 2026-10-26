@@ -76,8 +76,9 @@
     finance: { ca: 1200000, parts: 15 },
     // Projection dans le temps (année de naissance dans l'équipe) : effectif constant, chaque départ en retraite est
     // remplacé par un MAR de « ageRemplacant » ans ; plus de garde à partir de « ageFinGardes » ans (option : demi-gardes
-    // de jour le week-end) ; mouvements = ajouts / retraits à partir d'une année.
-    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+    // de jour le week-end) ; option gardesApresPct : part des gardes conservée après cet âge (100 = continue les gardes) ;
+    // mouvements = ajouts / retraits à partir d'une année.
+    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -431,7 +432,7 @@
           consult: true, mater: true, joursFixes: fixe ? m.joursFixes : null, naissance: an - PJ.ageRemplacant, remplacant: true, origine: m.code }, an);
       }
       const r = Object.assign({}, m, { age, depuis });
-      if (age !== null && age >= PJ.ageFinGardes) { r.qg = 0; r.demiWE = !!demi60 || !!m.demiWE; r.plus60 = true; }
+      if (age !== null && age >= PJ.ageFinGardes) { r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(+PJ.gardesApresPct || 0, 0), 100)) / 100; r.demiWE = !!demi60 || !!m.demiWE; r.plus60 = true; }
       out.push(r);
     };
     const retraits = new Set((PJ.mouvements || []).filter(x => x.type === 'retrait' && +x.annee <= annee).map(x => x.code));

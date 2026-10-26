@@ -112,7 +112,7 @@ gardes assurées.
 - Chaque MAR vieillit d'après son **année de naissance** ; à l'**âge de départ en retraite** (65, 66 ou 67 ans, 67 par
   défaut) il est **remplacé** par un MAR de 35 ans (temps plein, ou quotité du poste pour un poste à jours fixes) :
   effectif constant. Option : départs non remplacés.
-- À partir de **60 ans** (réglable) : plus de garde. Deux calculs comparés : **sans demi-garde**, ou **avec demi-gardes de
+- À partir de **60 ans** (réglable) : plus de garde, ou option **continuer les gardes** (25, 50, 75 ou 100 % de sa quotité de garde). Deux calculs comparés : **sans demi-garde**, ou **avec demi-gardes de
   jour le week-end** (8h-20h samedi et dimanche, le collègue de garde ne fait que la nuit).
 - **Ajouts / retraits** possibles à partir d'une année donnée.
 - Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence).

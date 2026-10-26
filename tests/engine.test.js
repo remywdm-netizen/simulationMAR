@@ -280,3 +280,14 @@ test('projection : vieillissement, retraite remplacée, fin des gardes à 60 ans
   assert.ok(b.hAvecPlus60 > a.hAvecPlus60);                                       // les demi-gardes ajoutent des heures aux 60 ans et +
   assert.ok(b.hAvecMoins60 < a.hAvecMoins60);                                     // et en retirent aux autres
 });
+
+test('projection : option continuer les gardes après 60 ans', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });
+  const g = pct => { cfg.projection.gardesApresPct = pct; return E.equipeAnnee(cfg, 2030, false).find(m => m.code === 'MAR 02'); };
+  assert.equal(g(0).qg, 0); assert.equal(g(50).qg, 0.5); assert.equal(g(100).qg, 1);
+  const a = E.projectionAnnee(cfg, 2030, false);
+  cfg.projection.gardesApresPct = 0; const b = E.projectionAnnee(cfg, 2030, false);
+  assert.equal(a.alertes, 0);
+  assert.ok(a.gardesTempsPlein < b.gardesTempsPlein);                             // les 60 ans et + soulagent les autres
+});
