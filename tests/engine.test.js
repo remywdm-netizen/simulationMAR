@@ -354,17 +354,17 @@ test('option nuits enchaînées : demi-garde samedi et dimanche, le même MAR fa
   assert.equal(S.synthese.demiGardes, r.stats.synthese.demiGardes);
 });
 
-test('projection : plafond d\'un week-end travaillé par mois pour les 60 ans et plus', () => {
+test('projection : plafond de 12 jours de week-end par an pour les 60 ans et plus', () => {
   const cfg = E.mergeConfig();
   cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });
-  cfg.projection.gardesApresPct = 100; cfg.projection.plafondWE60 = 1;
-  const eq = E.equipeAnnee(cfg, 2027, false), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
-  assert.deepEqual(E.verify(r), []);
-  eq.forEach((m, i) => {
-    if (!m.plus60) return;
-    const mois = {};
-    r.jours.forEach(j => { if (E.dow(j.date) < 5 || !(j.garde.includes(i) || j.demi.includes(i))) return;
-      const w = E.addDays(j.date, -E.dow(j.date)), mo = E.addDays(w, 5).slice(0, 7); (mois[mo] = mois[mo] || new Set()).add(w); });
-    Object.values(mois).forEach(s => assert.ok(s.size <= 1, m.code));
-  });
+  for (const [pct, demi] of [[100, false], [0, true]]) {
+    cfg.projection.gardesApresPct = pct; cfg.projection.plafondJoursWE60 = 12;
+    const eq = E.equipeAnnee(cfg, 2027, demi), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
+    assert.deepEqual(E.verify(r), []);
+    eq.forEach((m, i) => {
+      if (!m.plus60) return;
+      const n = r.jours.filter(j => E.dow(j.date) >= 5 && (j.garde.includes(i) || j.demi.includes(i))).length;
+      assert.ok(n <= 12, m.code + ' ' + n);
+    });
+  }
 });

@@ -320,10 +320,10 @@ function renderPjCtrls(){
     rng('gardesApresPct', 'Après cet âge, gardes conservées', 0, 100, 25, v => v + ' %') +
     rng('ageRemplacant', 'Âge du remplaçant', 30, 45, 1, v => v + ' ans') +
     rng('fin', 'Projection jusqu\'en', cfg.annee + 5, 2060, 1, v => v) +
+    rng('plafondJoursWE60', `Plafond de jours de week-end par an (${p.ageFinGardes} ans et +)`, 0, 26, 2, v => v ? v + ' jours' : 'aucun') +
     `<div class="pj-c">` +
       `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
 
-      `<label class="pj-t"><input type="checkbox" ${p.plafondWE60?'checked':''} onchange="setPJ('plafondWE60',this.checked?1:0)"/> Plafond : 1 week-end travaillé par mois pour les ${p.ageFinGardes} ans et +</label>` +
             tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
