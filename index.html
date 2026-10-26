@@ -29,6 +29,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .tab{padding:8px 16px;font-size:14px;color:var(--t2);cursor:pointer;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;font-family:var(--font);white-space:nowrap}
 .tab:hover{color:var(--text)}.tab.on{color:var(--text);font-weight:600;border-bottom-color:#fd8c73}
 .view{display:none}.view.on{display:block}
+.pj-ih{font-size:13px;font-weight:600;margin:12px 0 6px}.pj-il{display:flex;flex-wrap:wrap;gap:6px}.pj-i{display:inline-flex;align-items:center;gap:5px;font-size:12px;border:1px solid var(--bd);border-radius:14px;padding:2px 4px 2px 10px}.pj-i small{color:#64748b}.pj-i.on{border-color:#dc2626;background:#fef2f2}.pj-i select{font-size:12px;padding:1px 2px}
 .pj-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}.pj-panel{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin-bottom:12px}.pj-ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 22px}.pj-c label{display:block;font-size:13px;margin-bottom:4px}.pj-c b{color:#dc2626}.pj-c input[type=range]{width:100%;accent-color:#dc2626}.pj-t{display:flex!important;gap:6px;align-items:center;font-size:13px;margin:3px 0}.pj-prog{height:3px;background:var(--bd);border-radius:2px;margin-top:10px;overflow:hidden}#pj-bar{height:100%;width:0;background:#dc2626;transition:width .15s}.pj-yrow{display:flex;align-items:center;gap:12px}.pj-yrow input{flex:1;accent-color:#2563eb}.pj-yv{font-size:26px;font-weight:800;min-width:70px;text-align:right}.pj-ygrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;margin-top:10px}@media(max-width:800px){.pj-ygrid{grid-template-columns:1fr}}.pj-m{display:grid;grid-template-columns:120px 1fr 52px 34px;align-items:center;gap:6px;font-size:12px;height:19px}.pj-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pj-b{position:relative;height:13px;background:#f1f5f9;border-radius:3px}.pj-b span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width .35s,background .35s}.pj-b em{position:absolute;left:6px;top:-1px;font-style:normal;font-size:11px;color:#1e293b}.pj-g{text-align:right;font-variant-numeric:tabular-nums}.pj-leg{font-size:12px;margin-bottom:6px;color:#475569}.pj-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}.pj-yk{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bd)}.pj-yk span{color:#475569}.pj-yk.warn{color:#b91c1c}.ch-sel{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:3 3}
 .chart{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}.chart>svg{width:100%;height:240px;display:block}.ch-leg svg{display:inline-block;flex:none}.chart-h{font-weight:600;font-size:14px;margin-bottom:4px}.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px;margin-top:14px}.ch-grid{stroke:var(--bd);stroke-width:1}.ch-t{font-size:11px;fill:#64748b}.ch-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:12px}.ch-leg i{width:14px;height:3px;border-radius:2px;display:inline-block}.k-pj60{background:#fde7c7}.k-pjr{background:#d6f0dd}
 .fold{margin-top:22px;border:1px solid var(--bd);border-radius:6px;padding:8px 12px}.fold>summary{cursor:pointer;font-weight:600;font-size:15px}
@@ -188,6 +189,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <div class="pj-kpis" id="pj-kpi"></div>
     <div class="pj-panel">
       <div class="pj-ctrls" id="pj-ctrls"></div>
+      <div id="pj-indiv"></div>
       <div class="pj-prog"><div id="pj-bar"></div></div>
       <div class="hint" id="pj-etat" style="margin:4px 0 0"></div>
     </div>
@@ -317,7 +319,16 @@ function renderPjCtrls(){
     `<div class="pj-c">` +
       `<label class="pj-t"><input type="checkbox" ${pjChart==='avec'?'checked':''} onchange="pjChart=this.checked?'avec':'sans';pjSc=pjChart;renderProjection()"/> Demi-gardes de jour le WE après la fin des gardes</label>` +
       tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
+  // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
+  const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
+    .sort((a,b) => a[0].naissance - b[0].naissance);
+  document.getElementById('pj-indiv').innerHTML = vieux.length ? `<div class="pj-ih">Gardes après ${p.ageFinGardes} ans, par praticien <span class="hint" style="margin:0">(règle générale : ${p.gardesApresPct} %)</span></div><div class="pj-il">` +
+    vieux.map(([m,i]) => { const v = m.gardesApres === null || m.gardesApres === undefined || m.gardesApres === '' ? '' : String(m.gardesApres);
+      return `<label class="pj-i ${v !== '' ? 'on' : ''}" title="${p.ageFinGardes} ans en ${m.naissance + p.ageFinGardes} · retraite en ${m.naissance + p.ageRetraite}">${esc(m.code)} <small>${m.naissance + p.ageFinGardes}</small>
+        <select onchange="setGardesApres(${i},this.value)"><option value="" ${v===''?'selected':''}>règle</option>${[0,25,50,75,100].map(x=>`<option value="${x}" ${v===String(x)?'selected':''}>${x} %</option>`).join('')}</select></label>`; }).join('') + `</div>`
+    : '<span class="hint" style="margin:0">Aucun MAR qui garde n\'atteint l\'âge de fin des gardes pendant la projection (années de naissance à renseigner).</span>';
 }
+function setGardesApres(i,v){ cfg.equipe[i].gardesApres = v === '' ? null : +v; save(); renderPjCtrls(); pjPlanifier(); }
 function setMouv(i,k,v){ cfg.projection.mouvements[i][k] = v; recompute(); }
 function delMouv(i){ cfg.projection.mouvements.splice(i,1); recompute(); }
 function addMouv(type){

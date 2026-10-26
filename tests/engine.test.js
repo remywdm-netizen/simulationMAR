@@ -310,3 +310,16 @@ test('projection : rotation des gardes de Noël et du Nouvel An sur les années'
   assert.ok(vus.size >= 18, String(vus.size));                                   // 20 gardes de Noël réparties
   assert.ok(Object.values(h).every(x => x.n <= 2));
 });
+
+test('projection : gardes forcées pour un praticien de 60 ans et plus', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });
+  cfg.equipe[1].gardesApres = 100;                                               // MAR 02 continue ses gardes
+  cfg.equipe[2].gardesApres = 50;                                                // MAR 03 garde à moitié
+  const eq = E.equipeAnnee(cfg, 2030, false), g = c => eq.find(m => m.code === c).qg;
+  assert.equal(g('MAR 02'), 1); assert.equal(g('MAR 03'), 0.5); assert.equal(g('MAR 04'), 0);   // MAR 04 : règle générale (0 %)
+  cfg.projection.gardesApresPct = 100;
+  cfg.equipe[1].gardesApres = 0;                                                 // forcé à 0 malgré la règle générale
+  assert.equal(E.equipeAnnee(cfg, 2030, false).find(m => m.code === 'MAR 02').qg, 0);
+  assert.equal(E.projectionAnnee(cfg, 2030, false, {}, true).alertes, 0);
+});
