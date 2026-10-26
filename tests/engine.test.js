@@ -338,3 +338,14 @@ test('projection : demi-gardes des fêtes (jours fériés ou de week-end)', () =
     assert.ok(!p.nouvelAnDemi['2027-12-31'].includes(d));                        // pas Noël et Nouvel An la même saison
   }
 });
+
+test('option nuits enchaînées : demi-garde samedi et dimanche, le même MAR fait les deux nuits', () => {
+  const cfg = E.mergeConfig(); cfg.gardes.nuitsEnchainees = true;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  let we = 0, ok = 0;
+  r.jours.forEach((j, k) => { if (E.dow(j.date) === 6 && j.demi.length && k && r.jours[k - 1].demi.length) { we++; if (j.nuit.every(i => r.jours[k - 1].nuit.includes(i))) ok++; } });
+  assert.ok(we >= 6 && ok === we, ok + ' / ' + we);
+  assert.equal(r.stats.synthese.gardesParAn, S.synthese.gardesParAn);
+  assert.equal(S.synthese.demiGardes, r.stats.synthese.demiGardes);
+});

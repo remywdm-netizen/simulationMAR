@@ -30,6 +30,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .tab:hover{color:var(--text)}.tab.on{color:var(--text);font-weight:600;border-bottom-color:#fd8c73}
 .view{display:none}.view.on{display:block}
 .pj-ih{font-size:13px;font-weight:600;margin:12px 0 6px}.pj-il{display:flex;flex-wrap:wrap;gap:6px}.pj-i{display:inline-flex;align-items:center;gap:5px;font-size:12px;border:1px solid var(--bd);border-radius:14px;padding:2px 4px 2px 10px}.pj-i small{color:#64748b}.pj-i.on{border-color:#dc2626;background:#fef2f2}.pj-i select{font-size:12px;padding:1px 2px}
+.pj-cleg{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:8px 12px}.pj-cleg span{display:inline-flex;align-items:center;gap:6px}.pj-cleg i{display:inline-block;width:14px;height:14px;border-radius:3px}
 .pj-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}.pj-panel{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin-bottom:12px}.pj-ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 22px}.pj-c label{display:block;font-size:13px;margin-bottom:4px}.pj-c b{color:#dc2626}.pj-c input[type=range]{width:100%;accent-color:#dc2626}.pj-t{display:flex!important;gap:6px;align-items:center;font-size:13px;margin:3px 0}.pj-prog{height:3px;background:var(--bd);border-radius:2px;margin-top:10px;overflow:hidden}#pj-bar{height:100%;width:0;background:#dc2626;transition:width .15s}.pj-yrow{display:flex;align-items:center;gap:12px}.pj-yrow input{flex:1;accent-color:#2563eb}.pj-yv{font-size:26px;font-weight:800;min-width:70px;text-align:right}.pj-ygrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;margin-top:10px}@media(max-width:800px){.pj-ygrid{grid-template-columns:1fr}}.pj-m{display:grid;grid-template-columns:120px 1fr 52px 34px;align-items:center;gap:6px;font-size:12px;height:19px}.pj-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pj-b{position:relative;height:13px;background:#f1f5f9;border-radius:3px}.pj-b span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width .35s,background .35s}.pj-b em{position:absolute;left:6px;top:-1px;font-style:normal;font-size:11px;color:#1e293b}.pj-g{text-align:right;font-variant-numeric:tabular-nums}.pj-leg{font-size:12px;margin-bottom:6px;color:#475569}.pj-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}.pj-yk{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bd)}.pj-yk span{color:#475569}.pj-yk.warn{color:#b91c1c}.ch-sel{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:3 3}
 .chart{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}.chart>svg{width:100%;height:240px;display:block}.ch-leg svg{display:inline-block;flex:none}.chart-h{font-weight:600;font-size:14px;margin-bottom:4px}.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px;margin-top:14px}.ch-grid{stroke:var(--bd);stroke-width:1}.ch-t{font-size:11px;fill:#64748b}.ch-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:12px}.ch-leg i{width:14px;height:3px;border-radius:2px;display:inline-block}.k-pj60{background:#fde7c7}.k-pjr{background:#d6f0dd}
 .fold{margin-top:22px;border:1px solid var(--bd);border-radius:6px;padding:8px 12px}.fold>summary{cursor:pointer;font-weight:600;font-size:15px}
@@ -317,7 +318,8 @@ function renderPjCtrls(){
     rng('ageRemplacant', 'Âge du remplaçant', 30, 45, 1, v => v + ' ans') +
     rng('fin', 'Projection jusqu\'en', cfg.annee + 5, 2060, 1, v => v) +
     `<div class="pj-c">` +
-      `<label class="pj-t"><input type="checkbox" ${pjChart==='avec'?'checked':''} onchange="pjChart=this.checked?'avec':'sans';pjSc=pjChart;renderProjection()"/> Demi-gardes de jour le WE après la fin des gardes</label>` +
+      `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
+      `<label class="pj-t"><input type="checkbox" ${pjChart==='avec'?'checked':''} onchange="pjChart=this.checked?'avec':'sans';pjSc=pjChart;renderProjection()"/> Équipe de l'année et fêtes : avec demi-gardes</label>` +
       tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
@@ -419,34 +421,26 @@ function renderProjection(sansTableaux){
     card(`h/sem au pic, moins de ${age} ans`, f1(X[A.indexOf(ym)].hAvecMoins60), `avec garde · ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et +`) +
     card('Un Noël tous les', f1(S[A.indexOf(ym)].noelEligibles / (2 * cfg.gardes.parJour)) + ' ans', `au pic · Noël ou Nouvel An tous les ${f1(S[A.indexOf(ym)].noelEligibles / (4 * cfg.gardes.parJour))} ans`);
   const yr = document.getElementById('pj-annee'); yr.min = cfg.annee; yr.max = cfg.projection.fin; yr.value = pjAnnee;
+  // Graphiques : couleur = groupe d'âge, trait plein = sans demi-garde, pointillés = avec demi-gardes des 60 ans et +
+  const quatre = (k60m, k60p) => [
+    {label:`− ${age} ans, sans ½`, color:PJC.g, data:v(S,k60m)},
+    {label:`− ${age} ans, avec ½`, color:PJC.g, data:v(D,k60m), dash:true},
+    {label:`${age} ans et +, sans ½`, color:PJC.p, data:v(S,k60p)},
+    {label:`${age} ans et +, avec ½`, color:PJC.p, data:v(D,k60p), dash:true}];
   document.getElementById('pj-charts').innerHTML =
-    lineChart(`Gardes par an d'un temps plein (moins de ${age} ans)`, A, [
-      {label:'gardes / an', color:PJC.g, data:g},
-      {label:'MAR qui gardent', color:PJC.v, data:v(S,'gardeurs'), dash:true}], 'gardes') +
-    lineChart(`Gardes de week-end et de jours fériés par an — sans et avec demi-gardes des ${age} ans et +`, A, [
-      {label:`moins de ${age} ans (temps plein) : gardes de WE / fériés`, color:PJC.g, data:v(S,'gardesWETempsPlein')},
-      {label:`moins de ${age} ans : week-ends de garde${v(S,'weekendsTempsPlein').every((x,i) => Math.abs(x - D[i].weekendsTempsPlein) < 0.05) ? ' (identique sans et avec demi-gardes)' : ', sans demi-garde'}`, color:PJC.g, data:v(S,'weekendsTempsPlein'), dash:true},
-      ...(v(S,'weekendsTempsPlein').every((x,i) => Math.abs(x - D[i].weekendsTempsPlein) < 0.05) ? [] : [{label:`moins de ${age} ans : week-ends de garde, avec demi-gardes`, color:PJC.r, data:v(D,'weekendsTempsPlein'), dash:true}]),
-      {label:`${age} ans et + : week-ends de demi-garde, avec`, color:PJC.v, data:v(D,'weekendsPlus60'), dash:true}], 'gardes') +
-    lineChart(`Gardes de jour le week-end et les jours fériés (8h-20h) — sans et avec demi-gardes des ${age} ans et +`, A, [
-      {label:`moins de ${age} ans (temps plein), sans demi-garde`, color:PJC.g, data:v(S,'journeesWETempsPlein')},
-      {label:`moins de ${age} ans (temps plein), avec demi-gardes`, color:PJC.r, data:v(D,'journeesWETempsPlein')},
-      {label:`moins de ${age} ans : nuits seules (20h-8h), avec demi-gardes`, color:PJC.r, data:v(D,'nuitsTempsPlein'), dash:true},
-      {label:`${age} ans et + : demi-gardes de jour, avec`, color:PJC.v, data:v(D,'demiPlus60')},
-      ...(cfg.projection.gardesApresPct || cfg.equipe.some(m => m.gardesApres > 0) ? [{label:`${age} ans et + : gardes de WE / fériés`, color:PJC.p, data:v(S,'gardesWEPlus60')}] : [])], 'jours') +
-    lineChart(`Temps de travail — moins de ${age} ans et ${age} ans et plus (h / semaine)`, A, [
-      {label:`moins de ${age} ans, avec garde`, color:PJC.g, data:v(X,'hAvecMoins60')},
-      {label:`moins de ${age} ans, sans garde`, color:PJC.g, data:v(X,'hSansMoins60'), dash:true},
-      {label:`${age} ans et +, avec ${pjChart === 'avec' ? 'demi-gardes' : 'gardes'}`, color:PJC.p, data:v(X,'hAvecPlus60')},
-      {label:`${age} ans et +, sans garde`, color:PJC.p, data:v(X,'hSansPlus60'), dash:true}], 'h/sem',
-      `<select onchange="pjChart=this.value;pjSc=this.value;renderPjCtrls();renderProjection()"><option value="sans" ${pjChart==='sans'?'selected':''}>sans demi-garde</option><option value="avec" ${pjChart==='avec'?'selected':''}>avec demi-gardes</option></select>`) +
+    `<div class="pj-cleg"><span><i style="background:${PJC.g}"></i>moins de ${age} ans (temps plein)</span><span><i style="background:${PJC.p}"></i>${age} ans et plus</span>
+      <span><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="#334155" stroke-width="2.4"/></svg>sans demi-garde des ${age} ans et +</span>
+      <span><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="#334155" stroke-width="2.4" stroke-dasharray="5 3"/></svg>avec demi-gardes de jour le week-end des ${age} ans et +${cfg.gardes.nuitsEnchainees ? ' (nuits du samedi et du dimanche enchaînées)' : ''}</span>
+      <span class="hint" style="margin:0">Cliquez sur un graphique pour choisir l'année.</span></div>` +
+    lineChart('Gardes par an (gardes + demi-gardes)', A, quatre('gardesTempsPlein', 'gardesEtDemiPlus60'), 'gardes') +
+    lineChart('Temps de travail, gardes comprises (h / semaine)', A, quatre('hAvecMoins60', 'hAvecPlus60'), 'h/sem') +
+    lineChart('Journées travaillées le week-end et les jours fériés (8h-20h, par an)', A, quatre('journeesWETempsPlein', 'journeesWEPlus60'), 'jours') +
+    lineChart('Week-ends de garde par an (au moins une garde ou demi-garde)', A, quatre('weekendsTempsPlein', 'weekendsPlus60'), 'week-ends') +
+    lineChart('Heures travaillées le week-end et les jours fériés (par an)', A, quatre('heuresWETempsPlein', 'heuresWEPlus60'), 'h/an') +
     lineChart('Effectif', A, [
       {label:'MAR qui gardent', color:PJC.g, data:v(S,'gardeurs')},
       {label:`${age} ans et plus`, color:PJC.p, data:v(S,'nbPlus60')},
-      {label:'remplaçants arrivés', color:PJC.r, data:v(S,'nbRemplacants')}], 'MAR') +
-    lineChart('Gardes de fin d\'année : une garde tous les … ans', A, [
-      {label:'Noël (24 ou 25 décembre)', color:PJC.noel, data:S.map(r => r.noelEligibles ? r.noelEligibles / (2 * cfg.gardes.parJour) : null)},
-      {label:'Noël ou Nouvel An', color:PJC.na, data:S.map(r => r.noelEligibles ? r.noelEligibles / (4 * cfg.gardes.parJour) : null), dash:true}], 'ans');
+      {label:'remplaçants arrivés', color:PJC.r, data:v(S,'nbRemplacants')}], 'MAR');
   pjRenduAnnee(true);
   if(!sansTableaux) renderProjectionTables();
 }
@@ -475,6 +469,7 @@ function pjRenduAnnee(sansGraphes){
     <div class="pj-yk"><span>Moins de ${age} ans : h/sem avec garde</span><b>${n(r.hAvecMoins60)}</b></div>
     <div class="pj-yk"><span>Moins de ${age} ans : h/sem sans garde</span><b>${n(r.hSansMoins60)}</b></div>
     <div class="pj-yk"><span>${age} ans et + : h/sem ${pjChart === 'avec' ? 'avec demi-gardes' : 'avec gardes'}</span><b>${n(r.hAvecPlus60)}</b></div>
+    <div class="pj-yk"><span>Heures de WE / fériés : moins de ${age} ans · ${age} ans et +</span><b>${f0(r.heuresWETempsPlein||0)} h · ${r.heuresWEPlus60==null?'—':f0(r.heuresWEPlus60)+' h'}</b></div>
     <div class="pj-yk"><span>MAR libres / jour</span><b>${f1(r.marDisponiblesParJour)}</b></div>
     <div class="pj-yk"><span>🎄 24 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-24'], S.noelDemi[y0+'-12-24'])}</div>
     <div class="pj-yk"><span>🎄 25 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-25'], S.noelDemi[y0+'-12-25'])}</div>
@@ -486,8 +481,8 @@ function renderProjectionTables(){
   const A = PJ.ans, S = PJ.sans.slice(0, A.length), D = PJ.avec.slice(0, A.length), age = cfg.projection.ageFinGardes;
   const n = x => x === null || x === undefined ? '—' : f1(x);
   let h = `<h2>Par année</h2><p class="hint">« sans / avec ½ » = sans ou avec demi-gardes de jour le week-end pour les MAR de ${age} ans et plus. h/sem = moyenne hors vacances. Temps plein = MAR à 100 % qui gardent à 100 %.</p>
-    <div class="tbl-wrap"><table><tr><th>Année</th><th>MAR</th><th>ETP</th><th>MAR qui gardent</th><th>${age} ans et +</th><th>Remplaçants</th><th>Gardes / an temps plein</th><th>Gardes de WE / fériés temps plein</th><th>Week-ends de garde temps plein (sans / avec ½)</th><th>Heures de garde / an temps plein (sans / avec ½)</th><th>&lt; ${age} ans h/sem avec garde (sans / avec ½)</th><th>&lt; ${age} ans h/sem sans garde</th><th>${age} ans et + h/sem (sans / avec ½)</th><th>Demi-gardes / an (${age} ans et +)</th><th>MAR libres / jour</th><th>Alertes</th></tr>` +
-    A.map((a,i) => `<tr><td class="b">${a}</td><td>${S[i].effectif}</td><td>${f1(S[i].etp)}</td><td>${S[i].gardeurs}</td><td>${S[i].nbPlus60}</td><td>${S[i].nbRemplacants}</td><td class="b">${n(S[i].gardesTempsPlein)}</td><td>${n(S[i].gardesWETempsPlein)}</td><td>${n(S[i].weekendsTempsPlein)} / ${n(D[i].weekendsTempsPlein)}</td><td>${f0(S[i].heuresGardeMoins60||0)} / ${f0(D[i].heuresGardeMoins60||0)}</td><td class="b">${n(S[i].hAvecMoins60)} / ${n(D[i].hAvecMoins60)}</td><td>${n(S[i].hSansMoins60)}</td><td>${n(S[i].hAvecPlus60)} / ${n(D[i].hAvecPlus60)}</td><td>${n(D[i].demiPlus60)}</td><td>${f1(S[i].marDisponiblesParJour)}</td><td class="${S[i].alertes+D[i].alertes?'pos':''}">${S[i].alertes + D[i].alertes}</td></tr>`).join('') + `</table></div>`;
+    <div class="tbl-wrap"><table><tr><th>Année</th><th>MAR</th><th>ETP</th><th>MAR qui gardent</th><th>${age} ans et +</th><th>Remplaçants</th><th>Gardes / an temps plein</th><th>Gardes de WE / fériés temps plein</th><th>Week-ends de garde temps plein (sans / avec ½)</th><th>Heures de WE / fériés temps plein (sans / avec ½)</th><th>Heures de WE / fériés ${age} ans et + (sans / avec ½)</th><th>Heures de garde / an temps plein (sans / avec ½)</th><th>&lt; ${age} ans h/sem avec garde (sans / avec ½)</th><th>&lt; ${age} ans h/sem sans garde</th><th>${age} ans et + h/sem (sans / avec ½)</th><th>Demi-gardes / an (${age} ans et +)</th><th>MAR libres / jour</th><th>Alertes</th></tr>` +
+    A.map((a,i) => `<tr><td class="b">${a}</td><td>${S[i].effectif}</td><td>${f1(S[i].etp)}</td><td>${S[i].gardeurs}</td><td>${S[i].nbPlus60}</td><td>${S[i].nbRemplacants}</td><td class="b">${n(S[i].gardesTempsPlein)}</td><td>${n(S[i].gardesWETempsPlein)}</td><td>${n(S[i].weekendsTempsPlein)} / ${n(D[i].weekendsTempsPlein)}</td><td>${f0(S[i].heuresWETempsPlein||0)} / ${f0(D[i].heuresWETempsPlein||0)}</td><td>${S[i].heuresWEPlus60==null?'—':f0(S[i].heuresWEPlus60)} / ${D[i].heuresWEPlus60==null?'—':f0(D[i].heuresWEPlus60)}</td><td>${f0(S[i].heuresGardeMoins60||0)} / ${f0(D[i].heuresGardeMoins60||0)}</td><td class="b">${n(S[i].hAvecMoins60)} / ${n(D[i].hAvecMoins60)}</td><td>${n(S[i].hSansMoins60)}</td><td>${n(S[i].hAvecPlus60)} / ${n(D[i].hAvecPlus60)}</td><td>${n(D[i].demiPlus60)}</td><td>${f1(S[i].marDisponiblesParJour)}</td><td class="${S[i].alertes+D[i].alertes?'pos':''}">${S[i].alertes + D[i].alertes}</td></tr>`).join('') + `</table></div>`;
   const nm = c => esc(c), y0 = cfg.annee, F = pjChart === 'avec' ? D : S;
   h += `<h2>Gardes de Noël et du Nouvel An</h2><p class="hint">Rotation sur les années entre les MAR qui gardent le week-end : priorité à ceux qui en ont fait le moins, rapporté à leur quotité de garde et à leurs années de présence, puis à la plus ancienne. Noël = 24 et 25 décembre ; Nouvel An = 31 décembre et 1er janvier suivant. Un MAR ne fait pas Noël et Nouvel An la même saison, ni deux jours de suite. « ½ » = demi-garde de jour (8h-20h) les jours fériés ou de week-end, par les MAR en demi-gardes, même rotation (le collègue de garde ne fait que la nuit). Scénario ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et +.</p>
     <div class="tbl-wrap" style="max-width:1000px"><table><tr><th>Année</th><th class="l">1er janvier</th><th class="l">24 décembre</th><th class="l">25 décembre</th><th class="l">31 décembre</th></tr>` +
@@ -605,6 +600,7 @@ function renderRegles(){
     field('gardes.parJour','MAR de garde par jour') + field('gardes.ecartMin','Écart minimal entre 2 gardes (jours)') +
     field('gardes.heuresSemaine','Heures d\'une garde de semaine (16h → 8h)') + field('gardes.heuresWE','Heures d\'une garde WE / férié') +
     field('gardes.heuresNuit','Heures d\'une nuit seule (20h → 8h)') + field('gardes.heuresDemiJour','Heures d\'une demi-garde de jour WE') +
+    `<label>Demi-garde samedi et dimanche : le même MAR fait les deux nuits<select onchange="setP('gardes.nuitsEnchainees',this.value==='Oui')"><option ${cfg.gardes.nuitsEnchainees?'selected':''}>Oui</option><option ${cfg.gardes.nuitsEnchainees?'':'selected'}>Non</option></select></label>` +
     `<label>Week-ends de demi-gardes par MAR concerné<select onchange="setP('gardes.demiWeekends',this.value==='auto'?'auto':+this.value)">${['auto',...Array.from({length:27},(_,i)=>i)].map(x=>`<option ${String(x)===String(cfg.gardes.demiWeekends)?'selected':''}>${x}</option>`).join('')}</select></label>`;
   document.getElementById('f-rea').innerHTML =
     field('rea.nombre','MAR en réa par jour ouvré') + field('rea.heures','Heures de réa par jour',{step:0.5}) +

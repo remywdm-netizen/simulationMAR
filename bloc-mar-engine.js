@@ -60,6 +60,7 @@
       heuresNuit: 12,          // nuit seule 20h -> 8h (quand un MAR fait la demi-garde de jour)
       heuresDemiJour: 12,      // demi-garde de jour 8h -> 20h (sans repos)
       demiWeekends: 'auto',    // week-ends de demi-gardes par MAR concerné : 'auto' ou un nombre
+      nuitsEnchainees: false,  // demi-garde de jour samedi et dimanche : le même MAR fait les deux nuits (20h-8h)
     },
     params: {
       conges: 32, rtt: 0, formation: 10,         // jours ouvrés par ETP (proratisés à la quotité)
@@ -213,6 +214,40 @@
       });
     });
 
+    // 2a. Demi-gardes de jour du week-end (8h-20h), placées avant les gardes (le MAR concerné n'est pas de garde ces
+    // jours-là ni la veille) : d'abord les demi-gardes imposées (fêtes), puis les week-ends répartis sur l'année
+    const demi = days.map(() => []), nuit = days.map(() => []), nightOf = days.map(() => []);
+    const demiMembers = P.map((p, i) => i).filter(i => P[i].demiWE);
+    let demiWeekends = 0;
+    days.forEach((s, k) => {
+      if (isOpen[k]) return;
+      ((G.demiImposees || {})[s] || []).map(c => P.findIndex(p => p.code === c)).filter(i => i >= 0).forEach(i => {
+        if (!demi[k].includes(i) && demi[k].length < G.parJour) demi[k].push(i);
+      });
+    });
+    if (demiMembers.length) {
+      const sqgWE0 = P.reduce((a, p, i) => a + (p.we ? QG[i] : 0), 0) || 1;
+      const avgWE = G.parJour * days.filter((s, k) => !isOpen[k]).length / sqgWE0;   // gardes de WE / fériés d'un temps plein
+      const sats = days.map((s, k) => k).filter(k => dow(days[k]) === 5 && k + 1 < days.length);
+      demiMembers.forEach((i, r) => {
+        const nb = G.demiWeekends === 'auto' || G.demiWeekends === '' || G.demiWeekends == null
+          ? Math.max(1, Math.round(avgWE / 2 * Q[i])) : Math.max(0, +G.demiWeekends);
+        demiWeekends += nb;
+        const step = sats.length / Math.max(nb, 1);
+        for (let m = 0; m < nb; m++) {
+          let pos = Math.floor(step * m + step / 2 + r * step / (demiMembers.length + 1)) % sats.length;
+          for (let t = 0; t < sats.length; t++, pos = (pos + 1) % sats.length) {
+            const k0 = sats[pos];
+            if ([k0, k0 + 1].every(k => !demi[k].includes(i) && demi[k].length < G.parJour && !(G.demiImposees || {})[days[k]])) {   // jours de fête : rotation à part
+              [k0, k0 + 1].forEach(k => demi[k].push(i));
+              break;
+            }
+          }
+        }
+      });
+    }
+    const CHAIN = !!G.nuitsEnchainees;
+
     // 2. Gardes
     const sqg = QG.reduce((a, b) => a + b, 0);
     const sqgWE = P.reduce((a, p, i) => a + (p.we ? QG[i] : 0), 0);
@@ -225,7 +260,8 @@
     days.forEach((s, k) => {
       const spec = !isOpen[k];
       if (spec) nSpec++;
-      const ok = i => QG[i] > 0 && !(spec && !P[i].we) && !off(i, s) && k - lastG[i] >= G.ecartMin && !impAvant(i, k) && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
+      const enDemi = i => demi[k].includes(i) || (k + 1 < days.length && demi[k + 1].includes(i));   // demi-garde ce jour ou le lendemain
+      const ok = i => QG[i] > 0 && !enDemi(i) && !(spec && !P[i].we) && !off(i, s) && k - lastG[i] >= G.ecartMin && !impAvant(i, k) && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
         && !(k + 1 < days.length && reaDay[k + 1].has(i))              // le repos ne coupe pas une semaine de réa
         && !(reaDay[k].has(i) && dow(s) !== 4);                         // garde en semaine de réa : le vendredi
       const key = i => {
@@ -237,54 +273,33 @@
       };
       let cands = P.map((p, i) => i).filter(ok);
       if (cands.length < G.parJour) {   // assouplissement : écart minimal réduit
-        cands = P.map((p, i) => i).filter(i => QG[i] > 0 && !(spec && !P[i].we) && k - lastG[i] >= 2 && !(k + 1 < days.length && reaDay[k + 1].has(i)));
+        cands = P.map((p, i) => i).filter(i => QG[i] > 0 && !enDemi(i) && !(spec && !P[i].we) && k - lastG[i] >= 2 && !(k + 1 < days.length && reaDay[k + 1].has(i)));
         warnings.push(`${labelFR(s)} : écart minimal entre gardes non tenu`);
       }
-      const imp = impIdx[k].filter(i => cands.includes(i));   // gardes imposées (rotation de Noël)
+      // nuits enchaînées : le dimanche, le MAR qui a fait la nuit du samedi refait la nuit (sans repos entre les deux)
+      const chaine = CHAIN && dow(s) === 6 && k > 0 && demi[k].length
+        ? nightOf[k - 1].filter(i => !enDemi(i) && !(k + 1 < days.length && (reaDay[k + 1].has(i) || rrDay[k + 1].includes(i))) && !off(i, s)).slice(0, demi[k].length) : [];
+      const imp = chaine.concat(impIdx[k].filter(i => cands.includes(i) && !chaine.includes(i)));   // gardes imposées (rotation de Noël)
       const pair = imp.concat(cands.filter(i => !imp.includes(i)).sort((a, b) => cmp(key(a), key(b)))).slice(0, G.parJour);
+      nightOf[k] = chaine.filter(i => pair.includes(i));
+      if (CHAIN && dow(s) === 5 && demi[k].length && k + 1 < days.length && demi[k + 1].length) {   // samedi : nuits à enchaîner le dimanche
+        const peut = i => !(k + 2 < days.length && (reaDay[k + 2].has(i) || rrDay[k + 2].includes(i))) && !off(i, days[k + 1]) && P[i].we !== false && !demi[k + 1].includes(i);
+        nightOf[k] = pair.filter(peut).slice(-demi[k].length);
+      }
       if (pair.length < G.parJour) warnings.push(`${labelFR(s)} : ${pair.length} MAR de garde seulement`);
       pair.forEach(i => { gDone[i]++; lastG[i] = k; if (spec) gsDone[i]++; });
       garde.push(pair);
     });
     const repos = days.map((s, k) => new Set(k ? garde[k - 1] : []));
 
-    // 2b. Demi-gardes de jour du week-end (8h-20h) : le MAR de garde concerné ne fait que la nuit (20h-8h)
-    const demi = days.map(() => []), nuit = days.map(() => []);
-    const demiMembers = P.map((p, i) => i).filter(i => P[i].demiWE);
-    let demiWeekends = 0;
-    // demi-gardes imposées (fêtes de fin d'année : jour férié ou week-end), posées avant les week-ends répartis
+    // 2b. Nuits seules : quand un MAR fait la demi-garde de jour, un MAR de garde ne fait que la nuit (20h-8h) ;
+    // nuits enchaînées : le même MAR fait la nuit du samedi et celle du dimanche
     days.forEach((s, k) => {
-      if (isOpen[k]) return;
-      ((G.demiImposees || {})[s] || []).map(c => P.findIndex(p => p.code === c)).filter(i => i >= 0).forEach(i => {
-        if (garde[k].includes(i) || repos[k].has(i) || demi[k].includes(i) || demi[k].length >= garde[k].length) return;
-        const night = garde[k].slice().reverse().find(g => !nuit[k].includes(g));
-        demi[k].push(i); nuit[k].push(night);
-      });
+      if (!demi[k].length) return;
+      const l = nightOf[k].filter(g => garde[k].includes(g));
+      garde[k].slice().reverse().forEach(g => { if (l.length < demi[k].length && !l.includes(g)) l.push(g); });
+      nuit[k] = l.slice(0, demi[k].length);
     });
-    if (demiMembers.length) {
-      const full = P.map((p, i) => i).filter(i => Q[i] === 1 && QG[i] === 1 && P[i].we);
-      const avgWE = full.length ? full.reduce((a, i) => a + gsDone[i], 0) / full.length : 10;
-      const sats = days.map((s, k) => k).filter(k => dow(days[k]) === 5 && k + 1 < days.length);
-      demiMembers.forEach((i, r) => {
-        const nb = G.demiWeekends === 'auto' || G.demiWeekends === '' || G.demiWeekends == null
-          ? Math.max(1, Math.round(avgWE / 2 * Q[i])) : Math.max(0, +G.demiWeekends);
-        demiWeekends += nb;
-        const step = sats.length / Math.max(nb, 1);
-        for (let m = 0; m < nb; m++) {
-          let pos = Math.floor(step * m + step / 2 + r * step / (demiMembers.length + 1)) % sats.length;
-          for (let t = 0; t < sats.length; t++, pos = (pos + 1) % sats.length) {
-            const k0 = sats[pos];
-            if ([k0, k0 + 1].every(k => !garde[k].includes(i) && !repos[k].has(i) && !demi[k].includes(i) && demi[k].length < garde[k].length && !(G.demiImposees || {})[days[k]])) {   // jours de fête : rotation à part
-              [k0, k0 + 1].forEach(k => {
-                const night = garde[k].slice().reverse().find(g => !nuit[k].includes(g));
-                demi[k].push(i); nuit[k].push(night);
-              });
-              break;
-            }
-          }
-        }
-      });
-    }
 
     // 3. Temps partiel : jours non travaillés (TP)
     const tp = days.map(() => new Set());
@@ -541,7 +556,12 @@
     // week-ends entamés : week-ends (samedi ou dimanche) avec au moins une garde ou demi-garde
     const weMar = equipe.map(() => new Set());
     r.jours.forEach(j => { if (dow(j.date) < 5) return; const w = monday(j.date); j.garde.concat(j.demi || []).forEach(i => weMar[i].add(w)); });
-    const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60, weekends: weMar[i].size }));
+    // heures de travail le week-end et les jours fériés : gardes (24 h, nuit seule 12 h) et demi-gardes de jour (12 h)
+    const GG = cfg.gardes, hWE = equipe.map(() => 0);
+    r.jours.forEach(j => { if (j.statut === 'Ouvert') return;
+      j.garde.forEach(i => { hWE[i] += j.nuit.includes(i) ? GG.heuresNuit : GG.heuresWE; });
+      (j.demi || []).forEach(i => { hWE[i] += GG.heuresDemiJour; }); });
+    const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60, weekends: weMar[i].size, heuresWE: hWE[i] }));
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
     const tp = moins.filter(m => m.q === 1 && m.qg === 1);
     const avg = (a, f) => (a.length ? a.reduce((x, m) => x + f(m), 0) / a.length : null);
@@ -557,6 +577,8 @@
       gardesWETempsPlein: avg(tp, m => m.gardesWE), journeesWETempsPlein: avg(tp, m => m.gardesWE - m.nuits),   // journées de garde WE / fériés (8h-20h)
       gardesWEPlus60: avg(plus, m => m.gardesWE),
       weekendsTempsPlein: avg(tp, m => m.weekends), weekendsPlus60: avg(plus, m => m.weekends),
+      heuresWETempsPlein: avg(tp, m => m.heuresWE), heuresWEPlus60: avg(plus, m => m.heuresWE),
+      journeesWEPlus60: avg(plus, m => m.gardesWE - m.nuits + m.demi), gardesEtDemiPlus60: avg(plus, m => m.gardes + m.demi),
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
       nouvelAn: nouvelAnFait, noelDemi, nouvelAnDemi,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
@@ -793,7 +815,8 @@
       j.garde.forEach(i => {
         if (j.statut !== 'Ouvert' && !P[i].we) issues.push(`${d} : ${P[i].code} de garde un week-end / férié`);
         if (!(P[i].qg > 0)) issues.push(`${d} : ${P[i].code} de garde sans quotité de garde`);
-        if (k && jours[k - 1].garde.includes(i)) issues.push(`${d} : ${P[i].code} de garde deux jours de suite`);
+        if (k && jours[k - 1].garde.includes(i) && !(cfg.gardes.nuitsEnchainees && (j.nuit || []).includes(i) && (jours[k - 1].nuit || []).includes(i)))   // nuits enchaînées du week-end : permis
+          issues.push(`${d} : ${P[i].code} de garde deux jours de suite`);
       });
     });
     return issues;
