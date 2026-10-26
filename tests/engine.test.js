@@ -292,16 +292,19 @@ test('projection : option continuer les gardes après 60 ans', () => {
   assert.ok(a.gardesTempsPlein < b.gardesTempsPlein);                             // les 60 ans et + soulagent les autres
 });
 
-test('projection : rotation des gardes de Noël sur les années', () => {
+test('projection : rotation des gardes de Noël et du Nouvel An sur les années', () => {
   const cfg = E.mergeConfig();
   cfg.equipe.forEach((m, i) => { m.naissance = 1975 + (i % 15); });
-  const h = {}, vus = new Set();
+  const h = {}, vus = new Set(); let prec = null;
   for (let y = 2027; y <= 2031; y++) {
     const p = E.projectionAnnee(cfg, y, false, h);
     assert.equal(p.alertes, 0);
-    const [a, b] = Object.values(p.noel);
-    assert.equal(a.length, 2); assert.equal(b.length, 2);
+    const [a, b] = Object.values(p.noel), na = p.nouvelAn['2027-12-31'], j1 = p.nouvelAn['2027-01-01'];
+    assert.equal(a.length, 2); assert.equal(b.length, 2); assert.equal(na.length, 2); assert.equal(j1.length, 2);
     assert.ok(!a.some(c => b.includes(c)));                                      // jamais le 24 et le 25
+    assert.ok(!a.concat(b).some(c => na.includes(c)));                           // pas Noël et Nouvel An la même saison
+    if (prec) assert.ok(!j1.some(c => prec.noel.includes(c) || prec.na.includes(c)));   // 1er janvier : saison précédente
+    prec = { noel: a.concat(b), na };
     a.concat(b).forEach(c => vus.add(c));
   }
   assert.ok(vus.size >= 18, String(vus.size));                                   // 20 gardes de Noël réparties

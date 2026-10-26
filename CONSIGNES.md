@@ -116,7 +116,10 @@ gardes assurées.
   jour le week-end** (8h-20h samedi et dimanche, le collègue de garde ne fait que la nuit).
 - **Ajouts / retraits** possibles à partir d'une année donnée.
 - Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence).
-- **Gardes de Noël** (24 et 25 décembre) : rotation sur les années entre les MAR qui gardent le week-end, au prorata de la
-  quotité de garde et des années de présence (priorité à ceux qui en ont fait le moins, puis au Noël le plus ancien) ;
-  jamais le 24 et le 25 la même année.
+- **Gardes de Noël** (24 et 25 décembre) **et du Nouvel An** (31 décembre et 1er janvier suivant) : rotation sur les
+  années entre les MAR qui gardent le week-end, au prorata de la quotité de garde et des années de présence (priorité à
+  ceux qui en ont fait le moins, puis à la plus ancienne). **Un MAR ne fait pas Noël et Nouvel An la même saison**, ni
+  deux de ces jours à la suite.
+- Graphique du temps de travail : moins de 60 ans et 60 ans et plus ensemble (avec et sans garde), au choix sans ou avec
+  demi-gardes de week-end pour les 60 ans et plus.
 

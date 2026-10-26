@@ -447,33 +447,55 @@
   }
 
   // Indicateurs d'une année (planning complet recalculé sur le calendrier de l'année de référence)
-  // Gardes de Noël (24 et 25 décembre) : rotation sur les années, au prorata de la quotité de garde
-  // et au temps de présence (histo : code → { n: gardes de Noël faites, der: dernière année, debut: première année }),
-  // MAR qui gardent le week-end.
-  function noelAnnee(cfg, equipe, histo, annee) {
-    const G = cfg.gardes, jours = [cfg.annee + '-12-24', cfg.annee + '-12-25'];
+  // Gardes des fêtes : Noël (24 et 25 décembre) et Nouvel An (31 décembre et 1er janvier suivant), rotation sur les
+  // années entre les MAR qui gardent le week-end, au prorata de la quotité de garde et du temps de présence ; un MAR ne
+  // fait pas Noël et Nouvel An la même saison. histo : code → { n: Noëls, na: Nouvels Ans, der, derNa, debut } ;
+  // histo._jan1 : MAR retenus pour le 1er janvier de l'année suivante.
+  function fetesAnnee(cfg, equipe, histo, annee) {
+    const G = cfg.gardes, y = cfg.annee;
     const elig = equipe.filter(m => m.qg > 0 && m.we !== false);
-    elig.forEach(m => { if (!histo[m.code]) histo[m.code] = { n: 0, der: -99, debut: annee }; });
-    const key = m => { const h = histo[m.code]; return [h.n / (m.qg * (annee - h.debut + 1)), h.der, m.code]; };
-    const ordre = elig.slice().sort((a, b) => cmp(key(a), key(b)));
-    const out = {}, pris = new Set();
+    elig.forEach(m => { if (!histo[m.code]) histo[m.code] = { n: 0, na: 0, der: -99, derNa: -99, debut: annee }; });
+    const j1prevu = new Set(histo._jan1 || []);   // 1er janvier de cette année, pas encore compté dans l'historique
+    const nb = (m, k) => histo[m.code][k] + (k === 'na' && j1prevu.has(m.code) ? 1 : 0);
+    const der = (m, k) => (k === 'derNa' && j1prevu.has(m.code) ? annee : histo[m.code][k]);
+    const taux = (m, k) => nb(m, k) / (m.qg * (annee - histo[m.code].debut + 1));
+    const ordre = (k, d) => elig.slice().sort((a, b) => cmp([taux(a, k), der(a, d), a.code], [taux(b, k), der(b, d), b.code]));
     const travaille = (m, d) => !(Array.isArray(m.joursFixes) && dow(d) < 5 && !m.joursFixes[dow(d)]);   // jours fixes
-    jours.forEach(d => {
-      out[d] = ordre.filter(m => !pris.has(m.code) && travaille(m, d)).slice(0, G.parJour).map(m => m.code);
-      out[d].forEach(c => pris.add(c));
-    });
+    const pris = new Set(), out = {};
+    const choisir = (d, liste) => { const l = liste.filter(m => !pris.has(m.code) && travaille(m, d)).slice(0, G.parJour).map(m => m.code); l.forEach(c => pris.add(c)); return l; };
+    const j1 = y + '-01-01', n = ordre('n', 'der'), na = ordre('na', 'derNa');
+    // 1er janvier de cette année : MAR retenus la saison précédente (première année : rotation Nouvel An)
+    // (complété par la rotation si l'un d'eux ne garde plus, sans reprendre un MAR de Noël de la saison précédente)
+    const eligCodes = new Set(elig.map(m => m.code));
+    (histo._noelPrec || []).forEach(c => pris.add(c));
+    out[j1] = (histo._jan1 || []).filter(c => eligCodes.has(c)).slice(0, G.parJour);
+    out[j1].forEach(c => pris.add(c));
+    out[j1] = out[j1].concat(choisir(j1, na)).slice(0, G.parJour);
+    pris.clear();
+    out[y + '-12-24'] = choisir(y + '-12-24', n);
+    out[y + '-12-25'] = choisir(y + '-12-25', n);
+    out[y + '-12-31'] = choisir(y + '-12-31', na);
+    // 1er janvier suivant (posé dans le planning de l'année suivante, même calendrier)
+    const suiv = choisir(j1, na);
+    Object.defineProperty(histo, '_jan1', { value: suiv, writable: true, enumerable: false, configurable: true });
+    Object.defineProperty(histo, '_noelPrec', { value: out[y + '-12-24'].concat(out[y + '-12-25']), writable: true, enumerable: false, configurable: true });
     return out;
   }
 
   function projectionAnnee(cfg, annee, demi60, histoNoel) {
     const equipe = equipeAnnee(cfg, annee, demi60);
-    const noel = histoNoel ? noelAnnee(cfg, equipe, histoNoel, annee) : null;
-    const gardes = noel ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, noel) }) : cfg.gardes;
+    const fetes = histoNoel ? fetesAnnee(cfg, equipe, histoNoel, annee) : null;
+    const gardes = fetes ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, fetes) }) : cfg.gardes;
     const r = generate(Object.assign({}, cfg, { equipe, gardes }));
-    // Gardes de Noël réellement tenues dans le planning, ajoutées à l'historique
-    const noelFait = {};
-    [cfg.annee + '-12-24', cfg.annee + '-12-25'].forEach(d => { const j = r.jours.find(x => x.date === d); noelFait[d] = j ? j.garde.map(i => r.equipe[i].code) : []; });
-    if (histoNoel) Object.values(noelFait).flat().forEach(c => { const h = histoNoel[c] || (histoNoel[c] = { n: 0, der: -99, debut: annee }); h.n++; h.der = annee; });
+    // Gardes des fêtes réellement tenues dans le planning, ajoutées à l'historique
+    const y = cfg.annee, fait = d => { const j = r.jours.find(x => x.date === d); return j ? j.garde.map(i => r.equipe[i].code) : []; };
+    const noelFait = { [y + '-12-24']: fait(y + '-12-24'), [y + '-12-25']: fait(y + '-12-25') };
+    const nouvelAnFait = { [y + '-01-01']: fait(y + '-01-01'), [y + '-12-31']: fait(y + '-12-31') };
+    if (histoNoel) {
+      const h = c => histoNoel[c] || (histoNoel[c] = { n: 0, na: 0, der: -99, derNa: -99, debut: annee });
+      Object.values(noelFait).flat().forEach(c => { h(c).n++; h(c).der = annee; });
+      Object.values(nouvelAnFait).flat().forEach(c => { h(c).na++; h(c).derNa = annee; });
+    }
     const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60 }));
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
     const tp = moins.filter(m => m.q === 1 && m.qg === 1);
@@ -487,10 +509,11 @@
       hAvecPlus60: avg(plus, m => m.hSemAvecGarde), hSansPlus60: avg(plus, m => m.hSemSansGarde),
       demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
-      noelCumul: histoNoel ? Object.fromEntries(equipe.map(m => [m.code, (histoNoel[m.code] || { n: 0 }).n])) : null,
+      nouvelAn: nouvelAnFait,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
         noel: Object.values(noelFait).some(l => l.includes(m.code)) ? 1 : 0, noelCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].n : 0,
+        nouvelAn: Object.values(nouvelAnFait).some(l => l.includes(m.code)) ? 1 : 0, nouvelAnCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].na : 0,
         hAvec: m.hSemAvecGarde, hSans: m.hSemSansGarde })),
     };
   }
