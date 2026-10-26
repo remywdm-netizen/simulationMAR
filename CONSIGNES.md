@@ -123,6 +123,8 @@ gardes assurées.
 - **Demi-gardes des fêtes** : les jours de fête fériés ou de week-end (25 décembre, 1er janvier…), un MAR en demi-gardes de
   week-end (60 ans et plus, ou demi-gardes uniquement) assure le jour (8h-20h), le collègue de garde ne fait que la nuit ;
   même rotation sur les années, pas Noël et Nouvel An la même saison.
+- Graphique du **nombre de gardes de week-end et de jours fériés** d'un temps plein de moins de 60 ans et du nombre de
+  **week-ends de garde** (week-ends avec au moins une garde ou demi-garde), sans et avec demi-gardes des 60 ans et plus.
 - Graphique des **gardes de jour le week-end et les jours fériés** (8h-20h), sans et avec demi-gardes des 60 ans et plus :
   journées de garde d'un temps plein de moins de 60 ans, nuits seules quand un collègue fait la demi-garde de jour,
   demi-gardes des 60 ans et plus.

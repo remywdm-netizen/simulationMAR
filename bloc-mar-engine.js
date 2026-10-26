@@ -538,7 +538,10 @@
       Object.values(noelDemi).flat().forEach(c => { hd(c).dn++; hd(c).derDn = annee; });
       Object.values(nouvelAnDemi).flat().forEach(c => { hd(c).dna++; hd(c).derDna = annee; });
     }
-    const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60 }));
+    // week-ends entamés : week-ends (samedi ou dimanche) avec au moins une garde ou demi-garde
+    const weMar = equipe.map(() => new Set());
+    r.jours.forEach(j => { if (dow(j.date) < 5) return; const w = monday(j.date); j.garde.concat(j.demi || []).forEach(i => weMar[i].add(w)); });
+    const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60, weekends: weMar[i].size }));
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
     const tp = moins.filter(m => m.q === 1 && m.qg === 1);
     const avg = (a, f) => (a.length ? a.reduce((x, m) => x + f(m), 0) / a.length : null);
@@ -553,6 +556,7 @@
       nuitsTempsPlein: avg(tp, m => m.nuits), gardesPlus60: avg(plus, m => m.gardes),
       gardesWETempsPlein: avg(tp, m => m.gardesWE), journeesWETempsPlein: avg(tp, m => m.gardesWE - m.nuits),   // journées de garde WE / fériés (8h-20h)
       gardesWEPlus60: avg(plus, m => m.gardesWE),
+      weekendsTempsPlein: avg(tp, m => m.weekends), weekendsPlus60: avg(plus, m => m.weekends),
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
       nouvelAn: nouvelAnFait, noelDemi, nouvelAnDemi,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
