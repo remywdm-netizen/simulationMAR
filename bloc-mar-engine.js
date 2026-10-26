@@ -127,9 +127,10 @@
   // ── Génération du tableau de service ───────────────────────
   // Consultations du groupe Réa 1 proportionnelles à son temps au bloc : un premier calcul mesure le bloc par ETP
   // du groupe et des autres MAR, le calcul final pondère la répartition des consultations par ce rapport.
-  function generate(userCfg) {
+  // rapide : un seul calcul (consultations du groupe Réa 1 au prorata de la quotité), pour la projection interactive
+  function generate(userCfg, rapide) {
     const cfg = mergeConfig(userCfg);
-    if (!(cfg.consultations.rea1ProrataBloc && cfg.equipe.some(m => m.rea1))) return generateCore(cfg, null);
+    if (rapide || !(cfg.consultations.rea1ProrataBloc && cfg.equipe.some(m => m.rea1))) return generateCore(cfg, null);
     let poids = null, r;
     for (let pass = 0; pass < 2; pass++) {
       r = generateCore(cfg, poids);
@@ -482,11 +483,11 @@
     return out;
   }
 
-  function projectionAnnee(cfg, annee, demi60, histoNoel) {
+  function projectionAnnee(cfg, annee, demi60, histoNoel, rapide) {
     const equipe = equipeAnnee(cfg, annee, demi60);
     const fetes = histoNoel ? fetesAnnee(cfg, equipe, histoNoel, annee) : null;
     const gardes = fetes ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, fetes) }) : cfg.gardes;
-    const r = generate(Object.assign({}, cfg, { equipe, gardes }));
+    const r = generate(Object.assign({}, cfg, { equipe, gardes }), rapide);
     // Gardes des fêtes réellement tenues dans le planning, ajoutées à l'historique
     const y = cfg.annee, fait = d => { const j = r.jours.find(x => x.date === d); return j ? j.garde.map(i => r.equipe[i].code) : []; };
     const noelFait = { [y + '-12-24']: fait(y + '-12-24'), [y + '-12-25']: fait(y + '-12-25') };
