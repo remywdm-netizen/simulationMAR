@@ -5,7 +5,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Bloc opératoire
 - **1 MAR pour 2 salles** ; si le nombre de salles d'un bloc est impair, la dernière salle a son propre MAR.
-- Option **1 MAR par salle** sur les salles de 8h (postes A à E, hors bloc long) : onglet Règles, colonne « 1 MAR / salle » ; le poste est dédoublé (B → B1, B2).
+- Option **1 MAR par salle** sur les salles de 8h (postes A à E, hors bloc long) : onglet Équipe et règles, colonne « 1 MAR / salle » ; le poste est dédoublé (B → B1, B2).
   La règle s'applique par étage (un MAR ne supervise pas deux étages).
 - 15 salles avec MAR → **8 postes par jour ouvré** :
 
@@ -65,7 +65,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   autres MAR sont posés de préférence les jours où le moins de MAR sont déjà absents.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
-- **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long). Option : 1 jour par **dimanche de garde** (½ pour une demi-garde), désactivée par défaut (onglet Règles, « Récupération par dimanche de garde »).
+- **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long). Option : 1 jour par **dimanche de garde** (½ pour une demi-garde), désactivée par défaut (onglet Équipe et règles, « Récupération par dimanche de garde »).
 - Option « récupération posée dans la semaine de bloc » : ce jour est placé dans le tableau dès que les 4 jours
   sont atteints (premier jour libre hors garde, dans la même semaine si possible) ; un collègue couvre le poste.
   Moyennes inchangées, mais semaines de bloc long allégées (≈ 46 h au lieu de 51 h gardes comprises).
@@ -93,11 +93,11 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - Jours libérables = jours sans poste restant libres après congés, formation et récupérations, moins une **réserve de
   0,5 MAR par jour** pour les imprévus ; répartis au prorata de la quotité.
 - Organisation par défaut : ≈ 24 jours de récupération par temps plein et par an (13,7 réglementaires + 10 libérables).
-- Leviers comparés automatiquement dans l'onglet Simulations (consultations, réa, postes de bloc, gardes, maternité, effectif).
+- Leviers comparés automatiquement dans l'onglet Simulations et finance (consultations, réa, postes de bloc, gardes, maternité, effectif).
 
 ## Part financière
 - **Chiffre d'affaires 1 200 000 €**, réparti en **15 parts égales** : 80 000 € la part.
-- Parts de chaque MAR : saisies dans l'onglet Finance ; à défaut, au prorata de la quotité de travail.
+- Parts de chaque MAR : saisies dans l'onglet Simulations et finance ; à défaut, au prorata de la quotité de travail.
 - Revenu d'un MAR = parts × valeur de la part ; revenu horaire = revenu ÷ heures de l'année, gardes comprises.
 - Tout le volet financier est dans l'onglet **💶 Finance** : CA et nombre de parts, parts de chaque MAR, revenus,
   €/h, grille CA × nombre de parts.

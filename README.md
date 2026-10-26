@@ -16,16 +16,16 @@ côté navigateur : ne pas mettre de données sensibles dans le dépôt).
 | `tests/engine.test.js` | Vérification automatique des règles (`node --test tests/*.test.js`) |
 
 ## Utilisation
-- **👨‍⚕️ Équipe** : importer le fichier Excel de l'équipe (A = médecin, B = temps de travail, E = quotité de garde,
+4 onglets :
+- **📊 Synthèse** : indicateurs clés et alertes, synthèse imprimable de toute l'organisation, récapitulatif du groupe Réa 1,
+  consignes (règles appliquées, à déplier).
+- **⚙️ Équipe et règles** : importer le fichier Excel de l'équipe (A = médecin, B = temps de travail, E = quotité de garde,
   F = particularité : « pas de garde de WE », « demi-garde de WE », « réa 1 », jours fixes « lundi mardi mercredi »), ou modifier les lignes à la main.
   L'équipe reste dans le navigateur (localStorage) ; le dépôt ne contient qu'une équipe anonymisée (MAR 01…).
-- **⚙️ Règles** : maternité (détachement en journée), gardes par jour, horaires, réa, congés, formation, récupérations, plafond, consultations (volume annuel,
-  MAR en consultation par jour mini/maxi, consultations par MAR), postes, fériés.
-- **📅 Tableau de service** : par mois, par poste ou par MAR.
-- **🧪 Simulations** : enregistrer des scénarios et les comparer ; leviers pour libérer des jours de récupération ;
-  tableau rapide selon le nombre d'ETP.
-- **🗂️ Organisation** : synthèse imprimable de toute l'organisation, récapitulatif du groupe Réa 1.
-- **💶 Finance** : chiffre d'affaires, nombre de parts, parts et revenus par MAR, €/h, grille CA × nombre de parts.
+  Règles : gardes, réa, maternité, congés, formation, récupérations, plafond, consultations, postes de bloc, fériés.
+- **📅 Tableau de service** : par mois, par poste ou par MAR ; MAR par jour de la semaine ; compteurs et temps de travail par MAR.
+- **🧪 Simulations et finance** : scénarios comparés, leviers pour libérer des jours de récupération, effectif selon le nombre d'ETP ;
+  chiffre d'affaires, parts et revenus par MAR, €/h, grille CA × nombre de parts.
 - **⬇ Excel** : synthèse, compteurs, tableau de service, vue par MAR et scénarios.
 - **⬇ Configuration / ⬆ Importer config** : partager équipe et règles entre postes (fichier JSON).
 
