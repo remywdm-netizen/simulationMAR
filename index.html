@@ -423,6 +423,12 @@ function renderProjection(sansTableaux){
     lineChart(`Gardes par an d'un temps plein (moins de ${age} ans)`, A, [
       {label:'gardes / an', color:PJC.g, data:g},
       {label:'MAR qui gardent', color:PJC.v, data:v(S,'gardeurs'), dash:true}], 'gardes') +
+    lineChart(`Gardes de jour le week-end et les jours fériés (8h-20h) — sans et avec demi-gardes des ${age} ans et +`, A, [
+      {label:`moins de ${age} ans (temps plein), sans demi-garde`, color:PJC.g, data:v(S,'journeesWETempsPlein')},
+      {label:`moins de ${age} ans (temps plein), avec demi-gardes`, color:PJC.r, data:v(D,'journeesWETempsPlein')},
+      {label:`moins de ${age} ans : nuits seules (20h-8h), avec demi-gardes`, color:PJC.r, data:v(D,'nuitsTempsPlein'), dash:true},
+      {label:`${age} ans et + : demi-gardes de jour, avec`, color:PJC.v, data:v(D,'demiPlus60')},
+      ...(cfg.projection.gardesApresPct || cfg.equipe.some(m => m.gardesApres > 0) ? [{label:`${age} ans et + : gardes de WE / fériés`, color:PJC.p, data:v(S,'gardesWEPlus60')}] : [])], 'jours') +
     lineChart(`Temps de travail — moins de ${age} ans et ${age} ans et plus (h / semaine)`, A, [
       {label:`moins de ${age} ans, avec garde`, color:PJC.g, data:v(X,'hAvecMoins60')},
       {label:`moins de ${age} ans, sans garde`, color:PJC.g, data:v(X,'hSansMoins60'), dash:true},
