@@ -107,3 +107,13 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 17 mai (lundi de Pentecôte), 27 mai (Fête-Dieu), 15 et 16 août (Assomption, reportée), 1ᵉʳ novembre,
 19 novembre (Fête du Prince), 8 décembre, 25 décembre. Bloc, réa de jour et consultations fermés ;
 gardes assurées.
+
+## Projection dans le temps (onglet Projection)
+- Chaque MAR vieillit d'après son **année de naissance** ; à l'**âge de départ en retraite** (65, 66 ou 67 ans, 67 par
+  défaut) il est **remplacé** par un MAR de 35 ans (temps plein, ou quotité du poste pour un poste à jours fixes) :
+  effectif constant. Option : départs non remplacés.
+- À partir de **60 ans** (réglable) : plus de garde. Deux calculs comparés : **sans demi-garde**, ou **avec demi-gardes de
+  jour le week-end** (8h-20h samedi et dimanche, le collègue de garde ne fait que la nuit).
+- **Ajouts / retraits** possibles à partir d'une année donnée.
+- Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence).
+

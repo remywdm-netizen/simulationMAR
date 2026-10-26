@@ -29,6 +29,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .tab{padding:8px 16px;font-size:14px;color:var(--t2);cursor:pointer;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;font-family:var(--font);white-space:nowrap}
 .tab:hover{color:var(--text)}.tab.on{color:var(--text);font-weight:600;border-bottom-color:#fd8c73}
 .view{display:none}.view.on{display:block}
+.chart{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}.chart svg{width:100%;height:240px;display:block}.chart-h{font-weight:600;font-size:14px;margin-bottom:4px}.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px;margin-top:14px}.ch-grid{stroke:var(--bd);stroke-width:1}.ch-t{font-size:11px;fill:#64748b}.ch-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:12px}.ch-leg i{width:14px;height:3px;border-radius:2px;display:inline-block}.k-pj60{background:#fde7c7}.k-pjr{background:#d6f0dd}
 .fold{margin-top:22px;border:1px solid var(--bd);border-radius:6px;padding:8px 12px}.fold>summary{cursor:pointer;font-weight:600;font-size:15px}
 h2{font-size:15px;margin:22px 0 10px}h2:first-child{margin-top:0}
 .hint{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6}
@@ -107,6 +108,7 @@ body.locked .bar,body.locked .wrap{display:none}
     <button class="tab on" id="tab-synthese" onclick="showTab('synthese')">📊 Synthèse</button>
     <button class="tab" id="tab-parametres" onclick="showTab('parametres')">⚙️ Équipe et règles</button>
     <button class="tab" id="tab-tableau" onclick="showTab('tableau')">📅 Tableau de service</button>
+    <button class="tab" id="tab-projection" onclick="showTab('projection')">📈 Projection</button>
     <button class="tab" id="tab-simu" onclick="showTab('simu')">🧪 Simulations et finance</button>
   </div>
 
@@ -180,6 +182,23 @@ body.locked .bar,body.locked .wrap{display:none}
     <div class="tbl-wrap"><table id="tbl-mar"></table></div>
   </div>
 
+  <!-- ── PROJECTION DANS LE TEMPS ── -->
+  <div class="view" id="view-projection">
+    <p class="hint">Évolution année par année à effectif constant : chaque MAR vieillit (année de naissance), part en retraite à l'âge choisi et est remplacé par un MAR plus jeune ; à partir de l'âge de fin des gardes, plus de garde (ou seulement des demi-gardes de jour le week-end). Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence), deux fois : sans puis avec demi-gardes pour les MAR qui ne gardent plus. Les MAR sans année de naissance ne vieillissent pas.</p>
+    <h2>Paramètres</h2>
+    <div class="form" id="f-projection"></div>
+    <h2>Années de naissance</h2>
+    <p class="hint">Saisie dans la colonne « Naissance » de l'onglet Équipe et règles, ou collée ici : une ligne par MAR, « code année » (ex. <code>MAR 12 1980</code>). Les données restent dans ce navigateur.</p>
+    <div class="row" style="align-items:flex-start"><textarea id="pj-naissances" style="width:260px;height:110px" placeholder="code année"></textarea>
+      <button class="btn" onclick="collerNaissances()">Appliquer</button><span class="hint" id="pj-naiss-info" style="margin:0"></span></div>
+    <h2>Ajouts et retraits</h2>
+    <p class="hint">Ajout : un MAR arrive l'année indiquée (quotités, année de naissance). Retrait : un MAR quitte le service l'année indiquée, sans remplacement.</p>
+    <div class="tbl-wrap" style="max-width:900px"><table id="tbl-mouv"></table></div>
+    <div class="row"><button class="btn" onclick="addMouv('ajout')">＋ Ajout</button><button class="btn" onclick="addMouv('retrait')">－ Retrait</button></div>
+    <div class="row"><button class="btn btn-g" onclick="calculerProjection()">▶ Calculer la projection</button><span class="hint" id="pj-etat" style="margin:0"></span></div>
+    <div id="pj-res"></div>
+  </div>
+
   <!-- ── SIMULATIONS ET FINANCE ── -->
   <div class="view" id="view-simu">
     <h2>Comparer des scénarios</h2>
@@ -239,7 +258,7 @@ function recompute(){ clearTimeout(recomputeTimer); recomputeTimer = setTimeout(
 function recomputeNow(){
   R = E.generate(cfg); save();
   document.getElementById('bar-sub').textContent = `${cfg.annee} · ${R.equipe.length} MAR · ${f1(R.stats.synthese.etp)} ETP · ${R.postes.length} postes de bloc · ${cfg.rea.nombre} réa · ${cfg.gardes.parJour} gardes/jour`;
-  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes(); renderOrganisation(); renderGroupeRea1(); renderFinanceTab();
+  renderSynthese(); renderEquipe(); renderRegles(); renderMois(); renderTableau(); renderSimu(); renderConsignes(); renderOrganisation(); renderGroupeRea1(); renderFinanceTab(); renderProjectionForm();
 }
 function showTab(id){
   id = {equipe:'parametres',regles:'parametres',organisation:'synthese',consignes:'synthese',finance:'simu'}[id] || id;
@@ -248,6 +267,125 @@ function showTab(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id==='view-'+id));
   try{ localStorage.setItem(STORE+'_tab', id); }catch(e){}
 }
+
+// ── Projection dans le temps ──
+let PJ = null;   // résultats { cle, ans, sans: [...], avec: [...] }
+function setPJ(k,v){ cfg.projection[k] = v; recompute(); }
+function renderProjectionForm(){
+  const p = cfg.projection, sel = (k,lab,opts) => `<label>${lab}<select onchange="setPJ('${k}',${typeof opts[0][0]==='number'?'+this.value':"this.value==='true'"})">${opts.map(([v,l])=>`<option value="${v}" ${String(v)===String(p[k])?'selected':''}>${l}</option>`).join('')}</select></label>`;
+  document.getElementById('f-projection').innerHTML =
+    sel('ageRetraite','Âge de départ en retraite',[[65,'65 ans'],[66,'66 ans'],[67,'67 ans']]) +
+    `<label>Âge de fin des gardes<input type="number" min="50" max="70" value="${p.ageFinGardes}" onchange="setPJ('ageFinGardes',+this.value)"/></label>` +
+    `<label>Projection jusqu'en<input type="number" min="${cfg.annee+1}" max="2070" value="${p.fin}" onchange="setPJ('fin',+this.value)"/></label>` +
+    sel('remplacement','Départs en retraite remplacés (effectif constant)',[[true,'Oui'],[false,'Non']]) +
+    sel('remplacantTempsPlein','Remplaçant',[[true,'à temps plein (sauf jours fixes)'],[false,'à la quotité du poste']]) +
+    `<label>Âge du remplaçant<input type="number" min="28" max="55" value="${p.ageRemplacant}" onchange="setPJ('ageRemplacant',+this.value)"/></label>`;
+  const nb = cfg.equipe.filter(m => m.naissance).length;
+  document.getElementById('pj-naiss-info').textContent = `${nb} MAR sur ${cfg.equipe.length} avec une année de naissance.`;
+  const codes = cfg.equipe.map(m => m.code);
+  let h = `<tr><th>Année</th><th>Mouvement</th><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Naissance</th><th></th></tr>`;
+  (p.mouvements||[]).forEach((x,i) => {
+    const aj = x.type === 'ajout';
+    h += `<tr><td><input type="number" style="width:70px" value="${x.annee}" onchange="setMouv(${i},'annee',+this.value)"/></td><td>${aj?'Ajout':'Retrait'}</td>
+      <td class="l">${aj ? `<input type="text" value="${esc(x.code)}" onchange="setMouv(${i},'code',this.value.trim())"/>` : `<select onchange="setMouv(${i},'code',this.value)">${codes.map(c=>`<option ${c===x.code?'selected':''}>${esc(c)}</option>`).join('')}</select>`}</td>
+      <td>${aj?`<input type="number" step="0.1" min="0" max="1" value="${x.q}" onchange="setMouv(${i},'q',+this.value)"/>`:''}</td>
+      <td>${aj?`<input type="number" step="0.1" min="0" max="1" value="${x.qg}" onchange="setMouv(${i},'qg',+this.value)"/>`:''}</td>
+      <td>${aj?`<input type="number" style="width:70px" value="${x.naissance||''}" onchange="setMouv(${i},'naissance',this.value?+this.value:null)"/>`:''}</td>
+      <td><button class="btn btn-s btn-r" onclick="delMouv(${i})">✕</button></td></tr>`;
+  });
+  document.getElementById('tbl-mouv').innerHTML = (p.mouvements||[]).length ? h : '<tr><td class="hint">Aucun mouvement.</td></tr>';
+  const etat = document.getElementById('pj-etat');
+  if(PJ && PJ.cle !== cleProjection()) etat.textContent = 'Paramètres modifiés : relancer le calcul.';
+}
+function setMouv(i,k,v){ cfg.projection.mouvements[i][k] = v; recompute(); }
+function delMouv(i){ cfg.projection.mouvements.splice(i,1); recompute(); }
+function addMouv(type){
+  const a = cfg.annee + 1;
+  cfg.projection.mouvements = (cfg.projection.mouvements||[]).concat(type === 'ajout'
+    ? [{type, annee:a, code:'Nouveau MAR '+((cfg.projection.mouvements||[]).length+1), q:1, qg:1, naissance:a-35}]
+    : [{type, annee:a, code:cfg.equipe[0] ? cfg.equipe[0].code : ''}]);
+  recompute();
+}
+function collerNaissances(){
+  let ok = 0; const inconnus = [];
+  document.getElementById('pj-naissances').value.split('\n').forEach(l => {
+    const m = l.trim().match(/^(.+?)[\s;,\t]+(\d{4})\s*$/); if(!m) return;
+    const c = m[1].trim().toLowerCase(), x = cfg.equipe.find(e => e.code.trim().toLowerCase() === c);
+    if(x){ x.naissance = +m[2]; ok++; } else inconnus.push(m[1].trim());
+  });
+  recompute();
+  alert(`${ok} année(s) de naissance enregistrée(s)` + (inconnus.length ? ` ; codes inconnus : ${inconnus.join(', ')}` : '') + '.');
+}
+function cleProjection(){ const c = JSON.parse(JSON.stringify(cfg)); return JSON.stringify(c); }
+function calculerProjection(){
+  const ans = []; for(let y = cfg.annee; y <= cfg.projection.fin; y++) ans.push(y);
+  const res = { cle: cleProjection(), ans, sans: [], avec: [] }, todo = [];
+  ans.forEach(y => { todo.push([y,false]); todo.push([y,true]); });
+  const etat = document.getElementById('pj-etat'); let k = 0;
+  const step = () => {
+    const t0 = Date.now();
+    while(k < todo.length && Date.now() - t0 < 120){ const [y,d] = todo[k++]; (d ? res.avec : res.sans).push(E.projectionAnnee(cfg, y, d)); }
+    etat.textContent = `Calcul : ${Math.round(k / todo.length * 100)} %`;
+    if(k < todo.length) setTimeout(step, 0); else { PJ = res; etat.textContent = `${ans.length} années calculées (${todo.length} plannings).`; renderProjection(); }
+  };
+  step();
+}
+// Graphique en lignes (SVG)
+function lineChart(titre, ans, series, unite){
+  const W = 640, H = 260, L = 44, Rr = 12, T = 14, B = 30;
+  const vals = series.flatMap(s => s.data).filter(v => v !== null && isFinite(v));
+  if(!vals.length) return '';
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || 2; lo = Math.max(0, Math.floor(lo - pad)); hi = Math.ceil(hi + pad);
+  const x = i => L + (W - L - Rr) * (ans.length > 1 ? i / (ans.length - 1) : 0.5), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const ticks = []; const st = Math.max(1, Math.ceil((hi - lo) / 5)); for(let v = lo; v <= hi; v += st) ticks.push(v);
+  let g = ticks.map(v => `<line x1="${L}" x2="${W-Rr}" y1="${y(v)}" y2="${y(v)}" class="ch-grid"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" class="ch-t">${v}</text>`).join('');
+  g += ans.map((a,i) => (i % Math.ceil(ans.length / 12) === 0 || (i === ans.length - 1 && i % Math.ceil(ans.length / 12) >= Math.ceil(ans.length / 12) / 2)) ? `<text x="${x(i)}" y="${H-10}" text-anchor="middle" class="ch-t">${a}</text>` : '').join('');
+  series.forEach(s => {
+    let d = ''; s.data.forEach((v,i) => { if(v === null || !isFinite(v)) return; d += (d ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); });
+    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" ${s.dash ? 'stroke-dasharray="6 4"' : ''}/>`;
+    s.data.forEach((v,i) => { if(v !== null && isFinite(v)) g += `<circle cx="${x(i)}" cy="${y(v)}" r="2.6" fill="${s.color}"><title>${ans[i]} · ${esc(s.label)} : ${f1(v)} ${unite}</title></circle>`; });
+  });
+  const leg = series.map(s => `<span class="ch-leg"><i style="background:${s.color};${s.dash?'opacity:.6':''}"></i>${esc(s.label)}</span>`).join('');
+  return `<div class="chart"><div class="chart-h">${titre}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}</svg><div>${leg}</div></div>`;
+}
+function renderProjection(){
+  if(!PJ) return;
+  const A = PJ.ans, S = PJ.sans, D = PJ.avec, v = (a,k) => a.map(r => r[k]);
+  const c1 = '#2563eb', c2 = '#d97706', c3 = '#16a34a', c4 = '#9333ea';
+  let h = `<div class="charts">` +
+    lineChart('Gardes par an d\'un temps plein (moins de ' + cfg.projection.ageFinGardes + ' ans)', A, [
+      {label:'gardes / an', color:c1, data:v(S,'gardesTempsPlein')},
+      {label:'gardes / ETP de garde', color:c4, data:v(S,'gardesParEtpGarde'), dash:true}], 'gardes') +
+    lineChart('Effectif', A, [
+      {label:'MAR qui gardent', color:c1, data:v(S,'gardeurs')},
+      {label:'MAR de ' + cfg.projection.ageFinGardes + ' ans et plus', color:c2, data:v(S,'nbPlus60')},
+      {label:'remplaçants arrivés', color:c3, data:v(S,'nbRemplacants')}], 'MAR') +
+    lineChart('Temps de travail — MAR de moins de ' + cfg.projection.ageFinGardes + ' ans (h / semaine)', A, [
+      {label:'avec garde, sans demi-garde des ' + cfg.projection.ageFinGardes + ' ans et +', color:c1, data:v(S,'hAvecMoins60')},
+      {label:'avec garde, avec demi-garde des ' + cfg.projection.ageFinGardes + ' ans et +', color:c3, data:v(D,'hAvecMoins60')},
+      {label:'sans garde', color:'#64748b', data:v(S,'hSansMoins60'), dash:true}], 'h/sem') +
+    lineChart('Temps de travail — MAR de ' + cfg.projection.ageFinGardes + ' ans et plus (h / semaine)', A, [
+      {label:'sans demi-garde (aucune garde)', color:c2, data:v(S,'hAvecPlus60')},
+      {label:'avec demi-gardes de jour le WE', color:c4, data:v(D,'hAvecPlus60')},
+      {label:'sans garde', color:'#64748b', data:v(S,'hSansPlus60'), dash:true}], 'h/sem') +
+    `</div>`;
+  const n = x => x === null || x === undefined ? '—' : f1(x);
+  h += `<h2>Par année</h2><p class="hint">« sans / avec ½ » = sans ou avec demi-gardes de jour le week-end pour les MAR qui ne gardent plus. h/sem = moyenne hors vacances (temps plein et temps partiels de chaque groupe). Temps plein = MAR à 100 % qui gardent à 100 %.</p>
+    <div class="tbl-wrap"><table><tr><th>Année</th><th>MAR</th><th>ETP</th><th>MAR qui gardent</th><th>${cfg.projection.ageFinGardes} ans et +</th><th>Remplaçants</th><th>Gardes / an temps plein</th><th>Heures de garde / an temps plein (sans / avec ½)</th><th>&lt; ${cfg.projection.ageFinGardes} ans h/sem avec garde (sans / avec ½)</th><th>&lt; ${cfg.projection.ageFinGardes} ans h/sem sans garde</th><th>${cfg.projection.ageFinGardes} ans et + h/sem (sans / avec ½)</th><th>Demi-gardes / an (${cfg.projection.ageFinGardes} ans et +)</th><th>MAR libres / jour</th><th>Alertes</th></tr>` +
+    A.map((a,i) => `<tr><td class="b">${a}</td><td>${S[i].effectif}</td><td>${f1(S[i].etp)}</td><td>${S[i].gardeurs}</td><td>${S[i].nbPlus60}</td><td>${S[i].nbRemplacants}</td><td class="b">${n(S[i].gardesTempsPlein)}</td><td>${f0(S[i].heuresGardeMoins60||0)} / ${f0(D[i].heuresGardeMoins60||0)}</td><td class="b">${n(S[i].hAvecMoins60)} / ${n(D[i].hAvecMoins60)}</td><td>${n(S[i].hSansMoins60)}</td><td>${n(S[i].hAvecPlus60)} / ${n(D[i].hAvecPlus60)}</td><td>${n(D[i].demiPlus60)}</td><td>${f1(S[i].marDisponiblesParJour)}</td><td class="${S[i].alertes+D[i].alertes?'pos':''}">${S[i].alertes + D[i].alertes}</td></tr>`).join('') + `</table></div>`;
+  // par praticien
+  h += `<h2>Par praticien</h2><div class="row"><select id="pj-val" onchange="renderProjection()">${[['gardes','Gardes / an'],['hAvec','h/sem avec garde'],['hSans','h/sem sans garde'],['demi','Demi-gardes / an']].map(([k,l])=>`<option value="${k}" ${pjVal===k?'selected':''}>${l}</option>`).join('')}</select>
+    <select id="pj-sc" onchange="renderProjection()"><option value="sans" ${pjSc==='sans'?'selected':''}>sans demi-garde des ${cfg.projection.ageFinGardes} ans et +</option><option value="avec" ${pjSc==='avec'?'selected':''}>avec demi-gardes des ${cfg.projection.ageFinGardes} ans et +</option></select>
+    <span class="hint" style="margin:0">Cases orange : ${cfg.projection.ageFinGardes} ans et plus · vert : remplaçant · vide : pas dans l'équipe.</span></div>`;
+  const src = pjSc === 'avec' ? D : S, pas = A.length > 14 ? 2 : 1, cols = A.map((a,i)=>i).filter(i => i % pas === 0 || i === A.length - 1);
+  const noms = []; src.forEach(r => r.membres.forEach(m => { if(!noms.includes(m.code)) noms.push(m.code); }));
+  h += `<div class="tbl-wrap"><table><tr><th class="l">MAR</th>${cols.map(i=>`<th>${A[i]}</th>`).join('')}</tr>` + noms.map(c => `<tr><td class="l b">${esc(c)}</td>${cols.map(i => {
+    const m = src[i].membres.find(x => x.code === c); if(!m) return '<td></td>';
+    const val = m[pjVal]; return `<td class="${m.plus60?'k-pj60':/\(rempl\./.test(c)?'k-pjr':''}" title="${m.age!=null?m.age+' ans':''}">${pjVal==='gardes'||pjVal==='demi' ? f0(val) : f1(val)}</td>`; }).join('')}</tr>`).join('') + `</table></div>`;
+  document.getElementById('pj-res').innerHTML = h;
+}
+let pjVal = 'gardes', pjSc = 'sans';
+document.addEventListener('change', e => { if(e.target.id === 'pj-val') pjVal = e.target.value; if(e.target.id === 'pj-sc') pjSc = e.target.value; }, true);
 
 // ── Synthèse ──
 function renderSynthese(){
@@ -291,7 +429,7 @@ function renderSynthese(){
 
 // ── Équipe ──
 function renderEquipe(){
-  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th title="Jours travaillés (tous cochés = jours de temps partiel variables)">Jours travaillés L M M J V</th><th>Réa</th><th title="Groupe dédié au poste Réa 1">Réa 1</th><th>Consult.</th><th>Maternité</th><th class="l">Particularité</th><th></th></tr>`;
+  let h = `<tr><th class="l">MAR</th><th>Temps de travail</th><th>Quotité garde</th><th>Gardes WE / fériés</th><th>Demi-garde WE</th><th title="Jours travaillés (tous cochés = jours de temps partiel variables)">Jours travaillés L M M J V</th><th>Réa</th><th title="Groupe dédié au poste Réa 1">Réa 1</th><th>Consult.</th><th>Maternité</th><th class="l">Particularité</th><th title="Année de naissance (onglet Projection)">Naissance</th><th></th></tr>`;
   cfg.equipe.forEach((m,i) => {
     h += `<tr><td class="l"><input type="text" value="${esc(m.code)}" onchange="setM(${i},'code',this.value.trim()||'?')"/></td>
       <td><input type="number" step="0.1" min="0" max="1" value="${m.q}" onchange="setM(${i},'q',+this.value)"/></td>
@@ -304,6 +442,7 @@ function renderEquipe(){
       <td><input type="checkbox" ${m.consult!==false?'checked':''} onchange="setM(${i},'consult',this.checked)"/></td>
       <td><input type="checkbox" ${m.mater!==false?'checked':''} onchange="setM(${i},'mater',this.checked)"/></td>
       <td class="l"><input class="w" type="text" value="${esc(m.note||'')}" onchange="setM(${i},'note',this.value)"/></td>
+      <td><input type="number" style="width:70px" min="1940" max="2010" value="${m.naissance||''}" onchange="setM(${i},'naissance',this.value?+this.value:null)"/></td>
       <td><button class="btn btn-s btn-r" onclick="delMar(${i})">✕</button></td></tr>`;
   });
   document.getElementById('tbl-equipe').innerHTML = h;
@@ -327,6 +466,7 @@ function importEquipe(file){
       eq.push({code:String(r[0]).trim(), q:parseFloat(r[1]), qg:isNaN(parseFloat(r[4]))?parseFloat(r[1]):parseFloat(r[4]),
         we:!/pas de garde de w/.test(n), demiWE:/demi/.test(n), rea:!/pas de r[ée]a/.test(n), rea1:/r[ée]a ?1/.test(n), joursFixes:(()=>{const j=['lundi','mardi','mercredi','jeudi','vendredi'].map(x=>n.includes(x));return j.some(Boolean)&&!j.every(Boolean)?j:null;})(), note});
     });
+    rows.slice(1).filter(r => r[0] && !isNaN(parseFloat(r[1]))).forEach((r,k) => { const n = parseInt(r[6]); if(n > 1900) eq[k].naissance = n; });
     if(!eq.length){ alert("Aucun médecin reconnu (colonnes A, B, E, F)."); return; }
     cfg.equipe = eq; recompute(); alert(eq.length+' MAR importés.');
   };
@@ -736,6 +876,11 @@ function exportXlsx(){
   const cH = ['MAR','Quotité','Q. garde','Bloc','Réa','Groupe Réa 1','Maternité','Consultation','Gardes','dont WE/fériés','Nuits seules','Demi-gardes','Repos','Sans poste','Jours libres','Congés','Formation','Récup. samedis','Récup. dimanches','Récup. 18h','dont posées','Récup. Réa 1 (17h)','Temps partiel','Total absences'].concat(R.postes.map(p=>p.code), ['h/an hors garde','h/an garde','h/sem sans garde','h/sem avec garde','Semaine max','Écart / MAR (h/sem)']);
   const cR = S.parMar.map((m,i)=>[m.code,m.q,m.qg,m.bloc,m.rea,R.equipe[i].rea1?'oui':'',m.mater,m.consult,m.gardes,m.gardesWE,m.nuits,m.demi,m.repos,m.hb,Math.round(m.hbDisponible),+(m.conges+m.rtt).toFixed(1),+m.formation.toFixed(1),+m.recupSamedis.toFixed(1),+m.recupDimanches.toFixed(1),+m.recupFin18.toFixed(1),m.rc,+(m.recupRea+m.recupReaUn).toFixed(1),m.tp,+m.absences.toFixed(1)].concat(m.postes,[Math.round(m.heuresSansGarde),Math.round(m.heuresGarde),+m.hSemSansGarde.toFixed(1),+m.hSemAvecGarde.toFixed(1),m.semaineMax,+m.ecartPlafond.toFixed(1)]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH].concat(cR)), 'Compteurs');
+  if(PJ){
+    const S = PJ.sans, D = PJ.avec, r1 = x => x === null || x === undefined ? '' : +x.toFixed(1);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Année','MAR','ETP','MAR qui gardent','≥ fin des gardes','Remplaçants','Gardes / an temps plein','h/sem < fin gardes avec garde (sans ½)','h/sem < fin gardes avec garde (avec ½)','h/sem < fin gardes sans garde','h/sem ≥ fin gardes (sans ½)','h/sem ≥ fin gardes (avec ½)','Demi-gardes / an ≥ fin gardes','MAR libres / jour']]
+      .concat(PJ.ans.map((a,i)=>[a,S[i].effectif,r1(S[i].etp),S[i].gardeurs,S[i].nbPlus60,S[i].nbRemplacants,r1(S[i].gardesTempsPlein),r1(S[i].hAvecMoins60),r1(D[i].hAvecMoins60),r1(S[i].hSansMoins60),r1(S[i].hAvecPlus60),r1(D[i].hAvecPlus60),r1(D[i].demiPlus60),r1(S[i].marDisponiblesParJour)]))), 'Projection');
+  }
   const nom = i => i===null||i===undefined ? '' : R.equipe[i].code;
   const tH = ['Date','Jour','Statut'].concat(R.postes.map(p=>p.code+' '+p.salles), Array.from({length:cfg.rea.nombre},(_,k)=>'Réa '+(k+1)+(k<2&&R.equipe.some(m=>m.rea1)?' (groupe)':'')), Array.from({length:cfg.consultations.marMax},(_,k)=>'Consultation '+(k+1)), ['Maternité','Récup. 18h','Récup. réa','Garde 1','Garde 2','Nuit seule','Demi-garde jour','Repos','TP','MAR sans poste','MAR libres']);
   const tR = R.jours.map(j=>[E.labelFR(j.date),j.jour,j.statut==='Ouvert'?'':(j.ferie||j.statut)].concat(

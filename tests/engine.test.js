@@ -259,3 +259,24 @@ test('option roulement consultation → bloc : le MAR endort les patients qu\'il
   }));
   assert.ok(tot > 900 && ok / tot > 0.9, ok + ' / ' + tot);
 });
+
+test('projection : vieillissement, retraite remplacée, fin des gardes à 60 ans, demi-gardes', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });                   // années fictives
+  cfg.projection.ageRetraite = 65;
+  cfg.projection.mouvements = [{ type: 'retrait', annee: 2030, code: 'MAR 23' }, { type: 'ajout', annee: 2031, code: 'Nouveau', q: 1, qg: 1, naissance: 1996 }];
+  const eq = E.equipeAnnee(cfg, 2030, false);
+  assert.equal(eq.length, 22);                                                   // MAR 23 retiré
+  const m1 = eq.find(m => m.code.startsWith('MAR 01'));
+  assert.equal(m1.code, 'MAR 01 (rempl. 2030)'); assert.equal(m1.naissance, 1995); assert.equal(m1.qg, 1);
+  const m2 = eq.find(m => m.code === 'MAR 02');                                   // 64 ans : plus de garde
+  assert.equal(m2.qg, 0); assert.equal(m2.demiWE, false);
+  assert.equal(E.equipeAnnee(cfg, 2030, true).find(m => m.code === 'MAR 02').demiWE, true);
+  assert.equal(E.equipeAnnee(cfg, 2031, false).length, 23);                      // ajout
+  const a = E.projectionAnnee(cfg, 2030, false), b = E.projectionAnnee(cfg, 2030, true);
+  assert.equal(a.alertes, 0); assert.equal(b.alertes, 0);
+  assert.equal(a.nbPlus60, 5);                                                   // 61 à 64 ans (MAR 02 à 06)
+  assert.ok(b.demiPlus60 > a.demiPlus60);                                        // MAR 05 fait déjà des demi-gardes
+  assert.ok(b.hAvecPlus60 > a.hAvecPlus60);                                       // les demi-gardes ajoutent des heures aux 60 ans et +
+  assert.ok(b.hAvecMoins60 < a.hAvecMoins60);                                     // et en retirent aux autres
+});

@@ -74,6 +74,10 @@
     // Part financière : le chiffre d'affaires est réparti en parts égales entre les MAR qui en détiennent.
     // Parts d'un MAR : valeur saisie dans l'équipe, sinon au prorata de la quotité de travail.
     finance: { ca: 1200000, parts: 15 },
+    // Projection dans le temps (année de naissance dans l'équipe) : effectif constant, chaque départ en retraite est
+    // remplacé par un MAR de « ageRemplacant » ans ; plus de garde à partir de « ageFinGardes » ans (option : demi-gardes
+    // de jour le week-end) ; mouvements = ajouts / retraits à partir d'une année.
+    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -102,7 +106,7 @@
     const base = clone(DEFAULT_CONFIG);
     if (!cfg) return base;
     const out = Object.assign(base, clone(cfg));
-    ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
+    ['rea', 'hb', 'maternite', 'gardes', 'params', 'finance', 'consultations', 'projection'].forEach(k => { out[k] = Object.assign(clone(DEFAULT_CONFIG[k]), clone((cfg || {})[k] || {})); });
     // Configurations enregistrées avant les horaires 8h-16h : anciens horaires par défaut de C, D, E (au-delà de 16h)
     // → 8h-16h ; A garde ses horaires (5 h du mercredi au vendredi), y compris s'il avait été passé à 8 h.
     if (cfg.versionHoraires !== 2) {
@@ -409,6 +413,56 @@
     return result;
   }
 
+  // ── Projection dans le temps ─────────────────────────────────
+  // Équipe d'une année : vieillissement (année de naissance), retraite et remplacement, fin des gardes,
+  // mouvements (ajout / retrait). demi60 : les MAR qui ne font plus de garde font des demi-gardes de jour le week-end.
+  function equipeAnnee(cfg, annee, demi60) {
+    const PJ = cfg.projection;
+    const out = [];
+    const ajoute = (m, depuis) => {
+      const n = +m.naissance || null;
+      const age = n ? annee - n : null;
+      if (n && age >= PJ.ageRetraite) {            // départ en retraite
+        if (!PJ.remplacement || m.nonRemplace) return;
+        const an = n + PJ.ageRetraite;
+        const fixe = Array.isArray(m.joursFixes) && m.joursFixes.some(x => !x);
+        const q = PJ.remplacantTempsPlein && !fixe ? 1 : m.q;
+        return ajoute({ code: m.code + ' (rempl. ' + an + ')', q, qg: q, we: true, demiWE: false, rea: true, rea1: m.rea1,
+          consult: true, mater: true, joursFixes: fixe ? m.joursFixes : null, naissance: an - PJ.ageRemplacant, remplacant: true, origine: m.code }, an);
+      }
+      const r = Object.assign({}, m, { age, depuis });
+      if (age !== null && age >= PJ.ageFinGardes) { r.qg = 0; r.demiWE = !!demi60 || !!m.demiWE; r.plus60 = true; }
+      out.push(r);
+    };
+    const retraits = new Set((PJ.mouvements || []).filter(x => x.type === 'retrait' && +x.annee <= annee).map(x => x.code));
+    cfg.equipe.forEach(m => { if (!retraits.has(m.code)) ajoute(m, null); });
+    (PJ.mouvements || []).filter(x => x.type === 'ajout' && +x.annee <= annee && !retraits.has(x.code)).forEach(x => ajoute(Object.assign(
+      { we: true, demiWE: false, rea: true, rea1: false, consult: true, mater: true, joursFixes: null }, x, { q: +x.q || 0, qg: x.qg === '' || x.qg == null ? +x.q || 0 : +x.qg }), +x.annee));
+    return out;
+  }
+
+  // Indicateurs d'une année (planning complet recalculé sur le calendrier de l'année de référence)
+  function projectionAnnee(cfg, annee, demi60) {
+    const equipe = equipeAnnee(cfg, annee, demi60);
+    const r = generate(Object.assign({}, cfg, { equipe }));
+    const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60 }));
+    const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
+    const tp = moins.filter(m => m.q === 1 && m.qg === 1);
+    const avg = (a, f) => (a.length ? a.reduce((x, m) => x + f(m), 0) / a.length : null);
+    return {
+      annee, demi60: !!demi60, effectif: equipe.length, etp: s.etp, etpGarde: s.etpGarde,
+      gardeurs: equipe.filter(m => m.qg > 0).length, nbPlus60: plus.length, nbRemplacants: equipe.filter(m => m.remplacant).length,
+      sansNaissance: equipe.filter(m => !m.naissance).length,
+      gardesTempsPlein: avg(tp, m => m.gardes), gardesParEtpGarde: s.gardesParEtpGarde,
+      hAvecMoins60: avg(moins, m => m.hSemAvecGarde), hSansMoins60: avg(moins, m => m.hSemSansGarde),
+      hAvecPlus60: avg(plus, m => m.hSemAvecGarde), hSansPlus60: avg(plus, m => m.hSemSansGarde),
+      demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
+      marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length,
+      membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
+        hAvec: m.hSemAvecGarde, hSans: m.hSemSansGarde })),
+    };
+  }
+
   function cmp(a, b) {
     for (let i = 0; i < a.length; i++) { if (a[i] < b[i]) return -1; if (a[i] > b[i]) return 1; }
     return 0;
@@ -702,7 +756,7 @@
     }));
   }
 
-  const api = { DEFAULT_CONFIG, JOURS, generate, verify, stats, simulateETP, simulateFinance, etpPourPlafond, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
+  const api = { DEFAULT_CONFIG, JOURS, generate, equipeAnnee, projectionAnnee, verify, stats, simulateETP, simulateFinance, etpPourPlafond, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BlocMarEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
