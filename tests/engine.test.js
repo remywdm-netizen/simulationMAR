@@ -368,3 +368,17 @@ test('projection : plafond de 12 jours de week-end par an pour les 60 ans et plu
     });
   }
 });
+
+test('projection : demi-garde des 60 ans et plus le samedi ou le dimanche', () => {
+  const cfg = E.mergeConfig();
+  cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });
+  cfg.projection.plafondJoursWE60 = 12;
+  const eq = E.equipeAnnee(cfg, 2027, true), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
+  assert.deepEqual(E.verify(r), []);
+  eq.forEach((m, i) => {
+    if (!m.plus60 || !m.demiWE) return;
+    const d = r.jours.filter(j => E.dow(j.date) >= 5 && j.demi.includes(i)), we = new Set(d.map(j => E.addDays(j.date, -E.dow(j.date))));
+    assert.equal(d.length, we.size, m.code);                                     // un seul jour par week-end
+    assert.ok(d.length <= 12 && d.length > 0, m.code + ' ' + d.length);
+  });
+});

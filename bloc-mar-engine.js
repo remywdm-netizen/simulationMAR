@@ -80,7 +80,7 @@
     // de jour le week-end) ; option gardesApresPct : part des gardes conservée après cet âge (100 = continue les gardes),
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
-    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, plafondJoursWE60: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -236,15 +236,18 @@
       demiMembers.forEach((i, r) => {
         let nb = G.demiWeekends === 'auto' || G.demiWeekends === '' || G.demiWeekends == null
           ? Math.max(1, Math.round(avgWE / 2 * Q[i])) : Math.max(0, +G.demiWeekends);
-        if (P[i].maxJoursWE > 0) nb = Math.min(nb, Math.max(0, Math.floor((P[i].maxJoursWE - weJours[i]) / 2)));   // plafond de jours de WE
-        demiWeekends += nb;
-        const step = sats.length / Math.max(nb, 1);
-        for (let m = 0; m < nb; m++) {
+        const un = !!P[i].demiUnJour;                     // un seul jour par week-end (samedi ou dimanche)
+        let nj = un ? 2 * nb : nb;                          // demi-gardes (jours) ou week-ends à placer
+        if (P[i].maxJoursWE > 0) nj = Math.min(nj, Math.max(0, Math.floor((P[i].maxJoursWE - weJours[i]) / (un ? 1 : 2))));   // plafond de jours de WE
+        demiWeekends += un ? nj / 2 : nj;
+        const step = sats.length / Math.max(nj, 1);
+        for (let m = 0; m < nj; m++) {
           let pos = Math.floor(step * m + step / 2 + r * step / (demiMembers.length + 1)) % sats.length;
           for (let t = 0; t < sats.length; t++, pos = (pos + 1) % sats.length) {
-            const k0 = sats[pos];
-            if ([k0, k0 + 1].every(k => !demi[k].includes(i) && demi[k].length < G.parJour && !(G.demiImposees || {})[days[k]]) && weLibre(i, k0, 2)) {   // jours de fête : rotation à part
-              [k0, k0 + 1].forEach(k => { demi[k].push(i); weNote(i, k); });
+            const k0 = sats[pos], jours = un ? [k0 + ((m + r) % 2)] : [k0, k0 + 1];   // un jour : samedi et dimanche en alternance
+            if (un && [k0, k0 + 1].some(k => demi[k].includes(i))) continue;   // un seul jour par week-end
+            if (jours.every(k => !demi[k].includes(i) && demi[k].length < G.parJour && !(G.demiImposees || {})[days[k]]) && weLibre(i, k0, jours.length)) {   // jours de fête : rotation à part
+              jours.forEach(k => { demi[k].push(i); weNote(i, k); });
               break;
             }
           }
@@ -471,7 +474,8 @@
         // part des gardes conservée : réglage individuel (gardesApres, en %) sinon règle générale
         const pct = m.gardesApres !== null && m.gardesApres !== undefined && m.gardesApres !== '' ? +m.gardesApres : +PJ.gardesApresPct || 0;
         r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(pct, 0), 100)) / 100; r.demiWE = r.qg > 0 ? false : !!demi60 || !!m.demiWE; r.plus60 = true;
-        if (+PJ.plafondJoursWE60 > 0) r.maxJoursWE = +PJ.plafondJoursWE60; }   // plafond de jours de week-end travaillés par an   // continue les gardes : pas de demi-garde
+        if (+PJ.plafondJoursWE60 > 0) r.maxJoursWE = +PJ.plafondJoursWE60;
+        if (r.demiWE && PJ.demiUnJour !== false) r.demiUnJour = true; }   // demi-garde le samedi ou le dimanche (pas les deux)   // plafond de jours de week-end travaillés par an   // continue les gardes : pas de demi-garde
       out.push(r);
     };
     const retraits = new Set((PJ.mouvements || []).filter(x => x.type === 'retrait' && +x.annee <= annee).map(x => x.code));

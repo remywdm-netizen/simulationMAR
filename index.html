@@ -188,7 +188,7 @@ body.locked .bar,body.locked .wrap{display:none}
 
   <!-- ── PROJECTION DANS LE TEMPS ── -->
   <div class="view" id="view-projection">
-    <label class="pj-top"><input type="checkbox" id="pj-demi60" onchange="setDemi60(this.checked)"/> <span><b>Demi-gardes de jour le week-end pour les plus de 60 ans</b> (règle générale) : samedi et dimanche 8h-20h, le collègue de garde ne fait que la nuit. Les indicateurs, l'équipe de l'année et les fêtes suivent ce choix ; les graphiques montrent les deux cas (pointillés = avec demi-gardes).</span></label>
+    <label class="pj-top"><input type="checkbox" id="pj-demi60" onchange="setDemi60(this.checked)"/> <span><b>Demi-gardes de jour le week-end pour les plus de 60 ans</b> (règle générale) : 8h-20h, le collègue de garde ne fait que la nuit. Les indicateurs, l'équipe de l'année et les fêtes suivent ce choix ; les graphiques montrent les deux cas (pointillés = avec demi-gardes).</span></label>
     <div class="pj-kpis" id="pj-kpi"></div>
     <div class="pj-panel">
       <div class="pj-ctrls" id="pj-ctrls"></div>
@@ -324,7 +324,8 @@ function renderPjCtrls(){
     `<div class="pj-c">` +
       `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
 
-            tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
+            tog('demiUnJour', `Demi-garde des ${p.ageFinGardes} ans et + : samedi ou dimanche (un seul jour par week-end)`) +
+      tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
     .sort((a,b) => a[0].naissance - b[0].naissance);
