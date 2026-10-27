@@ -883,7 +883,10 @@
     const Ns = []; for (let n = 5; n <= 80.001; n += 0.1) Ns.push(Math.round(n * 10) / 10);
     const sim = simulateETP(result, Ns);
     const first = k => { const x = sim.find(r => r[k] <= result.cfg.params.plafond); return x ? x.etp : null; };
-    return { charge: first('hSemAvecGardeCharge'), consultations: first('hSemAvecGarde') };
+    // temps de travail : seuls les congés (et RTT) et les jours de récupération sont retirés ; les jours libérables
+    // (jours sans poste restant libres) sont comptés travaillés
+    const n = first('hSemAvecGarde');
+    return { charge: n, consultations: n };
   }
 
   // ── Simulation financière : valeur de la part et revenu selon le CA et le nombre de parts ──
