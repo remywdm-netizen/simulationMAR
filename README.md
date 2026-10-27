@@ -44,3 +44,12 @@ r.stats.synthese; r.stats.parMar;
 E.simulateETP(r, [18, 20, 22, 24]);
 E.simulateFinance([1200000, 1300000], [14, 15, 16], 2000);   // valeur de la part, €/h
 ```
+
+## Version hors ligne
+Un seul fichier HTML, utilisable sans connexion (moteur et bibliothèque Excel intégrés) :
+```
+node build-hors-ligne.js simulation-mar-hors-ligne.html            # équipe anonymisée
+node build-hors-ligne.js simulation-mar-hors-ligne.html equipe.json # équipe d'une configuration exportée
+```
+Le fichier produit avec une équipe nominative reste local : ne pas le publier.
+
