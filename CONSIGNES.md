@@ -114,7 +114,7 @@ gardes assurées.
 - Chaque MAR vieillit d'après son **année de naissance** ; à l'**âge de départ en retraite** (65, 66 ou 67 ans, 67 par
   défaut) il est **remplacé** par un MAR de 35 ans, qui arrive **dès le lendemain du départ** (sans délai) (temps plein, ou quotité du poste pour un poste à jours fixes) :
   effectif constant. Option : départs non remplacés.
-- À partir de **60 ans** (réglable) : plus de garde, ou option **continuer les gardes** (25, 50, 75 ou 100 % de sa quotité de garde). Ce réglage peut être **forcé pour un praticien** (onglet Projection, « Gardes après 60 ans, par praticien »). **Un MAR qui continue les gardes ne fait pas de demi-garde.** Demi-gardes des 60 ans et plus : **un seul jour par week-end** (samedi ou dimanche, en alternance) ou **groupées sur le week-end** (samedi + dimanche, avec l'option nuits enchaînées pour le jeune). Option : **plafond de jours de week-end travaillés par an** pour les 60 ans et plus (par exemple 12 jours : samedis et dimanches de garde ou de demi-garde, fêtes comprises). Case en haut de l'onglet : **demi-gardes des plus de 60 ans (règle générale)**, suivie par les indicateurs, l'équipe de l'année et les fêtes. Deux calculs comparés dans les graphiques : **sans demi-garde**, ou **avec demi-gardes de
+- À partir de **60 ans** (réglable) : plus de garde, ou option **continuer les gardes** (25, 50, 75 ou 100 % de sa quotité de garde). Ce réglage peut être **forcé pour un praticien** (onglet Projection, « Gardes après 60 ans, par praticien »). **Un MAR qui continue les gardes ne fait pas de demi-garde.** Demi-gardes des 60 ans et plus : **un seul jour par week-end** (samedi ou dimanche, en alternance) ou **groupées sur le week-end** (samedi + dimanche, avec l'option nuits enchaînées pour le jeune). Options : **plafond de week-ends travaillés par an** et **plafond de jours de week-end travaillés par an** pour les 60 ans et plus (par exemple 12 jours : samedis et dimanches de garde ou de demi-garde, fêtes comprises). Case en haut de l'onglet : **demi-gardes des plus de 60 ans (règle générale)**, suivie par les indicateurs, l'équipe de l'année et les fêtes. Deux calculs comparés dans les graphiques : **sans demi-garde**, ou **avec demi-gardes de
   jour le week-end** (8h-20h samedi et dimanche, le collègue de garde ne fait que la nuit).
 - **Ajouts / retraits** possibles à partir d'une année donnée.
 - Le planning complet est recalculé pour chaque année avec les règles courantes (calendrier de l'année de référence).
@@ -141,4 +141,7 @@ gardes assurées.
   - **gardes des moins de 60 ans au-delà de leur temps de travail** (+5 à +20 % de leur quotité de garde) ;
   - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
     réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
+- **Impact des leviers** (onglet Projection) : chaque levier part des réglages actuels et recalcule les plannings ; tableau
+  des gardes par an d'un temps plein de moins de 60 ans (pic, moyenne), des week-ends et journées de week-end, du temps
+  de travail des deux groupes, avec l'écart aux réglages actuels et un bouton « Appliquer ».
 

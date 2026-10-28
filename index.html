@@ -204,6 +204,10 @@ body.locked .bar,body.locked .wrap{display:none}
     </div>
     <div class="pj-panel" id="pj-comp"></div>
     <div id="pj-charts" class="charts"></div>
+    <div class="pj-panel"><div class="pj-gh">📊 Impact des leviers</div>
+      <p class="hint" style="margin:2px 0 8px">Chaque levier part des réglages actuels de la projection et recalcule le planning de chaque année (une année sur deux, plus la dernière). Valeurs pour un temps plein de moins de 60 ans (âge de fin des gardes), au pic et en moyenne ; écart par rapport aux réglages actuels.</p>
+      <div class="row"><button class="btn btn-g" onclick="pjCalculerLeviers()">▶ Calculer l'impact des leviers</button><span class="hint" id="pj-lev-etat" style="margin:0"></span></div>
+      <div class="tbl-wrap"><table id="pj-leviers"></table></div></div>
     <details class="fold"><summary>📋 Tableaux : par année, gardes de Noël et du Nouvel An, par praticien</summary><div id="pj-res"></div></details>
     <details class="fold"><summary>✏️ Données : années de naissance, ajouts et retraits</summary>
       <p class="hint">Années de naissance : colonne « Naissance » de l'onglet Équipe et règles, colonne G du fichier Excel, ou collées ici, une ligne par MAR « code année » (ex. <code>MAR 12 1980</code>). L'équipe par défaut (MAR 01…) en contient déjà ; les modifications restent dans ce navigateur.</p>
@@ -330,7 +334,8 @@ function renderPjCtrls(){
       `<div class="pj-c"><label>Demi-gardes</label>
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour!==false?'checked':''} onchange="setPJ('demiUnJour',true)"/> un seul jour par week-end (samedi ou dimanche)</label>
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour===false?'checked':''} onchange="setPJ('demiUnJour',false)"/> groupées sur le week-end (samedi + dimanche)</label></div>` +
-      rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun')) +
+      rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun') +
+      rng('plafondWE60', 'Plafond de week-ends travaillés par an', 0, 26, 1, v => v ? v + ' week-ends' : 'aucun')) +
     groupe('➕ Leviers pour soulager les gardes', 'Testez-les un par un ou ensemble : tout se recalcule.',
       rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
       tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
@@ -503,6 +508,57 @@ function pjRenduAnnee(sansGraphes){
     <div class="pj-yk"><span>🥂 1er janvier ${pjAnnee + 1}</span>${j1s ? fl(j1s, j1d) : '—'}</div>
     ${r.alertes ? `<div class="pj-yk warn">⚠ ${r.alertes} alerte(s) dans le planning de cette année</div>` : ''}`;
 }
+// Impact des leviers de la projection (comme les leviers de l'onglet Simulations)
+let PJLEV = [], pjLevRun = 0;
+function pjLeviers(){
+  const p = cfg.projection, age = p.ageFinGardes, L = [['Réglages actuels', c => {}]];
+  const add = (cond, nom, f) => { if(cond) L.push([nom, f]); };
+  add(true, p.ageRetraite > 65 ? 'Retraite à 65 ans' : 'Retraite à 67 ans', c => { c.projection.ageRetraite = p.ageRetraite > 65 ? 65 : 67; });
+  add(age < 62, `Fin des gardes à ${age + 2} ans`, c => { c.projection.ageFinGardes = age + 2; });
+  add(p.gardesApresPct < 50, `${age} ans et + : 50 % des gardes conservées`, c => { c.projection.gardesApresPct = 50; });
+  add(p.gardesApresPct < 100, `${age} ans et + : toutes les gardes conservées`, c => { c.projection.gardesApresPct = 100; });
+  add(true, p.demi60 ? `Sans demi-garde des ${age} ans et +` : `Demi-gardes des ${age} ans et + (un jour par WE)`, c => { c.projection.demi60 = !p.demi60; c.projection.demiUnJour = true; });
+  add(true, `Demi-gardes des ${age} ans et + groupées sur le WE, nuits enchaînées`, c => { c.projection.demi60 = true; c.projection.demiUnJour = false; c.gardes.nuitsEnchainees = true; });
+  add(!(p.plafondWE60 > 0), `Plafond de 6 week-ends par an (${age} ans et +)`, c => { c.projection.plafondWE60 = 6; });
+  add(!(p.plafondJoursWE60 > 0), `Plafond de 12 jours de WE par an (${age} ans et +)`, c => { c.projection.plafondJoursWE60 = 12; });
+  add(p.reductionQ60 < 20, `${age} ans et + à −20 % de temps de travail (recrues)`, c => { c.projection.reductionQ60 = 20; c.projection.recruterLibere = true; });
+  add(p.gardesApresPct > 0 && !(p.surplusGardeJeunes > 0), `Moins de ${age} ans : +5 % de gardes`, c => { c.projection.surplusGardeJeunes = 5; });
+  add(true, `Extérieur : +50 gardes de week-end et fériés`, c => { c.projection.exterieurWE = (+p.exterieurWE || 0) + 50; });
+  add(true, `Extérieur : +100 gardes de semaine`, c => { c.projection.exterieurSemaine = (+p.exterieurSemaine || 0) + 100; });
+  add(true, '+1 MAR à temps plein (35 ans)', c => { c.projection.mouvements = (c.projection.mouvements || []).concat([{ type:'ajout', annee:cfg.annee, code:'MAR +1 (levier)', q:1, qg:1, naissance:cfg.annee - 35 }]); });
+  return L;
+}
+function pjCalculerLeviers(){
+  const run = ++pjLevRun, L = pjLeviers(), etat = document.getElementById('pj-lev-etat');
+  const ans = []; for(let y = cfg.annee; y <= cfg.projection.fin; y += 2) ans.push(y); if(ans[ans.length-1] !== cfg.projection.fin) ans.push(cfg.projection.fin);
+  const todo = []; L.forEach((l, li) => ans.forEach(y => todo.push([li, y])));
+  const res = L.map(([nom, f]) => { const c = JSON.parse(JSON.stringify(cfg)); f(c); return { nom, cfg: c, ans: [] }; });
+  let k = 0;
+  const step = () => {
+    if(run !== pjLevRun) return;
+    const t0 = Date.now();
+    while(k < todo.length && Date.now() - t0 < 80){ const [li, y] = todo[k++], c = res[li].cfg; res[li].ans.push(E.projectionAnnee(c, y, !!c.projection.demi60, null, true)); }
+    etat.textContent = `Calcul… ${Math.round(k / todo.length * 100)} %`;
+    if(k < todo.length) setTimeout(step, 0); else { PJLEV = res; etat.textContent = `${L.length} leviers · ${todo.length} plannings recalculés.`; renderPjLeviers(); }
+  };
+  step();
+}
+function renderPjLeviers(){
+  if(!PJLEV.length) return;
+  const age = cfg.projection.ageFinGardes;
+  const ind = r => { const g = r.ans.map(a => a.gardesTempsPlein || 0), pk = Math.max(...g), i = g.indexOf(pk), a = r.ans[i];
+    return { pic: pk, an: a.annee, moy: g.reduce((x, y) => x + y, 0) / g.length, we: a.weekendsTempsPlein, jwe: a.journeesWETempsPlein, h: a.groupes.moins.hAvec, h60: a.groupes.plus.hAvec,
+      ext: a.gardesExterieures, rec: a.recrues, al: r.ans.reduce((x, y) => x + y.alertes, 0) }; };
+  const base = ind(PJLEV[0]), rows = PJLEV.map(r => Object.assign({ r }, ind(r)));
+  const ord = [rows[0]].concat(rows.slice(1).sort((a, b) => a.pic - b.pic));
+  const d = (x, y, f = f1) => { const v = x - y; return `<span class="${v < -0.05 ? 'pos' : v > 0.05 ? 'neg' : ''}">${v >= 0 ? '+' : ''}${f(v)}</span>`; };
+  document.getElementById('pj-leviers').innerHTML = `<tr><th class="l">Levier</th><th>Gardes / an au pic</th><th>Écart</th><th>Moyenne</th><th>Écart</th><th>Week-ends de garde au pic</th><th>Journées de WE au pic</th><th>h/sem au pic (− ${age} ans)</th><th>h/sem au pic (${age} ans et +)</th><th>Extérieur / recrues</th><th>Alertes</th><th></th></tr>` +
+    ord.map((x, k) => `<tr><td class="l b">${esc(x.r.nom)}</td><td class="b">${f1(x.pic)} <span class="hint" style="margin:0">(${x.an})</span></td><td>${k ? d(x.pic, base.pic) : ''}</td><td>${f1(x.moy)}</td><td>${k ? d(x.moy, base.moy) : ''}</td>
+      <td>${f1(x.we)}${k ? ' ' + d(x.we, base.we) : ''}</td><td>${f1(x.jwe)}${k ? ' ' + d(x.jwe, base.jwe) : ''}</td><td>${f1(x.h)}${k ? ' ' + d(x.h, base.h) : ''}</td><td>${x.h60 == null ? '—' : f1(x.h60)}</td>
+      <td>${x.ext ? f0(x.ext) + ' gardes' : ''}${x.ext && x.rec ? ' · ' : ''}${x.rec ? f1(x.rec) + ' ETP' : ''}</td><td class="${x.al ? 'neg' : ''}">${x.al}</td>
+      <td>${k ? `<button class="btn btn-s" onclick="pjAppliquerLevier(${PJLEV.indexOf(x.r)})">Appliquer</button>` : ''}</td></tr>`).join('');
+}
+function pjAppliquerLevier(i){ if(!confirm('Appliquer « ' + PJLEV[i].nom + ' » aux réglages de la projection ?')) return; const c = PJLEV[i].cfg; cfg.projection = c.projection; cfg.gardes.nuitsEnchainees = c.gardes.nuitsEnchainees; PJLEV = []; document.getElementById('pj-leviers').innerHTML = ''; document.getElementById('pj-lev-etat').textContent = 'Levier appliqué : relancez le calcul pour comparer de nouveau.'; recompute(); pjPlanifier(); }
 // Comparatif moins / plus de 60 ans : année choisie (par ETP) et évolution
 function renderComparatif(){
   const el = document.getElementById('pj-comp'); if(!PJ || !PJ.ans.length){ el.innerHTML = ''; return; }

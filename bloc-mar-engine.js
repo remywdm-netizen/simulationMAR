@@ -83,7 +83,7 @@
     // de jour le week-end) ; option gardesApresPct : part des gardes conservée après cet âge (100 = continue les gardes),
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
-    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0,
+    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, plafondWE60: 0,
       reductionQ60: 0, recruterLibere: true, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
@@ -222,9 +222,11 @@
     // jours-là ni la veille) : d'abord les demi-gardes imposées (fêtes), puis les week-ends répartis sur l'année
     const demi = days.map(() => []), nuit = days.map(() => []), nightOf = days.map(() => []);
     // plafond de jours de week-end travaillés par an (maxJoursWE) : samedis et dimanches de garde ou de demi-garde
-    const weJours = P.map(() => 0);
-    const weLibre = (i, k, n = 1) => !(P[i].maxJoursWE > 0) || dow(days[k]) < 5 || weJours[i] + n <= P[i].maxJoursWE;
-    const weNote = (i, k) => { if (P[i].maxJoursWE > 0 && dow(days[k]) >= 5) weJours[i]++; };
+    // et de week-ends travaillés par an (maxWE)
+    const weJours = P.map(() => 0), weSet = P.map(() => new Set());
+    const weLibre = (i, k, n = 1) => dow(days[k]) < 5 || ((!(P[i].maxJoursWE > 0) || weJours[i] + n <= P[i].maxJoursWE)
+      && (!(P[i].maxWE > 0) || weSet[i].has(monday(days[k])) || weSet[i].size < P[i].maxWE));
+    const weNote = (i, k) => { if (dow(days[k]) < 5) return; weJours[i]++; weSet[i].add(monday(days[k])); };
     const demiMembers = P.map((p, i) => i).filter(i => P[i].demiWE);
     let demiWeekends = 0;
     days.forEach((s, k) => {
@@ -243,6 +245,7 @@
         const un = !!P[i].demiUnJour;                     // un seul jour par week-end (samedi ou dimanche)
         let nj = un ? 2 * nb : nb;                          // demi-gardes (jours) ou week-ends à placer
         if (P[i].maxJoursWE > 0) nj = Math.min(nj, Math.max(0, Math.floor((P[i].maxJoursWE - weJours[i]) / (un ? 1 : 2))));   // plafond de jours de WE
+        if (P[i].maxWE > 0) nj = Math.min(nj, Math.max(0, P[i].maxWE - weSet[i].size));   // plafond de week-ends
         demiWeekends += un ? nj / 2 : nj;
         const step = sats.length / Math.max(nj, 1);
         for (let m = 0; m < nj; m++) {
@@ -484,6 +487,7 @@
         const pct = m.gardesApres !== null && m.gardesApres !== undefined && m.gardesApres !== '' ? +m.gardesApres : +PJ.gardesApresPct || 0;
         r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(pct, 0), 100)) / 100; r.demiWE = r.qg > 0 ? false : !!demi60 || !!m.demiWE; r.plus60 = true;
         if (+PJ.plafondJoursWE60 > 0) r.maxJoursWE = +PJ.plafondJoursWE60;
+        if (+PJ.plafondWE60 > 0) r.maxWE = +PJ.plafondWE60;   // plafond de week-ends travaillés par an
         if (r.demiWE && PJ.demiUnJour !== false) r.demiUnJour = true; }   // demi-garde le samedi ou le dimanche (pas les deux)   // plafond de jours de week-end travaillés par an   // continue les gardes : pas de demi-garde
       out.push(r);
     };

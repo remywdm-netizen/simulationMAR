@@ -398,3 +398,13 @@ test('projection : leviers réduction des 60 ans et plus, surplus de garde, méd
   assert.equal(p.gardesExterieures, 150); assert.equal(p.gardesExterieuresWE, 50);
   assert.equal(p.effectif, 23);
 });
+
+test('projection : plafond de week-ends travaillés par an pour les 60 ans et plus', () => {
+  const cfg = E.mergeConfig();
+  Object.assign(cfg.projection, { gardesApresPct: 100, plafondWE60: 6 });
+  const eq = E.equipeAnnee(cfg, 2038, false), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
+  assert.deepEqual(E.verify(r), []);
+  eq.forEach((m, i) => { if (!m.plus60) return;
+    const we = new Set(r.jours.filter(j => E.dow(j.date) >= 5 && (j.garde.includes(i) || j.demi.includes(i))).map(j => E.addDays(j.date, -E.dow(j.date))));
+    assert.ok(we.size <= 6, m.code + ' ' + we.size); });
+});
