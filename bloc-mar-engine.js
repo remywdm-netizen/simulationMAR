@@ -595,6 +595,15 @@
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
       nouvelAn: nouvelAnFait, noelDemi, nouvelAnDemi,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
+      // comparatif par groupe d'âge : nombre de MAR, ETP, valeurs par ETP (somme ÷ quotités), h/sem au prorata
+      groupes: Object.fromEntries([['moins', moins], ['plus', plus]].map(([g, L]) => {
+        const q = L.reduce((x, m) => x + m.q, 0), parEtp = f => (q ? L.reduce((x, m) => x + f(m), 0) / q : null);
+        return [g, { n: L.length, etp: q, bloc: parEtp(m => m.bloc), rea: parEtp(m => m.rea), consult: parEtp(m => m.consult),
+          gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), nuits: parEtp(m => m.nuits),
+          journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
+          recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
+          hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde * m.q, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde * m.q, 0) / q : null }];
+      })),
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
         noel: Object.values(noelFait).some(l => l.includes(m.code)) ? 1 : 0, noelCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].n : 0,
         nouvelAn: Object.values(nouvelAnFait).some(l => l.includes(m.code)) ? 1 : 0, nouvelAnCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].na : 0,

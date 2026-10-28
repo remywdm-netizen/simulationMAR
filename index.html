@@ -32,6 +32,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .pj-ih{font-size:13px;font-weight:600;margin:12px 0 6px}.pj-il{display:flex;flex-wrap:wrap;gap:6px}.pj-i{display:inline-flex;align-items:center;gap:5px;font-size:12px;border:1px solid var(--bd);border-radius:14px;padding:2px 4px 2px 10px}.pj-i small{color:#64748b}.pj-i.on{border-color:#dc2626;background:#fef2f2}.pj-i select{font-size:12px;padding:1px 2px}
 .pj-cleg{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:8px 12px}.pj-cleg span{display:inline-flex;align-items:center;gap:6px}.pj-cleg i{display:inline-block;width:14px;height:14px;border-radius:3px}
 .pj-top{display:flex;gap:10px;align-items:flex-start;font-size:13px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:10px 14px;margin-bottom:12px;cursor:pointer}.pj-top input{width:18px;height:18px;margin-top:1px;accent-color:#d97706;flex:none}
+.pj-ctrls{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))!important}.pj-grp{border:1px solid var(--bd);border-radius:8px;padding:10px 12px}.pj-gh{font-weight:700;font-size:14px;margin-bottom:4px}.pj-grp .pj-c{margin-bottom:8px}.pj-cgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;margin-top:8px}@media(max-width:900px){.pj-cgrid{grid-template-columns:1fr}}.pj-up,.pj-dn{color:#475569}.pj-bars{display:flex;align-items:flex-end;gap:2px;height:230px;border-bottom:1px solid var(--bd)}.pj-bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;cursor:pointer;border-radius:3px}.pj-bc.on{background:#e2e8f0}.pj-bw{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:1px}.pj-bw span{width:42%;border-radius:2px 2px 0 0;transition:height .3s}.pj-bc em{font-style:normal;font-size:10px;color:#64748b}
 .pj-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}.pj-panel{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin-bottom:12px}.pj-ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 22px}.pj-c label{display:block;font-size:13px;margin-bottom:4px}.pj-c b{color:#dc2626}.pj-c input[type=range]{width:100%;accent-color:#dc2626}.pj-t{display:flex!important;gap:6px;align-items:center;font-size:13px;margin:3px 0}.pj-prog{height:3px;background:var(--bd);border-radius:2px;margin-top:10px;overflow:hidden}#pj-bar{height:100%;width:0;background:#dc2626;transition:width .15s}.pj-yrow{display:flex;align-items:center;gap:12px}.pj-yrow input{flex:1;accent-color:#2563eb}.pj-yv{font-size:26px;font-weight:800;min-width:70px;text-align:right}.pj-ygrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;margin-top:10px}@media(max-width:800px){.pj-ygrid{grid-template-columns:1fr}}.pj-m{display:grid;grid-template-columns:120px 1fr 52px 34px;align-items:center;gap:6px;font-size:12px;height:19px}.pj-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pj-b{position:relative;height:13px;background:#f1f5f9;border-radius:3px}.pj-b span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width .35s,background .35s}.pj-b em{position:absolute;left:6px;top:-1px;font-style:normal;font-size:11px;color:#1e293b}.pj-g{text-align:right;font-variant-numeric:tabular-nums}.pj-leg{font-size:12px;margin-bottom:6px;color:#475569}.pj-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}.pj-yk{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bd)}.pj-yk span{color:#475569}.pj-yk.warn{color:#b91c1c}.ch-sel{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:3 3}
 .chart{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}.chart>svg{width:100%;height:240px;display:block}.ch-leg svg{display:inline-block;flex:none}.chart-h{font-weight:600;font-size:14px;margin-bottom:4px}.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px;margin-top:14px}.ch-grid{stroke:var(--bd);stroke-width:1}.ch-t{font-size:11px;fill:#64748b}.ch-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-right:12px}.ch-leg i{width:14px;height:3px;border-radius:2px;display:inline-block}.k-pj60{background:#fde7c7}.k-pjr{background:#d6f0dd}
 .fold{margin-top:22px;border:1px solid var(--bd);border-radius:6px;padding:8px 12px}.fold>summary{cursor:pointer;font-weight:600;font-size:15px}
@@ -201,6 +202,7 @@ body.locked .bar,body.locked .wrap{display:none}
         <input type="range" id="pj-annee" oninput="pjAnnee=+this.value;pjRenduAnnee()"/><span class="pj-yv" id="pj-yv"></span></div>
       <div class="pj-ygrid"><div id="pj-eq"></div><div id="pj-ykpi"></div></div>
     </div>
+    <div class="pj-panel" id="pj-comp"></div>
     <div id="pj-charts" class="charts"></div>
     <details class="fold"><summary>📋 Tableaux : par année, gardes de Noël et du Nouvel An, par praticien</summary><div id="pj-res"></div></details>
     <details class="fold"><summary>✏️ Données : années de naissance, ajouts et retraits</summary>
@@ -314,18 +316,22 @@ function renderPjCtrls(){
   pjChart = p.demi60 ? 'avec' : 'sans'; document.getElementById('pj-demi60').checked = !!p.demi60;
   const rng = (k, lab, min, max, step, fmt) => `<div class="pj-c"><label>${lab} <b>${fmt(p[k])}</b></label><input type="range" min="${min}" max="${max}" step="${step}" value="${p[k]}" oninput="this.previousElementSibling.querySelector('b').textContent=(${fmt.toString()})(+this.value)" onchange="setPJ('${k}',+this.value)"/></div>`;
   const tog = (k, lab) => `<label class="pj-t"><input type="checkbox" ${p[k]?'checked':''} onchange="setPJ('${k}',this.checked)"/> ${lab}</label>`;
+  const groupe = (titre, aide, corps) => `<div class="pj-grp"><div class="pj-gh">${titre}</div><div class="hint" style="margin:0 0 8px">${aide}</div>${corps}</div>`;
   document.getElementById('pj-ctrls').innerHTML =
-    rng('ageRetraite', 'Départ en retraite à', 65, 67, 1, v => v + ' ans') +
-    rng('ageFinGardes', 'Fin des gardes à', 55, 67, 1, v => v + ' ans') +
-    rng('gardesApresPct', 'Après cet âge, gardes conservées', 0, 100, 25, v => v + ' %') +
-    rng('ageRemplacant', 'Âge du remplaçant', 30, 45, 1, v => v + ' ans') +
-    rng('fin', 'Projection jusqu\'en', cfg.annee + 5, 2060, 1, v => v) +
-    rng('plafondJoursWE60', `Plafond de jours de week-end par an (${p.ageFinGardes} ans et +)`, 0, 26, 2, v => v ? v + ' jours' : 'aucun') +
-    `<div class="pj-c">` +
+    groupe('👥 Effectif et départs', 'Effectif constant : chaque départ est remplacé dès le lendemain.',
+      rng('ageRetraite', 'Départ en retraite à', 65, 67, 1, v => v + ' ans') +
+      rng('ageRemplacant', 'Âge du remplaçant', 30, 45, 1, v => v + ' ans') +
+      tog('remplacement', 'Départs remplacés') + tog('remplacantTempsPlein', 'Remplaçant à temps plein (sauf poste à jours fixes)') +
+      rng('fin', 'Projection jusqu\'en', cfg.annee + 5, 2060, 1, v => v)) +
+    groupe(`🧓 ${p.ageFinGardes} ans et plus`, 'Gardes et demi-gardes après l\'âge de fin des gardes (réglage individuel ci-dessous).',
+      rng('ageFinGardes', 'Fin des gardes à', 55, 67, 1, v => v + ' ans') +
+      rng('gardesApresPct', 'Gardes conservées ensuite', 0, 100, 25, v => v + ' %') +
+      `<div class="hint" style="margin:2px 0 6px">Demi-gardes : case en haut de l'onglet (${p.demi60 ? 'oui' : 'non'}) ; un MAR qui garde encore n'en fait pas.</div>` +
+      tog('demiUnJour', 'Demi-garde le samedi ou le dimanche (un seul jour par week-end)') +
+      rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun')) +
+    groupe('🌙 Week-ends des plus jeunes', 'Quand un aîné fait la demi-garde de jour, le collègue de garde ne fait que la nuit.',
       `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
-
-            tog('demiUnJour', `Demi-garde des ${p.ageFinGardes} ans et + : samedi ou dimanche (un seul jour par week-end)`) +
-      tog('remplacement', 'Départs remplacés (effectif constant)') + tog('remplacantTempsPlein', 'Remplaçant à temps plein') + `</div>`;
+      `<div class="row" style="margin-top:12px"><button class="btn btn-r" onclick="resetProjection()">↺ Réglages par défaut</button></div>`);
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
     .sort((a,b) => a[0].naissance - b[0].naissance);
@@ -335,6 +341,7 @@ function renderPjCtrls(){
         <select onchange="setGardesApres(${i},this.value)"><option value="" ${v===''?'selected':''}>règle</option>${[0,25,50,75,100].map(x=>`<option value="${x}" ${v===String(x)?'selected':''}>${x} %</option>`).join('')}</select></label>`; }).join('') + `</div>`
     : '<span class="hint" style="margin:0">Aucun MAR qui garde n\'atteint l\'âge de fin des gardes pendant la projection (années de naissance à renseigner).</span>';
 }
+function resetProjection(){ if(!confirm('Revenir aux réglages par défaut de la projection (les années de naissance et les ajouts / retraits sont conservés) ?')) return; const d = E.mergeConfig().projection; cfg.projection = Object.assign(d, { mouvements: cfg.projection.mouvements || [] }); cfg.gardes.nuitsEnchainees = false; cfg.equipe.forEach(m => { delete m.gardesApres; }); recompute(); pjPlanifier(); }
 function setDemi60(v){ cfg.projection.demi60 = v; pjChart = pjSc = v ? 'avec' : 'sans'; save(); renderPjCtrls(); renderProjection(); }
 function setGardesApres(i,v){ cfg.equipe[i].gardesApres = v === '' ? null : +v; save(); renderPjCtrls(); pjPlanifier(); }
 function setMouv(i,k,v){ cfg.projection.mouvements[i][k] = v; recompute(); }
@@ -449,6 +456,7 @@ function renderProjection(sansTableaux){
       {label:`${age} ans et plus`, color:PJC.p, data:v(S,'nbPlus60')},
       {label:'remplaçants arrivés', color:PJC.r, data:v(S,'nbRemplacants')}], 'MAR');
   pjRenduAnnee(true);
+  renderComparatif();
   if(!sansTableaux) renderProjectionTables();
 }
 // Équipe de l'année choisie : une barre par MAR (âge), couleur = situation
@@ -484,6 +492,33 @@ function pjRenduAnnee(sansGraphes){
     <div class="pj-yk"><span>🥂 1er janvier ${pjAnnee + 1}</span>${j1s ? fl(j1s, j1d) : '—'}</div>
     ${r.alertes ? `<div class="pj-yk warn">⚠ ${r.alertes} alerte(s) dans le planning de cette année</div>` : ''}`;
 }
+// Comparatif moins / plus de 60 ans : année choisie (par ETP) et évolution
+function renderComparatif(){
+  const el = document.getElementById('pj-comp'); if(!PJ || !PJ.ans.length){ el.innerHTML = ''; return; }
+  const X = (pjChart === 'avec' ? PJ.avec : PJ.sans).slice(0, PJ.ans.length), i = Math.max(0, PJ.ans.indexOf(pjAnnee)), age = cfg.projection.ageFinGardes;
+  const g = X[i].groupes, a = g.moins, b = g.plus, n1 = x => x == null ? '—' : f1(x), n0 = x => x == null ? '—' : f0(x);
+  const lignes = [
+    ['MAR (ETP)', `${a.n} (${f1(a.etp)})`, `${b.n} (${f1(b.etp)})`, null],
+    ['Journées de bloc', a.bloc, b.bloc, n0], ['Journées de réa', a.rea, b.rea, n0], ['Journées de consultation', a.consult, b.consult, n0],
+    ['Gardes', a.gardes, b.gardes, n1], ['dont week-end et fériés', a.gardesWE, b.gardesWE, n1], ['dont nuits seules', a.nuits, b.nuits, n1],
+    ['Demi-gardes de jour', a.demi, b.demi, n1], ['Week-ends travaillés', a.weekends, b.weekends, n1], ['Journées de week-end et fériés (8h-20h)', a.journeesWE, b.journeesWE, n1],
+    ['Heures de week-end et fériés / an', a.heuresWE, b.heuresWE, n0], ['Récupérations (jours)', a.recup, b.recup, n1], ['Jours libérables', a.libres, b.libres, n1],
+    ['Heures travaillées / an', a.heuresAn, b.heuresAn, n0], ['h / semaine, gardes comprises', a.hAvec, b.hAvec, n1], ['h / semaine, sans garde', a.hSans, b.hSans, n1]];
+  const ec = (x, y, f) => x == null || y == null ? '' : `<span class="${y - x > 0.05 ? 'pj-up' : y - x < -0.05 ? 'pj-dn' : ''}">${y - x >= 0 ? '+' : ''}${f === n0 ? f0(y - x) : f1(y - x)}</span>`;
+  let h = `<div class="pj-gh">⚖️ Comparatif moins de ${age} ans / ${age} ans et plus — ${pjAnnee} <span class="hint" style="margin:0;font-weight:400">par ETP et par an · ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et + · suivez l'évolution avec le curseur d'année ou ▶</span></div>
+    <div class="pj-cgrid"><div class="tbl-wrap"><table><tr><th class="l">Par ETP et par an</th><th>Moins de ${age} ans</th><th>${age} ans et plus</th><th>Écart</th></tr>` +
+    lignes.map(([l, x, y, f]) => `<tr><td class="l">${l}</td><td class="b">${f ? f(x) : x}</td><td class="b">${f ? f(y) : y}</td><td>${f ? ec(x, y, f) : ''}</td></tr>`).join('') + `</table></div>`;
+  // évolution : barres doubles (moins / plus) pour l'indicateur choisi
+  const IND = [['gardes','Gardes'],['hAvec','h / semaine, gardes comprises'],['weekends','Week-ends travaillés'],['journeesWE','Journées de week-end et fériés'],['heuresWE','Heures de week-end et fériés'],['bloc','Journées de bloc'],['rea','Journées de réa'],['consult','Journées de consultation'],['demi','Demi-gardes']];
+  const k = pjComp, A = PJ.ans, va = X.map(r => r.groupes.moins[k]), vb = X.map(r => r.groupes.plus[k]);
+  const mx = Math.max(1, ...va.concat(vb).filter(v => v != null));
+  h += `<div><div class="row" style="margin:0 0 6px"><select onchange="pjComp=this.value;renderComparatif()">${IND.map(([v,l]) => `<option value="${v}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>
+      <span class="pj-leg" style="margin:0"><i style="background:${PJC.g}"></i>moins de ${age} ans <i style="background:${PJC.p}"></i>${age} ans et plus</span></div>
+    <div class="pj-bars">` + A.map((y, j) => `<div class="pj-bc ${y === pjAnnee ? 'on' : ''}" onclick="pjChoisir(${y})" title="${y} · moins de ${age} ans : ${n1(va[j])} · ${age} ans et + : ${n1(vb[j])}">
+      <div class="pj-bw"><span style="height:${(va[j]||0)/mx*100}%;background:${PJC.g}"></span><span style="height:${(vb[j]||0)/mx*100}%;background:${PJC.p}"></span></div><em>${String(y).slice(2)}</em></div>`).join('') + `</div></div></div>`;
+  el.innerHTML = h;
+}
+let pjComp = 'gardes';
 function renderProjectionTables(){
   const A = PJ.ans, S = PJ.sans.slice(0, A.length), D = PJ.avec.slice(0, A.length), age = cfg.projection.ageFinGardes;
   const n = x => x === null || x === undefined ? '—' : f1(x);

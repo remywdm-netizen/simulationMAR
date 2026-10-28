@@ -130,4 +130,9 @@ gardes assurées.
   les jours fériés, week-ends de garde, heures de week-end et jours fériés, effectif.
 - **Nuits enchaînées** (option) : quand un MAR fait la demi-garde de jour le samedi et le dimanche, le même jeune MAR fait
   les deux nuits (20h-8h), repos le lundi : un seul week-end entamé au lieu de deux.
+- **Comparatif moins de 60 ans / 60 ans et plus** : pour l'année choisie, valeurs par ETP et par an (bloc, réa,
+  consultation, gardes, demi-gardes, week-ends, heures, récupérations, jours libérables, temps de travail) et évolution
+  année par année de l'indicateur choisi.
+- Réglages regroupés : effectif et départs ; 60 ans et plus (fin des gardes, gardes conservées, demi-gardes, plafond,
+  réglage par praticien) ; week-ends des plus jeunes (nuits enchaînées) ; bouton « Réglages par défaut ».
 
