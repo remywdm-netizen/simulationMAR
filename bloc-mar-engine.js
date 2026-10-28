@@ -84,7 +84,7 @@
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
     projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, plafondWE60: 0,
-      reductionQ60: 0, recruterLibere: true, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+      reductionQ60: 0, recruterLibere: true, quotite18h60: 100, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -414,7 +414,7 @@
       const cost = [];
       chosen.forEach(i => { for (let p = 0; p < NP; p++) {
         if (gard.has(i) && LONG.has(p)) continue;
-        let c = pc[i][p] / Q[i];
+        let c = pc[i][p] / (Q[i] * (LONG.has(p) && P[i].poids18 > 0 ? P[i].poids18 : 1));   // poids18 : part de bloc long (18h) ajustée
         if (prev[i] === p) c += run[i] === 1 ? -3 : 2;
         cost.push([posteVoulu[i] === p ? -1 : gard.has(i) ? 0 : 1, c, i, p]);
       } });
@@ -488,6 +488,7 @@
         r.qg = Math.round((+m.qg || 0) * Math.min(Math.max(pct, 0), 100)) / 100; r.demiWE = r.qg > 0 ? false : !!demi60 || !!m.demiWE; r.plus60 = true;
         if (+PJ.plafondJoursWE60 > 0) r.maxJoursWE = +PJ.plafondJoursWE60;
         if (+PJ.plafondWE60 > 0) r.maxWE = +PJ.plafondWE60;   // plafond de week-ends travaillés par an
+        if (+PJ.quotite18h60 > 0 && +PJ.quotite18h60 !== 100) r.poids18 = +PJ.quotite18h60 / 100;   // part de journées finies à 18h
         if (r.demiWE && PJ.demiUnJour !== false) r.demiUnJour = true; }   // demi-garde le samedi ou le dimanche (pas les deux)   // plafond de jours de week-end travaillés par an   // continue les gardes : pas de demi-garde
       out.push(r);
     };
@@ -635,7 +636,7 @@
         return [g, { n: L.length, etp: q, bloc: parEtp(m => m.bloc), rea: parEtp(m => m.rea), consult: parEtp(m => m.consult),
           gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), nuits: parEtp(m => m.nuits),
           journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
-          recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
+          recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
           hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde * m.q, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde * m.q, 0) / q : null }];
       })),
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,

@@ -140,6 +140,8 @@ gardes assurées.
     servent à recruter des jeunes qui gardent (recrues à temps plein, la dernière au reliquat) ;
   - **temps partiels de moins de 60 ans : quotité de garde = temps de travail + 5 à 20 %** (par exemple 80 % de temps
     de travail → 85 % de garde ; 100 % au plus) ;
+  - **journées finies à 18h (bloc long) des 60 ans et plus à la hausse** (×1,25 à ×3) : ils ne gardent plus et peuvent
+    rester jusqu'à 18h ; les plus jeunes en font moins (et ont moins de récupérations 18h) ;
   - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
     réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
 - **Impact des leviers** (onglet Projection) : chaque levier part des réglages actuels et recalcule les plannings ; tableau

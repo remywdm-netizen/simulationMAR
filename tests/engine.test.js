@@ -410,3 +410,12 @@ test('projection : plafond de week-ends travaillés par an pour les 60 ans et pl
     const we = new Set(r.jours.filter(j => E.dow(j.date) >= 5 && (j.garde.includes(i) || j.demi.includes(i))).map(j => E.addDays(j.date, -E.dow(j.date))));
     assert.ok(we.size <= 6, m.code + ' ' + we.size); });
 });
+
+test('projection : plus de journées finies à 18h pour les 60 ans et plus', () => {
+  const cfg = E.mergeConfig();
+  const a = E.projectionAnnee(cfg, 2038, false, null, true);
+  cfg.projection.quotite18h60 = 200;
+  const b = E.projectionAnnee(cfg, 2038, false, null, true);
+  assert.equal(b.alertes, 0);
+  assert.ok(b.groupes.plus.fin18 > a.groupes.plus.fin18 + 5 && b.groupes.moins.fin18 < a.groupes.moins.fin18 - 2);
+});

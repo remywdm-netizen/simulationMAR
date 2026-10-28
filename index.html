@@ -335,7 +335,8 @@ function renderPjCtrls(){
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour!==false?'checked':''} onchange="setPJ('demiUnJour',true)"/> un seul jour par week-end (samedi ou dimanche)</label>
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour===false?'checked':''} onchange="setPJ('demiUnJour',false)"/> groupées sur le week-end (samedi + dimanche)</label></div>` +
       rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun') +
-      rng('plafondWE60', 'Plafond de week-ends travaillés par an', 0, 26, 1, v => v ? v + ' week-ends' : 'aucun')) +
+      rng('plafondWE60', 'Plafond de week-ends travaillés par an', 0, 26, 1, v => v ? v + ' week-ends' : 'aucun') +
+      rng('quotite18h60', 'Part de journées finies à 18h (bloc long)', 100, 300, 25, v => v === 100 ? 'normale' : '× ' + String(v / 100).replace('.', ','))) +
     groupe('➕ Leviers pour soulager les gardes', 'Testez-les un par un ou ensemble : tout se recalcule.',
       rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
       tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
@@ -521,6 +522,7 @@ function pjLeviers(){
   add(true, `Demi-gardes des ${age} ans et + groupées sur le WE, nuits enchaînées`, c => { c.projection.demi60 = true; c.projection.demiUnJour = false; c.gardes.nuitsEnchainees = true; });
   add(!(p.plafondWE60 > 0), `Plafond de 6 week-ends par an (${age} ans et +)`, c => { c.projection.plafondWE60 = 6; });
   add(!(p.plafondJoursWE60 > 0), `Plafond de 12 jours de WE par an (${age} ans et +)`, c => { c.projection.plafondJoursWE60 = 12; });
+  add(!(p.quotite18h60 >= 200), `${age} ans et + : deux fois plus de journées 18h`, c => { c.projection.quotite18h60 = 200; });
   add(p.reductionQ60 < 20, `${age} ans et + à −20 % de temps de travail (recrues)`, c => { c.projection.reductionQ60 = 20; c.projection.recruterLibere = true; });
   add(!(p.surplusGardeJeunes > 0), `Temps partiels : garde = temps de travail + 5 %`, c => { c.projection.surplusGardeJeunes = 5; });
   add(!(p.surplusGardeJeunes >= 10), `Temps partiels : garde = temps de travail + 10 %`, c => { c.projection.surplusGardeJeunes = 10; });
@@ -567,7 +569,7 @@ function renderComparatif(){
   const g = X[i].groupes, a = g.moins, b = g.plus, n1 = x => x == null ? '—' : f1(x), n0 = x => x == null ? '—' : f0(x);
   const lignes = [
     ['MAR (ETP)', `${a.n} (${f1(a.etp)})`, `${b.n} (${f1(b.etp)})`, null],
-    ['Journées de bloc', a.bloc, b.bloc, n0], ['Journées de réa', a.rea, b.rea, n0], ['Journées de consultation', a.consult, b.consult, n0],
+    ['Journées de bloc', a.bloc, b.bloc, n0], ['dont finies à 18h', a.fin18, b.fin18, n0], ['Journées de réa', a.rea, b.rea, n0], ['Journées de consultation', a.consult, b.consult, n0],
     ['Gardes', a.gardes, b.gardes, n1], ['dont week-end et fériés', a.gardesWE, b.gardesWE, n1], ['dont nuits seules', a.nuits, b.nuits, n1],
     ['Demi-gardes de jour', a.demi, b.demi, n1], ['Week-ends travaillés', a.weekends, b.weekends, n1], ['Journées de week-end et fériés (8h-20h)', a.journeesWE, b.journeesWE, n1],
     ['Heures de week-end et fériés / an', a.heuresWE, b.heuresWE, n0], ['Récupérations (jours)', a.recup, b.recup, n1], ['Jours libérables', a.libres, b.libres, n1],
@@ -577,7 +579,7 @@ function renderComparatif(){
     <div class="pj-cgrid"><div class="tbl-wrap"><table><tr><th class="l">Par ETP et par an</th><th>Moins de ${age} ans</th><th>${age} ans et plus</th><th>Écart</th></tr>` +
     lignes.map(([l, x, y, f]) => `<tr><td class="l">${l}</td><td class="b">${f ? f(x) : x}</td><td class="b">${f ? f(y) : y}</td><td>${f ? ec(x, y, f) : ''}</td></tr>`).join('') + `</table></div>`;
   // évolution : barres doubles (moins / plus) pour l'indicateur choisi
-  const IND = [['gardes','Gardes'],['hAvec','h / semaine, gardes comprises'],['weekends','Week-ends travaillés'],['journeesWE','Journées de week-end et fériés'],['heuresWE','Heures de week-end et fériés'],['bloc','Journées de bloc'],['rea','Journées de réa'],['consult','Journées de consultation'],['demi','Demi-gardes']];
+  const IND = [['gardes','Gardes'],['fin18','Journées finies à 18h'],['hAvec','h / semaine, gardes comprises'],['weekends','Week-ends travaillés'],['journeesWE','Journées de week-end et fériés'],['heuresWE','Heures de week-end et fériés'],['bloc','Journées de bloc'],['rea','Journées de réa'],['consult','Journées de consultation'],['demi','Demi-gardes']];
   const k = pjComp, A = PJ.ans, va = X.map(r => r.groupes.moins[k]), vb = X.map(r => r.groupes.plus[k]);
   const mx = Math.max(1, ...va.concat(vb).filter(v => v != null));
   h += `<div><div class="row" style="margin:0 0 6px"><select onchange="pjComp=this.value;renderComparatif()">${IND.map(([v,l]) => `<option value="${v}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>
