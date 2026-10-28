@@ -31,10 +31,10 @@ function verifTemps(cfg, lab) {
     const rs = (sam + samD / 2) * PR.recupSamedi, rd = (dim + dimD / 2) * (PR.recupDimanche || 0), r18 = n18 > 0 ? fin18 / n18 : 0;
     chk(`${lab} ${m.code} récupérations`, near(rs + rd + r18 + s.recupRea + s.recupReaUn, s.recup, 1e-6), (rs + rd + r18) + ' / ' + s.recup);
     if (!(q > 0)) return;
-    // temps de travail : journées − (récupérations hors celles posées + congés + RTT) × 8 h ; semaines hors fériés, congés, TP
+    // temps de travail : journées − récupérations × 8 h
     const recupHB = rs + rd + s.recupReaUn + Math.max(r18 - rc, 0);
-    const hSans = hj - (recupHB + PR.conges * q + PR.rtt * q) * c.hb.heures;
-    const sem = (open - tp - PR.conges * q - PR.rtt * q) / (5 * q);
+    const hSans = hj - recupHB * c.hb.heures;                          // congés et formation : 8 h (jour sans poste conservé) ; récupérations : 0 h
+    const sem = (open - tp) / (5 * q);                                 // semaines de l'année hors fériés et jours de TP
     chk(`${lab} ${m.code} heures hors garde`, near(hSans, s.heuresSansGarde, 1e-6), hSans + ' / ' + s.heuresSansGarde);
     chk(`${lab} ${m.code} semaines`, near(sem, s.semainesPresence, 1e-6));
     chk(`${lab} ${m.code} h/sem avec garde`, near((hSans + hg) / sem, s.hSemAvecGarde, 1e-6));

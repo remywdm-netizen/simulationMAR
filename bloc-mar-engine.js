@@ -723,11 +723,11 @@
       s.recup = s.recupSamedis + s.recupDimanches + s.recupFin18 + s.recupRea + s.recupReaUn;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
       // Absences prises sur les jours sans poste. Temps de travail : formation comptée 8 h, récupérations 0 h (elles font
-      // baisser le temps de travail) ; moyenne hors vacances : semaines de congés (et RTT) retirées avec leurs heures.
+      // baisser le temps de travail) ; congés et RTT comptés 8 h, semaines de l'année hors fériés et jours de TP.
       const recupHB = s.recupSamedis + s.recupDimanches + s.recupReaUn + Math.max(s.recupFin18 - s.rc, 0);
       const absHB = s.conges + s.rtt + recupHB;
-      s.heuresSansGarde = s.heuresJour - (recupHB + s.conges + s.rtt) * cfg.hb.heures;
-      s.semainesPresence = m.q > 0 ? (nOpen - s.tp - s.conges - s.rtt) / (5 * m.q) : 0;   // semaines hors vacances (fériés, congés et TP retirés)
+      s.heuresSansGarde = s.heuresJour - recupHB * cfg.hb.heures;   // congés et formation : 8 h ; récupérations : 0 h
+      s.semainesPresence = m.q > 0 ? (nOpen - s.tp) / (5 * m.q) : 0;   // semaines de l'année (hors fériés et jours de TP)
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
       s.semaineMax = Math.max(0, ...Object.values(s.semaines));
@@ -907,9 +907,9 @@
       const recup = (samedis * PR.recupSamedi + dimanches * (PR.recupDimanche || 0) + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
       const reste = N * jt - (bloc + rea + mat + cons + repos);
-      // formation : 8 h ; récupérations : 0 h ; semaines hors vacances (fériés, congés et RTT retirés)
-      const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * PR.formation) * cfg.hb.heures) / N;
-      const sem = (nOuvres - nFeries - PR.conges - PR.rtt) / 5;
+      // congés, RTT et formation : 8 h ; récupérations : 0 h ; semaines de l'année hors fériés
+      const hSans = (hBloc + hRea + (Math.max(reste, 0) + N * (PR.formation + PR.conges + PR.rtt)) * cfg.hb.heures) / N;
+      const sem = (nOuvres - nFeries) / 5;
       const r = {
         etp: N, recup, joursTravailles: jt, reste, marDisponiblesParJour: reste / nOpen,
         gardesParMar: (gSem + gWE) / N, gardeTousLes: jours.length / ((gSem + gWE) / N),
@@ -919,7 +919,7 @@
       Object.assign(r, consultIndic(CS, openDows, cfg.finance.ca));
       // Charge réelle répartie : bloc, réa, consultations, maternité, formation et gardes
       // (les jours sans poste ne sont pas comptés comme travaillés).
-      const hCharge = (hBloc + hRea + N * PR.formation * cfg.hb.heures) / N;
+      const hCharge = (hBloc + hRea + N * (PR.formation + PR.conges + PR.rtt) * cfg.hb.heures) / N;
       r.hSemSansGardeCharge = hCharge / sem;
       r.hSemAvecGardeCharge = (hCharge + hGarde / N) / sem;
       r.ecartPlafondCharge = r.hSemAvecGardeCharge - PR.plafond;
@@ -934,7 +934,7 @@
     const Ns = []; for (let n = 5; n <= 80.001; n += 0.1) Ns.push(Math.round(n * 10) / 10);
     const sim = simulateETP(result, Ns);
     const first = k => { const x = sim.find(r => r[k] <= result.cfg.params.plafond); return x ? x.etp : null; };
-    // temps de travail : seuls les congés (et RTT) et les jours de récupération sont retirés ; les jours libérables
+    // temps de travail : congés, RTT et formation comptés 8 h, jours de récupération 0 h ; les jours libérables
     // (jours sans poste restant libres) sont comptés travaillés
     const n = first('hSemAvecGarde');
     return { charge: n, consultations: n };

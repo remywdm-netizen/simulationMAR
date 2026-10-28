@@ -72,8 +72,8 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
-- h/sem = moyenne hors vacances : heures travaillées ÷ semaines de l'année hors fériés, congés et jours de temps partiel ; formation comptée 8 h, jours de récupération (samedis et dimanches de garde, 18h, Réa 1 17h) comptés 0 h : une récupération baisse le temps de travail.
-- Temps de travail : **seuls les congés et les jours de récupération sont retirés** ; les jours libérables (jours sans poste
+- h/sem = heures de l'année ÷ semaines de l'année hors fériés et jours de temps partiel ; congés et formation comptés 8 h, jours de récupération (samedis et dimanches de garde, 18h, Réa 1 17h) comptés 0 h : une récupération baisse le temps de travail.
+- Temps de travail : **congés et formation comptés 8 h, jours de récupération 0 h** ; les jours libérables (jours sans poste
   restant libres) sont comptés travaillés (8 h).
 - Effectif pour 48 h (temps plein, gardes comprises) : environ **22 ETP** avec les règles par défaut.
 - Repère : **48 h par semaine en moyenne**, gardes comprises (directive 2003/88/CE — à vérifier avec la

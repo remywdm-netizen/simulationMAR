@@ -159,9 +159,9 @@ test('maternité : 1 MAR détaché en journée, hors bloc et hors réa', () => {
   assert.equal(S.synthese.materniteTotal, 0);                              // option désactivée par défaut
 });
 
-test('effectif pour 48 h : congés et récupérations retirés, jours libérables travaillés', () => {
+test('effectif pour 48 h : congés et formation 8 h, récupérations 0 h', () => {
   const s = S.synthese;
-  assert.ok(s.etpPlafondCharge > 20 && s.etpPlafondCharge <= 24, String(s.etpPlafondCharge));          // congés et récupérations retirés, jours libérables travaillés
+  assert.ok(s.etpPlafondCharge > 18 && s.etpPlafondCharge <= 24, String(s.etpPlafondCharge));          // congés et formation 8 h, récupérations 0 h, jours libérables travaillés
   const sim = E.simulateETP(R, [s.etpPlafondCharge - 0.1, s.etpPlafondCharge]);
   assert.ok(sim[0].hSemAvecGarde > 48 && sim[1].hSemAvecGarde <= 48);
   const cfg = E.mergeConfig(); cfg.gardes.heuresWE = 26;                         // plus d'heures de garde : plus d'ETP
