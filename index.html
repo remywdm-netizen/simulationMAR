@@ -331,6 +331,12 @@ function renderPjCtrls(){
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour!==false?'checked':''} onchange="setPJ('demiUnJour',true)"/> un seul jour par week-end (samedi ou dimanche)</label>
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour===false?'checked':''} onchange="setPJ('demiUnJour',false)"/> groupées sur le week-end (samedi + dimanche)</label></div>` +
       rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun')) +
+    groupe('➕ Leviers pour soulager les gardes', 'Testez-les un par un ou ensemble : tout se recalcule.',
+      rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
+      tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
+      rng('surplusGardeJeunes', `Moins de ${p.ageFinGardes} ans : gardes au-delà du temps de travail`, 0, 20, 5, v => v ? '+' + v + ' %' : 'non') +
+      rng('exterieurSemaine', 'Médecin extérieur : gardes de semaine par an', 0, 250, 10, v => v ? v + ' gardes' : 'aucune') +
+      rng('exterieurWE', 'Médecin extérieur : gardes de week-end et fériés par an', 0, 120, 5, v => v ? v + ' gardes' : 'aucune')) +
     groupe('🌙 Week-ends des plus jeunes', 'Quand un aîné fait la demi-garde de jour, le collègue de garde ne fait que la nuit.',
       `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
       (cfg.projection.demiUnJour !== false ? `<div class="hint" style="margin:4px 0 0">Utile seulement si les demi-gardes sont groupées sur le week-end.</div>` : '') +
@@ -473,8 +479,8 @@ function pjRenduAnnee(sansGraphes){
   const j1s = sc[i+1] ? sc[i+1].nouvelAn[y0+'-01-01'] : null, j1d = sc[i+1] ? sc[i+1].nouvelAnDemi[y0+'-01-01'] : null;
   const noel = Object.values(S.noel).flat(), na = (S.nouvelAn[y0+'-12-31'] || []).concat(j1s || []);
   const demiF = Object.values(S.noelDemi).flat().concat(S.nouvelAnDemi[y0+'-12-31'] || [], j1d || []);
-  const M = r.membres.slice().sort((a,b) => (b.age ?? -1) - (a.age ?? -1));
-  const col = m => m.q === 0 ? '#cbd5e1' : m.plus60 ? (m.qg > 0 ? '#f59e0b' : m.demi > 0 ? '#c084fc' : '#e5e7eb') : /\(rempl\./.test(m.code) ? '#86efac' : '#93c5fd';
+  const M = r.membres.filter(m => !/^Extérieur/.test(m.code)).sort((a,b) => (b.age ?? -1) - (a.age ?? -1));
+  const col = m => /^Recrue/.test(m.code) ? '#5eead4' : m.q === 0 ? '#cbd5e1' : m.plus60 ? (m.qg > 0 ? '#f59e0b' : m.demi > 0 ? '#c084fc' : '#e5e7eb') : /\(rempl\./.test(m.code) ? '#86efac' : '#93c5fd';
   const w = a => a == null ? 0 : Math.max(4, Math.min(100, (a - 25) / (p.ageRetraite - 25) * 100));
   document.getElementById('pj-eq').innerHTML = `<div class="pj-leg"><i style="background:#93c5fd"></i>garde · <i style="background:#86efac"></i>remplaçant · ${p.gardesApresPct ? `<i style="background:#f59e0b"></i>${p.ageFinGardes} ans et +, garde ${p.gardesApresPct} % · ` : ''}<i style="background:#c084fc"></i>${p.ageFinGardes} ans et +, demi-gardes · <i style="background:#e5e7eb"></i>${p.ageFinGardes} ans et +, sans garde · 🎄 Noël · 🥂 Nouvel An (31 déc. ou 1er janv. suivant) · ½ demi-garde de fête</div>` +
     M.map(m => `<div class="pj-m" title="${esc(m.code)} · ${m.age != null ? m.age + ' ans' : 'âge inconnu'} · ${f0(m.gardes)} gardes${m.demi ? ' · ' + f0(m.demi) + ' demi-gardes' : ''} · ${f1(m.hAvec)} h/sem avec garde, ${f1(m.hSans)} sans">
@@ -489,6 +495,8 @@ function pjRenduAnnee(sansGraphes){
     <div class="pj-yk"><span>${age} ans et + : h/sem ${pjChart === 'avec' ? 'avec demi-gardes' : 'avec gardes'}</span><b>${n(r.hAvecPlus60)}</b></div>
     <div class="pj-yk"><span>Heures de WE / fériés : moins de ${age} ans · ${age} ans et +</span><b>${f0(r.heuresWETempsPlein||0)} h · ${r.heuresWEPlus60==null?'—':f0(r.heuresWEPlus60)+' h'}</b></div>
     <div class="pj-yk"><span>MAR libres / jour</span><b>${f1(r.marDisponiblesParJour)}</b></div>
+    ${r.recrues ? `<div class="pj-yk"><span>Recrues (ETP libérés par les ${age} ans et +)</span><b>${f1(r.recrues)} ETP</b></div>` : ''}
+    ${r.gardesExterieures ? `<div class="pj-yk"><span>Gardes par un médecin extérieur</span><b>${f0(r.gardesExterieures)} (dont ${f0(r.gardesExterieuresWE)} WE / fériés)</b></div>` : ''}
     <div class="pj-yk"><span>🎄 24 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-24'], S.noelDemi[y0+'-12-24'])}</div>
     <div class="pj-yk"><span>🎄 25 décembre ${pjAnnee}</span>${fl(S.noel[y0+'-12-25'], S.noelDemi[y0+'-12-25'])}</div>
     <div class="pj-yk"><span>🥂 31 décembre ${pjAnnee}</span>${fl(S.nouvelAn[y0+'-12-31'], S.nouvelAnDemi[y0+'-12-31'])}</div>

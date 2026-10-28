@@ -135,4 +135,10 @@ gardes assurées.
   année par année de l'indicateur choisi.
 - Réglages regroupés : effectif et départs ; 60 ans et plus (fin des gardes, gardes conservées, demi-gardes, plafond,
   réglage par praticien) ; week-ends des plus jeunes (nuits enchaînées) ; bouton « Réglages par défaut ».
+- **Leviers pour soulager les gardes** (onglet Projection) :
+  - **réduire le temps de travail des 60 ans et plus** (−10 à −50 %, hors postes à jours fixes) ; les **ETP libérés**
+    servent à recruter des jeunes qui gardent (recrues à temps plein, la dernière au reliquat) ;
+  - **gardes des moins de 60 ans au-delà de leur temps de travail** (+5 à +20 % de leur quotité de garde) ;
+  - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
+    réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
 

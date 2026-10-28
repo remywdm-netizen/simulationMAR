@@ -381,3 +381,20 @@ test('projection : demi-garde des 60 ans et plus le samedi ou le dimanche', () =
     assert.ok(d.length <= 12 && d.length > 0, m.code + ' ' + d.length);
   });
 });
+
+test('projection : leviers réduction des 60 ans et plus, surplus de garde, médecin extérieur', () => {
+  const cfg = E.mergeConfig();
+  cfg.projection.reductionQ60 = 20;
+  const eq = E.equipeAnnee(cfg, 2038, false), rec = eq.filter(m => m.recrue);
+  const libere = eq.filter(m => m.plus60 && m.qL).reduce((a, m) => a + m.qL - m.q, 0);
+  assert.ok(rec.length >= 1 && Math.abs(rec.reduce((a, m) => a + m.q, 0) - libere) < 0.06);
+  assert.ok(rec.every(m => m.qg === m.q && m.q <= 1));
+  cfg.projection.reductionQ60 = 0; cfg.projection.surplusGardeJeunes = 5;
+  const j = E.equipeAnnee(cfg, 2038, false).find(m => m.code === 'MAR 07');
+  assert.equal(j.qg, 1.05);
+  cfg.projection.surplusGardeJeunes = 0; cfg.projection.exterieurSemaine = 100; cfg.projection.exterieurWE = 50;
+  const p = E.projectionAnnee(cfg, 2038, false, {}, true);
+  assert.equal(p.alertes, 0);
+  assert.equal(p.gardesExterieures, 150); assert.equal(p.gardesExterieuresWE, 50);
+  assert.equal(p.effectif, 23);
+});

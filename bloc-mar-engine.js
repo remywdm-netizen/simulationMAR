@@ -83,7 +83,8 @@
     // de jour le week-end) ; option gardesApresPct : part des gardes conservée après cet âge (100 = continue les gardes),
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
-    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+    projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0,
+      reductionQ60: 0, recruterLibere: true, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -258,6 +259,10 @@
       });
     }
     const CHAIN = !!G.nuitsEnchainees;
+    // Médecins extérieurs (quotaGardes) : gardes réparties régulièrement sur leurs jours (semaine ou week-end / fériés)
+    const externes = P.map((p, i) => i).filter(i => P[i].exterieur && P[i].quotaGardes > 0);
+    const extJours = externes.map(i => days.map((s, k) => k).filter(k => P[i].gardeSemaine ? isOpen[k] : !isOpen[k]));
+    const extCible = (x, k) => { const l = extJours[x], pos = l.indexOf(k); return pos < 0 ? -1 : Math.round(Math.min(P[externes[x]].quotaGardes, l.length) * (pos + 1) / l.length); };
 
     // 2. Gardes
     const sqg = QG.reduce((a, b) => a + b, 0);
@@ -272,7 +277,7 @@
       const spec = !isOpen[k];
       if (spec) nSpec++;
       const enDemi = i => demi[k].includes(i) || (k + 1 < days.length && demi[k + 1].includes(i));   // demi-garde ce jour ou le lendemain
-      const ok = i => QG[i] > 0 && !enDemi(i) && weLibre(i, k) && !(spec && !P[i].we) && !off(i, s) && k - lastG[i] >= G.ecartMin && !impAvant(i, k) && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
+      const ok = i => QG[i] > 0 && !P[i].exterieur && !enDemi(i) && weLibre(i, k) && !(spec && !P[i].we) && !off(i, s) && k - lastG[i] >= G.ecartMin && !impAvant(i, k) && !rrDay[k].includes(i) && !(k + 1 < days.length && rrDay[k + 1].includes(i))
         && !(k + 1 < days.length && reaDay[k + 1].has(i))              // le repos ne coupe pas une semaine de réa
         && !(reaDay[k].has(i) && dow(s) !== 4);                         // garde en semaine de réa : le vendredi
       const key = i => {
@@ -290,7 +295,8 @@
       // nuits enchaînées : le dimanche, le MAR qui a fait la nuit du samedi refait la nuit (sans repos entre les deux)
       const chaine = CHAIN && dow(s) === 6 && k > 0 && demi[k].length
         ? nightOf[k - 1].filter(i => !enDemi(i) && !(k + 1 < days.length && (reaDay[k + 1].has(i) || rrDay[k + 1].includes(i))) && !off(i, s)).slice(0, demi[k].length) : [];
-      const imp = chaine.concat(impIdx[k].filter(i => cands.includes(i) && !chaine.includes(i)));   // gardes imposées (rotation de Noël)
+      const ext = externes.filter((i, x) => extCible(x, k) > gDone[i]);   // gardes extérieures dues ce jour
+      const imp = chaine.concat(impIdx[k].filter(i => cands.includes(i) && !chaine.includes(i)), ext);   // gardes imposées (rotation de Noël), extérieurs
       const pair = imp.concat(cands.filter(i => !imp.includes(i)).sort((a, b) => cmp(key(a), key(b)))).slice(0, G.parJour);
       nightOf[k] = chaine.filter(i => pair.includes(i));
       if (CHAIN && dow(s) === 5 && demi[k].length && k + 1 < days.length && demi[k + 1].length) {   // samedi : nuits à enchaîner le dimanche
@@ -315,7 +321,7 @@
     // 3. Temps partiel : jours non travaillés (TP)
     const tp = days.map(() => new Set());
     const owed = Array(n).fill(0);
-    const pt = P.map((p, i) => i).filter(i => Q[i] < 1 && !fixe[i]);
+    const pt = P.map((p, i) => i).filter(i => Q[i] > 0 && Q[i] < 1 && !fixe[i]);   // quotité 0 (gardes seules) : pas de jours de TP
     P.forEach((p, i) => {   // jours fixes : les autres jours ouvrés sont des jours de TP
       if (!fixe[i]) return;
       days.forEach((s, k) => { if (isOpen[k] && off(i, s)) tp[k].add(i); });
@@ -485,6 +491,26 @@
     cfg.equipe.forEach(m => { if (!retraits.has(m.code)) ajoute(m, null); });
     (PJ.mouvements || []).filter(x => x.type === 'ajout' && +x.annee <= annee && !retraits.has(x.code)).forEach(x => ajoute(Object.assign(
       { we: true, demiWE: false, rea: true, rea1: false, consult: true, mater: true, joursFixes: null }, x, { q: +x.q || 0, qg: x.qg === '' || x.qg == null ? +x.q || 0 : +x.qg }), +x.annee));
+    // Réduction du temps de travail des MAR de 60 ans et plus (hors jours fixes) ; ETP libérés : recrues qui gardent
+    let libere = 0;
+    if (+PJ.reductionQ60 > 0) out.forEach(m => {
+      if (!m.plus60 || !(m.q > 0) || (Array.isArray(m.joursFixes) && m.joursFixes.some(x => !x))) return;
+      const q = Math.round(m.q * (1 - Math.min(+PJ.reductionQ60, 90) / 100) * 20) / 20;
+      libere += m.q - q; m.qL = m.q; m.q = q; if (m.qg > q) m.qg = q;
+    });
+    if (PJ.recruterLibere !== false) for (let k = 1; libere > 0.049; k++) {
+      const q = Math.min(1, Math.round(libere * 20) / 20);
+      out.push({ code: 'Recrue (ETP libéré) ' + k, q, qg: q, we: true, demiWE: false, rea: true, rea1: false, consult: true, mater: true,
+        joursFixes: null, naissance: annee - PJ.ageRemplacant, age: PJ.ageRemplacant, recrue: true });
+      libere -= q;
+    }
+    // Moins de 60 ans : gardes au-delà de la quotité de travail (+ x %)
+    if (+PJ.surplusGardeJeunes > 0) out.forEach(m => { if (!m.plus60 && m.qg > 0) m.qg = Math.round(m.qg * (1 + +PJ.surplusGardeJeunes / 100) * 1000) / 1000; });
+    // Médecins extérieurs : gardes seules (quota par an), en semaine et / ou le week-end et les jours fériés
+    const ext = (code, n, semaine) => { if (+n > 0) out.push({ code, q: 0, qg: 0, we: !semaine, gardeSemaine: semaine, demiWE: false, rea: false, rea1: false,
+      consult: false, mater: false, joursFixes: null, exterieur: true, quotaGardes: +n }); };
+    ext('Extérieur (semaine)', PJ.exterieurSemaine, true);
+    ext('Extérieur (week-end et fériés)', PJ.exterieurWE, false);
     return out;
   }
 
@@ -576,10 +602,10 @@
       (j.demi || []).forEach(i => { hWE[i] += GG.heuresDemiJour; }); });
     const s = r.stats.synthese, M = r.stats.parMar.map((m, i) => Object.assign({}, m, { age: equipe[i].age, plus60: !!equipe[i].plus60, weekends: weMar[i].size, heuresWE: hWE[i] }));
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
-    const tp = moins.filter(m => m.q === 1 && m.qg === 1);
+    const tp = moins.filter(m => m.q === 1 && m.qg >= 1);   // temps plein (gardes à 100 % ou plus)
     const avg = (a, f) => (a.length ? a.reduce((x, m) => x + f(m), 0) / a.length : null);
     return {
-      annee, demi60: !!demi60, effectif: equipe.length, etp: s.etp, etpGarde: s.etpGarde,
+      annee, demi60: !!demi60, effectif: equipe.filter(m => !m.exterieur).length, etp: s.etp, etpGarde: s.etpGarde,
       gardeurs: equipe.filter(m => m.qg > 0).length, nbPlus60: plus.length, nbRemplacants: equipe.filter(m => m.remplacant).length,
       sansNaissance: equipe.filter(m => !m.naissance).length,
       gardesTempsPlein: avg(tp, m => m.gardes), gardesParEtpGarde: s.gardesParEtpGarde,
@@ -595,6 +621,9 @@
       marDisponiblesParJour: s.marDisponiblesParJour, alertes: r.warnings.length + verify(r).length, noel: noelFait,
       nouvelAn: nouvelAnFait, noelDemi, nouvelAnDemi,
       noelEligibles: equipe.filter(m => m.qg > 0 && m.we !== false).length,
+      gardesExterieures: M.filter((m, i) => equipe[i].exterieur).reduce((x, m) => x + m.gardes, 0),
+      gardesExterieuresWE: M.filter((m, i) => equipe[i].exterieur).reduce((x, m) => x + m.gardesWE, 0),
+      recrues: equipe.filter(m => m.recrue).reduce((x, m) => x + m.q, 0),
       // comparatif par groupe d'âge : nombre de MAR, ETP, valeurs par ETP (somme ÷ quotités), h/sem au prorata
       groupes: Object.fromEntries([['moins', moins], ['plus', plus]].map(([g, L]) => {
         const q = L.reduce((x, m) => x + m.q, 0), parEtp = f => (q ? L.reduce((x, m) => x + f(m), 0) / q : null);
@@ -625,7 +654,7 @@
     if (j.repos.includes(i)) act = 'REPOS';
     else if (open) {
       const p = j.postes.indexOf(i);
-      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.consultation || []).includes(i) ? 'CS' : (j.recupRea || []).includes(i) ? 'RR' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : 'HB';
+      act = p >= 0 ? 'P' + p : j.rea.includes(i) ? 'REA' : (j.maternite || []).includes(i) ? 'MAT' : (j.consultation || []).includes(i) ? 'CS' : (j.recupRea || []).includes(i) ? 'RR' : (j.recup || []).includes(i) ? 'RC' : j.tp.includes(i) ? 'TP' : result.equipe[i].q > 0 ? 'HB' : '';   // quotité 0 (extérieur) : pas de journée
     }
     let g = '';
     if (j.demi.includes(i)) g = 'DJ';
@@ -836,7 +865,7 @@
       }
       j.garde.forEach(i => {
         if (j.statut !== 'Ouvert' && !P[i].we) issues.push(`${d} : ${P[i].code} de garde un week-end / férié`);
-        if (!(P[i].qg > 0)) issues.push(`${d} : ${P[i].code} de garde sans quotité de garde`);
+        if (!(P[i].qg > 0) && !P[i].exterieur) issues.push(`${d} : ${P[i].code} de garde sans quotité de garde`);
         if (k && jours[k - 1].garde.includes(i) && !(cfg.gardes.nuitsEnchainees && (j.nuit || []).includes(i) && (jours[k - 1].nuit || []).includes(i)))   // nuits enchaînées du week-end : permis
           issues.push(`${d} : ${P[i].code} de garde deux jours de suite`);
       });
