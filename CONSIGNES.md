@@ -138,7 +138,8 @@ gardes assurées.
 - **Leviers pour soulager les gardes** (onglet Projection) :
   - **réduire le temps de travail des 60 ans et plus** (−10 à −50 %, hors postes à jours fixes) ; les **ETP libérés**
     servent à recruter des jeunes qui gardent (recrues à temps plein, la dernière au reliquat) ;
-  - **gardes des moins de 60 ans au-delà de leur temps de travail** (+5 à +20 % de leur quotité de garde) ;
+  - **temps partiels de moins de 60 ans : quotité de garde = temps de travail + 5 à 20 %** (par exemple 80 % de temps
+    de travail → 85 % de garde ; 100 % au plus) ;
   - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
     réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
 - **Impact des leviers** (onglet Projection) : chaque levier part des réglages actuels et recalcule les plannings ; tableau

@@ -390,8 +390,10 @@ test('projection : leviers réduction des 60 ans et plus, surplus de garde, méd
   assert.ok(rec.length >= 1 && Math.abs(rec.reduce((a, m) => a + m.q, 0) - libere) < 0.06);
   assert.ok(rec.every(m => m.qg === m.q && m.q <= 1));
   cfg.projection.reductionQ60 = 0; cfg.projection.surplusGardeJeunes = 5;
-  const j = E.equipeAnnee(cfg, 2038, false).find(m => m.code === 'MAR 07');
-  assert.equal(j.qg, 1.05);
+  const eq5 = E.equipeAnnee(cfg, 2038, false), g = c => eq5.find(m => m.code === c);
+  assert.equal(g('MAR 07').qg, 1);                                               // temps plein : inchangé
+  assert.equal(g('MAR 18').qg, 0.85);                                            // 80 % de travail → 85 % de garde
+  assert.equal(g('MAR 22').qg, 1);                                               // 90 % de travail, déjà 100 % de garde
   cfg.projection.surplusGardeJeunes = 0; cfg.projection.exterieurSemaine = 100; cfg.projection.exterieurWE = 50;
   const p = E.projectionAnnee(cfg, 2038, false, {}, true);
   assert.equal(p.alertes, 0);

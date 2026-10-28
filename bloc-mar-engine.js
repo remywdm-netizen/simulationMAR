@@ -508,8 +508,9 @@
         joursFixes: null, naissance: annee - PJ.ageRemplacant, age: PJ.ageRemplacant, recrue: true });
       libere -= q;
     }
-    // Moins de 60 ans : gardes au-delà de la quotité de travail (+ x %)
-    if (+PJ.surplusGardeJeunes > 0) out.forEach(m => { if (!m.plus60 && m.qg > 0) m.qg = Math.round(m.qg * (1 + +PJ.surplusGardeJeunes / 100) * 1000) / 1000; });
+    // Temps partiels de moins de 60 ans : quotité de garde = temps de travail + x points (100 % au plus)
+    if (+PJ.surplusGardeJeunes > 0) out.forEach(m => { if (!m.plus60 && m.qg > 0 && m.q > 0 && m.q < 1)
+      m.qg = Math.round(Math.min(1, Math.max(m.qg, m.q + +PJ.surplusGardeJeunes / 100)) * 1000) / 1000; });
     // Médecins extérieurs : gardes seules (quota par an), en semaine et / ou le week-end et les jours fériés
     const ext = (code, n, semaine) => { if (+n > 0) out.push({ code, q: 0, qg: 0, we: !semaine, gardeSemaine: semaine, demiWE: false, rea: false, rea1: false,
       consult: false, mater: false, joursFixes: null, exterieur: true, quotaGardes: +n }); };

@@ -339,7 +339,7 @@ function renderPjCtrls(){
     groupe('➕ Leviers pour soulager les gardes', 'Testez-les un par un ou ensemble : tout se recalcule.',
       rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
       tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
-      rng('surplusGardeJeunes', `Moins de ${p.ageFinGardes} ans : gardes au-delà du temps de travail`, 0, 20, 5, v => v ? '+' + v + ' %' : 'non') +
+      rng('surplusGardeJeunes', `Temps partiels (moins de ${p.ageFinGardes} ans) : garde = temps de travail +`, 0, 20, 5, v => v ? v + ' %' : 'non') +
       rng('exterieurSemaine', 'Médecin extérieur : gardes de semaine par an', 0, 250, 10, v => v ? v + ' gardes' : 'aucune') +
       rng('exterieurWE', 'Médecin extérieur : gardes de week-end et fériés par an', 0, 120, 5, v => v ? v + ' gardes' : 'aucune')) +
     groupe('🌙 Week-ends des plus jeunes', 'Quand un aîné fait la demi-garde de jour, le collègue de garde ne fait que la nuit.',
@@ -522,7 +522,8 @@ function pjLeviers(){
   add(!(p.plafondWE60 > 0), `Plafond de 6 week-ends par an (${age} ans et +)`, c => { c.projection.plafondWE60 = 6; });
   add(!(p.plafondJoursWE60 > 0), `Plafond de 12 jours de WE par an (${age} ans et +)`, c => { c.projection.plafondJoursWE60 = 12; });
   add(p.reductionQ60 < 20, `${age} ans et + à −20 % de temps de travail (recrues)`, c => { c.projection.reductionQ60 = 20; c.projection.recruterLibere = true; });
-  add(p.gardesApresPct > 0 && !(p.surplusGardeJeunes > 0), `Moins de ${age} ans : +5 % de gardes`, c => { c.projection.surplusGardeJeunes = 5; });
+  add(!(p.surplusGardeJeunes > 0), `Temps partiels : garde = temps de travail + 5 %`, c => { c.projection.surplusGardeJeunes = 5; });
+  add(!(p.surplusGardeJeunes >= 10), `Temps partiels : garde = temps de travail + 10 %`, c => { c.projection.surplusGardeJeunes = 10; });
   add(true, `Extérieur : +50 gardes de week-end et fériés`, c => { c.projection.exterieurWE = (+p.exterieurWE || 0) + 50; });
   add(true, `Extérieur : +100 gardes de semaine`, c => { c.projection.exterieurSemaine = (+p.exterieurSemaine || 0) + 100; });
   add(true, '+1 MAR à temps plein (35 ans)', c => { c.projection.mouvements = (c.projection.mouvements || []).concat([{ type:'ajout', annee:cfg.annee, code:'MAR +1 (levier)', q:1, qg:1, naissance:cfg.annee - 35 }]); });
