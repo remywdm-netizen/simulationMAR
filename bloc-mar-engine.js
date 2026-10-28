@@ -11,12 +11,15 @@
   // ── Configuration par défaut ───────────────────────────────
   // Équipe : quotités du fichier « personnels » (initiales remplacées par MAR 01…).
   // Importer le fichier Excel de l'équipe dans la page pour retrouver les noms.
+  // Années de naissance (même ordre que l'équipe ; sans identité)
+  const NAISSANCES = [1977, 1977, 1975, 1975, 1964, 1974, 1992, 1991, 1978, 1969, 1987, 1981, 1967, 1982, 1992, 1976, 1990, 1986, 1961, 1993, 1986, 1991, 1986];
   const EQUIPE_DEFAUT = [
     [1, 1, false], [1, 1], [1, 1], [0.6, 0], [1, 0, true, true], [0.8, 1], [1, 1], [0.5, 0.5], [0.9, 0.9], [1, 1],
     [0.9, 0.9], [0.9, 0.9], [0.9, 0.9], [1, 1], [1, 1], [1, 1], [1, 1], [0.8, 0.8], [1, 1], [1, 1],
     [0.9, 0.9], [0.9, 1], [1, 1],
   ].map(([q, qg, we, demi], i) => ({
     code: 'MAR ' + String(i + 1).padStart(2, '0'), q, qg,
+    naissance: NAISSANCES[i],                  // année de naissance (onglet Projection)
     we: we === undefined ? true : we,          // gardes de week-end / férié
     demiWE: !!demi,                            // demi-gardes de jour le week-end (samedi et dimanche 8h-20h)
     rea: true,                                 // participe à la réanimation

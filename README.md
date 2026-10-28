@@ -29,7 +29,7 @@ côté navigateur : ne pas mettre de données sensibles dans le dépôt).
   avec remplacement, fin des gardes à 60 ans (ou gardes continuées, en partie ou en totalité), ajouts / retraits ; rotation des gardes de Noël et du Nouvel An ; graphiques des gardes
   par temps plein, de l'effectif et du temps de travail des moins de 60 ans et des 60 ans et plus, sans ou avec demi-gardes de
   week-end pour les 60 ans et plus.
-  Les années de naissance restent dans le navigateur (le dépôt n'en contient aucune).
+  L'équipe par défaut (MAR 01…, sans identité) contient les années de naissance ; celles saisies ou importées restent dans le navigateur.
 - **🧪 Simulations et finance** : scénarios comparés, leviers pour libérer des jours de récupération, effectif selon le nombre d'ETP ;
   chiffre d'affaires, parts et revenus par MAR, €/h, grille CA × nombre de parts.
 - **⬇ Excel** : synthèse, compteurs, tableau de service, vue par MAR et scénarios.
