@@ -327,10 +327,13 @@ function renderPjCtrls(){
       rng('ageFinGardes', 'Fin des gardes à', 55, 67, 1, v => v + ' ans') +
       rng('gardesApresPct', 'Gardes conservées ensuite', 0, 100, 25, v => v + ' %') +
       `<div class="hint" style="margin:2px 0 6px">Demi-gardes : case en haut de l'onglet (${p.demi60 ? 'oui' : 'non'}) ; un MAR qui garde encore n'en fait pas.</div>` +
-      tog('demiUnJour', 'Demi-garde le samedi ou le dimanche (un seul jour par week-end)') +
+      `<div class="pj-c"><label>Demi-gardes</label>
+        <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour!==false?'checked':''} onchange="setPJ('demiUnJour',true)"/> un seul jour par week-end (samedi ou dimanche)</label>
+        <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour===false?'checked':''} onchange="setPJ('demiUnJour',false)"/> groupées sur le week-end (samedi + dimanche)</label></div>` +
       rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun')) +
     groupe('🌙 Week-ends des plus jeunes', 'Quand un aîné fait la demi-garde de jour, le collègue de garde ne fait que la nuit.',
       `<label class="pj-t"><input type="checkbox" ${cfg.gardes.nuitsEnchainees?'checked':''} onchange="cfg.gardes.nuitsEnchainees=this.checked;recompute();pjPlanifier()"/> Demi-garde samedi et dimanche : le même jeune fait les deux nuits</label>` +
+      (cfg.projection.demiUnJour !== false ? `<div class="hint" style="margin:4px 0 0">Utile seulement si les demi-gardes sont groupées sur le week-end.</div>` : '') +
       `<div class="row" style="margin-top:12px"><button class="btn btn-r" onclick="resetProjection()">↺ Réglages par défaut</button></div>`);
   // Réglage individuel : MAR qui atteignent l'âge de fin des gardes pendant la projection
   const vieux = cfg.equipe.map((m,i) => [m,i]).filter(([m]) => m.naissance && m.qg > 0 && m.naissance + p.ageFinGardes <= p.fin && m.naissance + p.ageRetraite > cfg.annee)
