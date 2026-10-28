@@ -73,7 +73,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 ## Temps de travail
 - Garde sur place comptée en temps de travail effectif.
 - **Gardes par mois** = gardes de l'année ÷ mois de présence (12 mois × jours ouvrés hors congés et formation ÷ jours ouvrés) ;
-  une demi-garde compte ½.
+  une demi-garde compte ½ ; **dont week-end et fériés** affiché à côté.
 - h/sem = heures de l'année ÷ semaines de l'année hors fériés et jours de temps partiel ; congés et formation comptés 8 h, jours de récupération (samedis et dimanches de garde, 18h, Réa 1 17h) comptés 0 h : une récupération baisse le temps de travail.
 - Temps de travail : **congés et formation comptés 8 h, jours de récupération 0 h** ; les jours libérables (jours sans poste
   restant libres) sont comptés travaillés (8 h).

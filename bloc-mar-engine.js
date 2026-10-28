@@ -622,7 +622,7 @@
       hAvecPlus60: etp(plus, m => m.hSemAvecGarde), hSansPlus60: etp(plus, m => m.hSemSansGarde),
       demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
       nuitsTempsPlein: avg(tp, m => m.nuits), gardesPlus60: avg(plus, m => m.gardes),
-      gardesParMoisTempsPlein: avg(tp, m => m.gardesParMois),
+      gardesParMoisTempsPlein: avg(tp, m => m.gardesParMois), gardesWEParMoisTempsPlein: avg(tp, m => m.gardesWEParMois),
       gardesWETempsPlein: avg(tp, m => m.gardesWE), journeesWETempsPlein: avg(tp, m => m.gardesWE - m.nuits),   // journées de garde WE / fériés (8h-20h)
       gardesWEPlus60: avg(plus, m => m.gardesWE),
       weekendsTempsPlein: avg(tp, m => m.weekends), weekendsPlus60: avg(plus, m => m.weekends),
@@ -641,6 +641,7 @@
           gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), nuits: parEtp(m => m.nuits),
           journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
           recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18),
+          gardesWEMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); return g.length ? g.reduce((x, m) => x + m.gardesWEParMois, 0) / g.length : 0; })(),
           gardesMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); const qq = g.reduce((x, m) => x + m.qg, 0); return qq ? g.reduce((x, m) => x + m.gardesParMois, 0) / g.length : 0; })(), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
           hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde, 0) / q : null }];   // équivalent temps plein
       })),
@@ -733,6 +734,7 @@
       // gardes par mois de présence : mois de l'année hors congés (et RTT) et formation (jours ouvrés)
       s.moisPresence = 12 * Math.max(nOpen - s.conges - s.rtt - s.formation, 0) / nOpen;
       s.gardesParMois = s.moisPresence ? (s.gardes + s.demi / 2) / s.moisPresence : 0;   // demi-garde : ½
+      s.gardesWEParMois = s.moisPresence ? (s.gardesWE + s.demi / 2) / s.moisPresence : 0;   // dont week-end et fériés
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
       s.semaineMax = Math.max(0, ...Object.values(s.semaines));
@@ -749,7 +751,7 @@
       nMar: P.length, etp, etpGarde, joursOuvres: nOuvres, joursBloc: nOpen, postesParJour: postes.length,
       gardesParAn: sum(s => s.gardes), demiGardes: sum(s => s.demi), demiWeekends: result.demiWeekends,
       gardesParEtpGarde: sum(s => s.gardes) / (etpGarde || 1),
-      gardesParMoisTempsPlein: avg(pleins, s => s.gardesParMois),
+      gardesParMoisTempsPlein: avg(pleins, s => s.gardesParMois), gardesWEParMoisTempsPlein: avg(pleins, s => s.gardesWEParMois),
       marDisponiblesParJour: sum(s => s.hbDisponible) / nOpen,
       hSemSansGarde: avg(pleins, s => s.hSemSansGarde), hSemAvecGarde: avg(pleins, s => s.hSemAvecGarde),
       semaineMax: Math.max(...per.map(s => s.semaineMax)),
