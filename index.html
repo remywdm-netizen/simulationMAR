@@ -336,7 +336,8 @@ function renderPjCtrls(){
         <label class="pj-t"><input type="radio" name="pj-du" ${p.demiUnJour===false?'checked':''} onchange="setPJ('demiUnJour',false)"/> groupées sur le week-end (samedi + dimanche)</label></div>` +
       rng('plafondJoursWE60', 'Plafond de jours de week-end par an', 0, 26, 2, v => v ? v + ' jours' : 'aucun') +
       rng('plafondWE60', 'Plafond de week-ends travaillés par an', 0, 26, 1, v => v ? v + ' week-ends' : 'aucun') +
-      rng('quotite18h60', 'Part de journées finies à 18h (bloc long)', 100, 300, 25, v => v === 100 ? 'normale' : '× ' + String(v / 100).replace('.', ','))) +
+      rng('quotite18h60', 'Part de journées finies à 18h (bloc long)', 100, 300, 25, v => v === 100 ? 'normale' : '× ' + String(v / 100).replace('.', ',')) +
+      rng('recup18h60', 'Récupération des journées 18h', 0, 13, 1, v => v === 0 ? 'règle générale' : v > 12 ? 'aucune' : '1 jour pour ' + v)) +
     groupe('➕ Leviers pour soulager les gardes', 'Testez-les un par un ou ensemble : tout se recalcule.',
       rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
       tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
@@ -523,6 +524,7 @@ function pjLeviers(){
   add(!(p.plafondWE60 > 0), `Plafond de 6 week-ends par an (${age} ans et +)`, c => { c.projection.plafondWE60 = 6; });
   add(!(p.plafondJoursWE60 > 0), `Plafond de 12 jours de WE par an (${age} ans et +)`, c => { c.projection.plafondJoursWE60 = 12; });
   add(!(p.quotite18h60 >= 200), `${age} ans et + : deux fois plus de journées 18h`, c => { c.projection.quotite18h60 = 200; });
+  add(true, `${age} ans et + : ×2 journées 18h, 1 récupération pour 8`, c => { c.projection.quotite18h60 = 200; c.projection.recup18h60 = 8; });
   add(p.reductionQ60 < 20, `${age} ans et + à −20 % de temps de travail (recrues)`, c => { c.projection.reductionQ60 = 20; c.projection.recruterLibere = true; });
   add(!(p.surplusGardeJeunes > 0), `Temps partiels : garde = temps de travail + 5 %`, c => { c.projection.surplusGardeJeunes = 5; });
   add(!(p.surplusGardeJeunes >= 10), `Temps partiels : garde = temps de travail + 10 %`, c => { c.projection.surplusGardeJeunes = 10; });

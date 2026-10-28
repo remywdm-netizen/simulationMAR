@@ -84,7 +84,7 @@
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
     projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, plafondWE60: 0,
-      reductionQ60: 0, recruterLibere: true, quotite18h60: 100, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+      reductionQ60: 0, recruterLibere: true, quotite18h60: 100, recup18h60: 0, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -430,7 +430,7 @@
       posts.forEach((i, p) => {
         if (i === null) return;
         bDone[i]++; pc[i][p]++; wkBloc[i + wkey] = (wkBloc[i + wkey] || 0) + 1;
-        if (RECUP_BLOC && LONG.has(p)) credit[i] += 1 / PR.joursFin18ParRecup;
+        if (RECUP_BLOC && LONG.has(p)) { const n18 = P[i].joursFin18ParRecup != null ? +P[i].joursFin18ParRecup : PR.joursFin18ParRecup; if (n18 > 0) credit[i] += 1 / n18; }
         nr[i] = prev[i] === p ? (run[i] || 0) + 1 : 1; np[i] = p;
         promis[k].forEach(x => { if (x.i === i && x.n === 0) suiviPoste[x.d + ':' + i] = p; });
       });
@@ -489,6 +489,7 @@
         if (+PJ.plafondJoursWE60 > 0) r.maxJoursWE = +PJ.plafondJoursWE60;
         if (+PJ.plafondWE60 > 0) r.maxWE = +PJ.plafondWE60;   // plafond de week-ends travaillés par an
         if (+PJ.quotite18h60 > 0 && +PJ.quotite18h60 !== 100) r.poids18 = +PJ.quotite18h60 / 100;   // part de journées finies à 18h
+        if (+PJ.recup18h60 > 0) r.joursFin18ParRecup = +PJ.recup18h60 > 12 ? 0 : +PJ.recup18h60;   // 1 récupération pour N jours à 18h (13 = aucune)
         if (r.demiWE && PJ.demiUnJour !== false) r.demiUnJour = true; }   // demi-garde le samedi ou le dimanche (pas les deux)   // plafond de jours de week-end travaillés par an   // continue les gardes : pas de demi-garde
       out.push(r);
     };
@@ -714,7 +715,8 @@
       s.conges = PR.conges * m.q; s.formation = PR.formation * m.q; s.rtt = PR.rtt * m.q;
       s.recupSamedis = (s.samedis + s.samedisDemi / 2) * PR.recupSamedi;
       s.recupDimanches = (s.dimanches + s.dimanchesDemi / 2) * (PR.recupDimanche || 0);
-      s.recupFin18 = PR.joursFin18ParRecup > 0 ? s.fin18 / PR.joursFin18ParRecup : 0;
+      const n18 = m.joursFin18ParRecup !== undefined && m.joursFin18ParRecup !== null ? +m.joursFin18ParRecup : PR.joursFin18ParRecup;   // ratio propre au MAR (0 = pas de récupération)
+      s.recupFin18 = n18 > 0 ? s.fin18 / n18 : 0;
       s.recupReaUn = R1 && R1.joursParRecup > 0 ? s.reaUn / R1.joursParRecup : 0;
       s.recup = s.recupSamedis + s.recupDimanches + s.recupFin18 + s.recupRea + s.recupReaUn;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)

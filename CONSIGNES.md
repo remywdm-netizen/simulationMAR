@@ -142,6 +142,8 @@ gardes assurées.
     de travail → 85 % de garde ; 100 % au plus) ;
   - **journées finies à 18h (bloc long) des 60 ans et plus à la hausse** (×1,25 à ×3) : ils ne gardent plus et peuvent
     rester jusqu'à 18h ; les plus jeunes en font moins (et ont moins de récupérations 18h) ;
+    **ratio de récupération propre aux 60 ans et plus** (1 jour pour 2 à 12 journées à 18h, ou aucune ; règle générale :
+    1 pour 4) ;
   - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
     réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
 - **Impact des leviers** (onglet Projection) : chaque levier part des réglages actuels et recalcule les plannings ; tableau

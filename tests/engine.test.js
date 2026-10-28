@@ -419,3 +419,17 @@ test('projection : plus de journées finies à 18h pour les 60 ans et plus', () 
   assert.equal(b.alertes, 0);
   assert.ok(b.groupes.plus.fin18 > a.groupes.plus.fin18 + 5 && b.groupes.moins.fin18 < a.groupes.moins.fin18 - 2);
 });
+
+test('projection : ratio de récupération des journées 18h propre aux 60 ans et plus', () => {
+  const cfg = E.mergeConfig(); cfg.projection.quotite18h60 = 200;
+  const a = E.projectionAnnee(cfg, 2038, false, null, true);
+  cfg.projection.recup18h60 = 8;
+  const b = E.projectionAnnee(cfg, 2038, false, null, true);
+  assert.equal(b.alertes, 0);
+  assert.ok(Math.abs(b.groupes.plus.fin18 - a.groupes.plus.fin18) < 1e-9);
+  assert.ok(b.groupes.plus.recup < a.groupes.plus.recup - 3);                    // moitié moins de récupérations 18h
+  assert.ok(Math.abs(b.groupes.moins.recup - a.groupes.moins.recup) < 1e-9);     // moins de 60 ans : règle générale
+  cfg.projection.recup18h60 = 13;
+  const eq = E.equipeAnnee(cfg, 2038, false), r = E.generate(Object.assign({}, cfg, { equipe: eq }), true);
+  r.stats.parMar.forEach((m, i) => { if (eq[i].plus60) assert.equal(m.recupFin18, 0); });
+});
