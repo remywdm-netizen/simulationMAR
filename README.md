@@ -14,6 +14,7 @@ côté navigateur : ne pas mettre de données sensibles dans le dépôt).
 | `CONSIGNES.md` | Règles appliquées |
 | `lib/xlsx.full.min.js` | SheetJS 0.18.5 (licence Apache-2.0), import et export Excel sans CDN |
 | `tests/engine.test.js` | Vérification automatique des règles (`node --test tests/*.test.js`) |
+| `tests/verification.test.js` | Recalcul indépendant du temps de travail (jour par jour) et contrôle de la projection |
 
 ## Utilisation
 4 onglets :
