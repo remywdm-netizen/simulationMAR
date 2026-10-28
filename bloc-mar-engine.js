@@ -622,7 +622,7 @@
       hAvecPlus60: etp(plus, m => m.hSemAvecGarde), hSansPlus60: etp(plus, m => m.hSemSansGarde),
       demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
       nuitsTempsPlein: avg(tp, m => m.nuits), gardesPlus60: avg(plus, m => m.gardes),
-      gardesParMoisTempsPlein: avg(tp, m => m.gardesParMois), gardesWEParMoisTempsPlein: avg(tp, m => m.gardesWEParMois),
+      gardesParMoisTempsPlein: avg(tp, m => m.gardesParMois), gardesWEParMoisTempsPlein: avg(tp, m => m.gardesWEParMois), gardesSamDimTempsPlein: avg(tp, m => m.gardesSamDim),
       gardesWETempsPlein: avg(tp, m => m.gardesWE), journeesWETempsPlein: avg(tp, m => m.gardesWE - m.nuits),   // journées de garde WE / fériés (8h-20h)
       gardesWEPlus60: avg(plus, m => m.gardesWE),
       weekendsTempsPlein: avg(tp, m => m.weekends), weekendsPlus60: avg(plus, m => m.weekends),
@@ -638,7 +638,7 @@
       groupes: Object.fromEntries([['moins', moins], ['plus', plus]].map(([g, L]) => {
         const q = L.reduce((x, m) => x + m.q, 0), parEtp = f => (q ? L.reduce((x, m) => x + f(m), 0) / q : null);
         return [g, { n: L.length, etp: q, bloc: parEtp(m => m.bloc), rea: parEtp(m => m.rea), consult: parEtp(m => m.consult),
-          gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), nuits: parEtp(m => m.nuits),
+          gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), gardesSamDim: parEtp(m => m.gardesSamDim), nuits: parEtp(m => m.nuits),
           journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
           recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18),
           gardesWEMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); return g.length ? g.reduce((x, m) => x + m.gardesWEParMois, 0) / g.length : 0; })(),
@@ -690,7 +690,7 @@
     const R1 = cfg.rea.reaUn && cfg.rea.reaUn.actif && P.some(m => m.rea1) ? cfg.rea.reaUn : null;   // option Réa 1 jusqu'à 17h
     const per = P.map((m, i) => {
       const s = { code: m.code, q: m.q, qg: m.qg, bloc: 0, rea: 0, mater: 0, consult: 0, rc: 0, recupRea: 0, reaUn: 0, gardes: 0, gardesWE: 0, nuits: 0, demi: 0, repos: 0, tp: 0, hb: 0,
-        postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, dimanches: 0, dimanchesDemi: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
+        postes: postes.map(() => 0), samedis: 0, samedisDemi: 0, dimanches: 0, dimanchesDemi: 0, gardesSamDim: 0, fin18: 0, heuresJour: 0, heuresGarde: 0, semaines: {} };
       jours.forEach(j => {
         const a = activite(result, j, i), d = dow(j.date);
         let hj = 0, hg = 0;
@@ -713,6 +713,7 @@
           else { s.gardes++; if (j.statut !== 'Ouvert') s.gardesWE++; if (a.garde === 'GN') s.nuits++; hg = { G16: G.heuresSemaine, G24: G.heuresWE, GN: G.heuresNuit }[a.garde]; }
           if (d === 5) { if (a.garde === 'DJ' || a.garde === 'GN') s.samedisDemi++; else s.samedis++; }   // demi-garde : demi-récupération
           if (d === 6) { if (a.garde === 'DJ' || a.garde === 'GN') s.dimanchesDemi++; else s.dimanches++; }
+          if (d >= 5) s.gardesSamDim += a.garde === 'DJ' ? 0.5 : 1;   // gardes du samedi et du dimanche (demi-garde : ½)
         }
         s.heuresJour += hj; s.heuresGarde += hg;
         const w = j.semaine; s.semaines[w] = (s.semaines[w] || 0) + hj + hg;
@@ -734,7 +735,7 @@
       // gardes par mois de présence : mois de l'année hors congés (et RTT) et formation (jours ouvrés)
       s.moisPresence = 12 * Math.max(nOpen - s.conges - s.rtt - s.formation, 0) / nOpen;
       s.gardesParMois = s.moisPresence ? (s.gardes + s.demi / 2) / s.moisPresence : 0;   // demi-garde : ½
-      s.gardesWEParMois = s.moisPresence ? (s.gardesWE + s.demi / 2) / s.moisPresence : 0;   // dont week-end et fériés
+      s.gardesWEParMois = s.moisPresence ? s.gardesSamDim / s.moisPresence : 0;   // dont week-end (samedi et dimanche)
       s.hSemSansGarde = s.semainesPresence ? s.heuresSansGarde / s.semainesPresence : 0;
       s.hSemAvecGarde = s.semainesPresence ? (s.heuresSansGarde + s.heuresGarde) / s.semainesPresence : 0;
       s.semaineMax = Math.max(0, ...Object.values(s.semaines));
@@ -751,7 +752,7 @@
       nMar: P.length, etp, etpGarde, joursOuvres: nOuvres, joursBloc: nOpen, postesParJour: postes.length,
       gardesParAn: sum(s => s.gardes), demiGardes: sum(s => s.demi), demiWeekends: result.demiWeekends,
       gardesParEtpGarde: sum(s => s.gardes) / (etpGarde || 1),
-      gardesParMoisTempsPlein: avg(pleins, s => s.gardesParMois), gardesWEParMoisTempsPlein: avg(pleins, s => s.gardesWEParMois),
+      gardesParMoisTempsPlein: avg(pleins, s => s.gardesParMois), gardesWEParMoisTempsPlein: avg(pleins, s => s.gardesWEParMois), gardesSamDimTempsPlein: avg(pleins, s => s.gardesSamDim),
       marDisponiblesParJour: sum(s => s.hbDisponible) / nOpen,
       hSemSansGarde: avg(pleins, s => s.hSemSansGarde), hSemAvecGarde: avg(pleins, s => s.hSemAvecGarde),
       semaineMax: Math.max(...per.map(s => s.semaineMax)),
