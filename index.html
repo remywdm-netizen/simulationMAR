@@ -463,7 +463,7 @@ function renderProjection(sansTableaux){
       <span><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="#334155" stroke-width="2.4" stroke-dasharray="5 3"/></svg>avec demi-gardes de jour le week-end des ${age} ans et +${cfg.gardes.nuitsEnchainees ? ' (nuits du samedi et du dimanche enchaînées)' : ''}</span>
       <span class="hint" style="margin:0">Cliquez sur un graphique pour choisir l'année.</span></div>` +
     lineChart('Gardes par an (gardes + demi-gardes)', A, quatre('gardesTempsPlein', 'gardesEtDemiPlus60'), 'gardes') +
-    lineChart('Temps de travail, gardes comprises (h / semaine)', A, quatre('hAvecMoins60', 'hAvecPlus60'), 'h/sem') +
+    lineChart('Temps de travail, gardes comprises (h / semaine, équivalent temps plein)', A, quatre('hAvecMoins60', 'hAvecPlus60'), 'h/sem') +
     lineChart('Journées travaillées le week-end et les jours fériés (8h-20h, par an)', A, quatre('journeesWETempsPlein', 'journeesWEPlus60'), 'jours') +
     lineChart('Week-ends de garde par an (au moins une garde ou demi-garde)', A, quatre('weekendsTempsPlein', 'weekendsPlus60'), 'week-ends') +
     lineChart('Heures travaillées le week-end et les jours fériés (par an)', A, quatre('heuresWETempsPlein', 'heuresWEPlus60'), 'h/an') +
@@ -575,7 +575,7 @@ function renderComparatif(){
     ['Gardes', a.gardes, b.gardes, n1], ['dont week-end et fériés', a.gardesWE, b.gardesWE, n1], ['dont nuits seules', a.nuits, b.nuits, n1],
     ['Demi-gardes de jour', a.demi, b.demi, n1], ['Week-ends travaillés', a.weekends, b.weekends, n1], ['Journées de week-end et fériés (8h-20h)', a.journeesWE, b.journeesWE, n1],
     ['Heures de week-end et fériés / an', a.heuresWE, b.heuresWE, n0], ['Récupérations (jours)', a.recup, b.recup, n1], ['Jours libérables', a.libres, b.libres, n1],
-    ['Heures travaillées / an', a.heuresAn, b.heuresAn, n0], ['h / semaine, gardes comprises', a.hAvec, b.hAvec, n1], ['h / semaine, sans garde', a.hSans, b.hSans, n1]];
+    ['Heures travaillées / an', a.heuresAn, b.heuresAn, n0], ['h / semaine, gardes comprises (équivalent temps plein)', a.hAvec, b.hAvec, n1], ['h / semaine, sans garde (équivalent temps plein)', a.hSans, b.hSans, n1]];
   const ec = (x, y, f) => x == null || y == null ? '' : `<span class="${y - x > 0.05 ? 'pj-up' : y - x < -0.05 ? 'pj-dn' : ''}">${y - x >= 0 ? '+' : ''}${f === n0 ? f0(y - x) : f1(y - x)}</span>`;
   let h = `<div class="pj-gh">⚖️ Comparatif moins de ${age} ans / ${age} ans et plus — ${pjAnnee} <span class="hint" style="margin:0;font-weight:400">par ETP et par an · ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et + · suivez l'évolution avec le curseur d'année ou ▶</span></div>
     <div class="pj-cgrid"><div class="tbl-wrap"><table><tr><th class="l">Par ETP et par an</th><th>Moins de ${age} ans</th><th>${age} ans et plus</th><th>Écart</th></tr>` +

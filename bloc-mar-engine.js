@@ -611,13 +611,15 @@
     const moins = M.filter(m => !m.plus60 && m.q > 0), plus = M.filter(m => m.plus60 && m.q > 0);
     const tp = moins.filter(m => m.q === 1 && m.qg >= 1);   // temps plein (gardes à 100 % ou plus)
     const avg = (a, f) => (a.length ? a.reduce((x, m) => x + f(m), 0) / a.length : null);
+    const etp = (a, f) => { const q = a.reduce((x, m) => x + m.q, 0); return q ? a.reduce((x, m) => x + f(m), 0) / q : null; };
     return {
       annee, demi60: !!demi60, effectif: equipe.filter(m => !m.exterieur).length, etp: s.etp, etpGarde: s.etpGarde,
       gardeurs: equipe.filter(m => m.qg > 0).length, nbPlus60: plus.length, nbRemplacants: equipe.filter(m => m.remplacant).length,
       sansNaissance: equipe.filter(m => !m.naissance).length,
       gardesTempsPlein: avg(tp, m => m.gardes), gardesParEtpGarde: s.gardesParEtpGarde,
-      hAvecMoins60: avg(moins, m => m.hSemAvecGarde), hSansMoins60: avg(moins, m => m.hSemSansGarde),
-      hAvecPlus60: avg(plus, m => m.hSemAvecGarde), hSansPlus60: avg(plus, m => m.hSemSansGarde),
+      // h/sem en équivalent temps plein (h/sem de chacun ÷ sa quotité, moyenne pondérée par la quotité)
+      hAvecMoins60: etp(moins, m => m.hSemAvecGarde), hSansMoins60: etp(moins, m => m.hSemSansGarde),
+      hAvecPlus60: etp(plus, m => m.hSemAvecGarde), hSansPlus60: etp(plus, m => m.hSemSansGarde),
       demiPlus60: avg(plus, m => m.demi), heuresGardeMoins60: avg(tp, m => m.heuresGarde),
       nuitsTempsPlein: avg(tp, m => m.nuits), gardesPlus60: avg(plus, m => m.gardes),
       gardesWETempsPlein: avg(tp, m => m.gardesWE), journeesWETempsPlein: avg(tp, m => m.gardesWE - m.nuits),   // journées de garde WE / fériés (8h-20h)
@@ -638,7 +640,7 @@
           gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), nuits: parEtp(m => m.nuits),
           journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
           recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
-          hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde * m.q, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde * m.q, 0) / q : null }];
+          hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde, 0) / q : null }];   // équivalent temps plein
       })),
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
         noel: Object.values(noelFait).some(l => l.includes(m.code)) ? 1 : 0, noelCumul: histoNoel && histoNoel[m.code] ? histoNoel[m.code].n : 0,
