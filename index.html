@@ -346,6 +346,7 @@ function renderPjCtrls(){
       rng('reductionQ60', `Temps de travail des ${p.ageFinGardes} ans et + réduit de`, 0, 50, 10, v => v ? '−' + v + ' %' : 'non') +
       tog('recruterLibere', 'ETP libérés : recrutement de jeunes qui gardent') +
       rng('surplusGardeJeunes', `Temps partiels (moins de ${p.ageFinGardes} ans) : garde = temps de travail +`, 0, 20, 5, v => v ? v + ' %' : 'non') +
+      `<div class="pj-c"><label>Récupération au-delà de … gardes par an <b>${cfg.params.seuilGardesRecup ? cfg.params.seuilGardesRecup + ' gardes' : 'non'}</b></label><input type="range" min="0" max="60" step="2" value="${cfg.params.seuilGardesRecup || 0}" oninput="this.previousElementSibling.querySelector('b').textContent=+this.value?this.value+' gardes':'non'" onchange="cfg.params.seuilGardesRecup=+this.value;recompute();pjPlanifier()"/></div>` +
       rng('exterieurSemaine', 'Médecin extérieur : gardes de semaine par an', 0, 250, 10, v => v ? v + ' gardes' : 'aucune') +
       rng('exterieurWE', 'Médecin extérieur : gardes de week-end et fériés par an', 0, 120, 5, v => v ? v + ' gardes' : 'aucune')) +
     groupe('🌙 Week-ends des plus jeunes', 'Quand un aîné fait la demi-garde de jour, le collègue de garde ne fait que la nuit.',
@@ -535,6 +536,7 @@ function pjLeviers(){
   add(!(p.surplusGardeJeunes >= 10), `Temps partiels : garde = temps de travail + 10 %`, c => { c.projection.surplusGardeJeunes = 10; });
   add(true, `Extérieur : +50 gardes de week-end et fériés`, c => { c.projection.exterieurWE = (+p.exterieurWE || 0) + 50; });
   add(true, `Extérieur : +100 gardes de semaine`, c => { c.projection.exterieurSemaine = (+p.exterieurSemaine || 0) + 100; });
+  add(!(cfg.params.seuilGardesRecup > 0), '1 jour de récupération par garde au-delà de 40 / an', c => { c.params.seuilGardesRecup = 40; c.params.recupParGardeSup = 1; });
   add(true, '+1 MAR à temps plein (35 ans)', c => { c.projection.mouvements = (c.projection.mouvements || []).concat([{ type:'ajout', annee:cfg.annee, code:'MAR +1 (levier)', q:1, qg:1, naissance:cfg.annee - 35 }]); });
   return L;
 }
@@ -568,7 +570,7 @@ function renderPjLeviers(){
       <td>${x.ext ? f0(x.ext) + ' gardes' : ''}${x.ext && x.rec ? ' · ' : ''}${x.rec ? f1(x.rec) + ' ETP' : ''}</td><td class="${x.al ? 'neg' : ''}">${x.al}</td>
       <td>${k ? `<button class="btn btn-s" onclick="pjAppliquerLevier(${PJLEV.indexOf(x.r)})">Appliquer</button>` : ''}</td></tr>`).join('');
 }
-function pjAppliquerLevier(i){ if(!confirm('Appliquer « ' + PJLEV[i].nom + ' » aux réglages de la projection ?')) return; const c = PJLEV[i].cfg; cfg.projection = c.projection; cfg.gardes.nuitsEnchainees = c.gardes.nuitsEnchainees; PJLEV = []; document.getElementById('pj-leviers').innerHTML = ''; document.getElementById('pj-lev-etat').textContent = 'Levier appliqué : relancez le calcul pour comparer de nouveau.'; recompute(); pjPlanifier(); }
+function pjAppliquerLevier(i){ if(!confirm('Appliquer « ' + PJLEV[i].nom + ' » aux réglages de la projection ?')) return; const c = PJLEV[i].cfg; cfg.projection = c.projection; cfg.gardes.nuitsEnchainees = c.gardes.nuitsEnchainees; cfg.params.seuilGardesRecup = c.params.seuilGardesRecup; cfg.params.recupParGardeSup = c.params.recupParGardeSup; PJLEV = []; document.getElementById('pj-leviers').innerHTML = ''; document.getElementById('pj-lev-etat').textContent = 'Levier appliqué : relancez le calcul pour comparer de nouveau.'; recompute(); pjPlanifier(); }
 // Comparatif moins / plus de 60 ans : année choisie (par ETP) et évolution
 function renderComparatif(){
   const el = document.getElementById('pj-comp'); if(!PJ || !PJ.ans.length){ el.innerHTML = ''; return; }
@@ -579,7 +581,7 @@ function renderComparatif(){
     ['Journées de bloc', a.bloc, b.bloc, n0], ['dont finies à 18h', a.fin18, b.fin18, n0], ['Journées de réa', a.rea, b.rea, n0], ['Journées de consultation', a.consult, b.consult, n0],
     ['Gardes', a.gardes, b.gardes, n1], ['dont week-end (samedi, dimanche)', a.gardesSamDim, b.gardesSamDim, n1], ['Une garde tous les … jours (hors congés et formation)', a.tousLes || null, b.tousLes || null, n1], ['Un week-end de garde tous les … week-ends', a.weTousLes || null, b.weTousLes || null, n1], ['dont week-end et fériés', a.gardesWE, b.gardesWE, n1], ['dont nuits seules', a.nuits, b.nuits, n1],
     ['Demi-gardes de jour', a.demi, b.demi, n1], ['Week-ends travaillés', a.weekends, b.weekends, n1], ['Journées de week-end et fériés (8h-20h)', a.journeesWE, b.journeesWE, n1],
-    ['Heures de week-end et fériés / an', a.heuresWE, b.heuresWE, n0], ['Récupérations (jours)', a.recup, b.recup, n1], ['Jours libérables', a.libres, b.libres, n1],
+    ['Heures de week-end et fériés / an', a.heuresWE, b.heuresWE, n0], ['Récupérations (jours)', a.recup, b.recup, n1], ['dont gardes au-delà du seuil', a.recupGardesSup, b.recupGardesSup, n1], ['Jours libérables', a.libres, b.libres, n1],
     ['Heures travaillées / an', a.heuresAn, b.heuresAn, n0], ['h / semaine, gardes comprises (équivalent temps plein)', a.hAvec, b.hAvec, n1], ['h / semaine, sans garde (équivalent temps plein)', a.hSans, b.hSans, n1]];
   const ec = (x, y, f) => x == null || y == null ? '' : `<span class="${y - x > 0.05 ? 'pj-up' : y - x < -0.05 ? 'pj-dn' : ''}">${y - x >= 0 ? '+' : ''}${f === n0 ? f0(y - x) : f1(y - x)}</span>`;
   let h = `<div class="pj-gh">⚖️ Comparatif moins de ${age} ans / ${age} ans et plus — ${pjAnnee} <span class="hint" style="margin:0;font-weight:400">par ETP et par an · ${pjChart === 'avec' ? 'avec' : 'sans'} demi-gardes des ${age} ans et + · suivez l'évolution avec le curseur d'année ou ▶</span></div>
@@ -737,7 +739,7 @@ function renderRegles(){
     `<label>Jours<span>${E.JOURS.slice(0,5).map((j,d)=>`<label style="display:inline;margin-left:6px"><input type="checkbox" style="width:auto" ${M.jours[d]?'checked':''} onchange="cfg.maternite.jours[${d}]=this.checked;recompute()"/> ${j.slice(0,3)}</label>`).join('')}</span></label>`;
   document.getElementById('f-params').innerHTML =
     field('params.conges','Congés par ETP (jours ouvrés)') + field('params.rtt','RTT par ETP (jours)') + field('params.formation','Formation par ETP (jours)') +
-    field('params.recupSamedi','Récupération par samedi de garde (jours, ½ pour une demi-garde)',{step:0.5}) + field('params.recupDimanche','Récupération par dimanche de garde (jours, 0 = non, ½ pour une demi-garde)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
+    field('params.recupSamedi','Récupération par samedi de garde (jours, ½ pour une demi-garde)',{step:0.5}) + field('params.seuilGardesRecup','Récupération au-delà de … gardes par an (0 = non, au prorata de la quotité de garde)') + field('params.recupParGardeSup','Jours de récupération par garde au-delà',{step:0.25}) + field('params.recupDimanche','Récupération par dimanche de garde (jours, 0 = non, ½ pour une demi-garde)',{step:0.5}) + field('params.joursFin18ParRecup','Jours finis à 18h pour 1 jour de récupération') +
     `<label>Récupération 18h posée dans la semaine de bloc<select onchange="setP('params.recupDansSemaineBloc',this.value==='Oui')"><option ${cfg.params.recupDansSemaineBloc?'selected':''}>Oui</option><option ${cfg.params.recupDansSemaineBloc?'':'selected'}>Non</option></select></label>` +
     field('params.plafond','Plafond hebdomadaire moyen (h)') + field('params.reserveImprevus','Réserve pour imprévus (MAR libres / jour)',{step:0.1}) + field('params.blocMaxSemaine','Jours de bloc max par semaine') + field('params.tpMaxParJour','Jours de TP max par jour (équipe)');
   document.getElementById('f-finance').innerHTML =
@@ -979,7 +981,7 @@ function orgData(){
       ['Repos de sécurité (jours ouvrés)', f1(avg(m=>m.repos)), ''],
       ['Congés', f1(PR.conges), 'jours ouvrés'],
       ['Formation', f1(PR.formation), ''],
-      ['Récupérations', f1(avg(m=>m.recup)), `samedis ${f1(avg(m=>m.recupSamedis))}${PR.recupDimanche?` · dimanches ${f1(avg(m=>m.recupDimanches))}`:''} · jours finis à 18h ${f1(avg(m=>m.recupFin18))}${PR.recupDansSemaineBloc?' (posées dans la semaine de bloc)':''}`],
+      ['Récupérations', f1(avg(m=>m.recup)), `samedis ${f1(avg(m=>m.recupSamedis))}${PR.recupDimanche?` · dimanches ${f1(avg(m=>m.recupDimanches))}`:''}${PR.seuilGardesRecup?` · gardes au-delà de ${PR.seuilGardesRecup} ${f1(avg(m=>m.recupGardesSup))}`:''} · jours finis à 18h ${f1(avg(m=>m.recupFin18))}${PR.recupDansSemaineBloc?' (posées dans la semaine de bloc)':''}`],
       ['Jours sans poste restant libres', f1(avg(m=>m.hbDisponible)), ''],
     ]],
     ['Temps de travail (temps plein)', [

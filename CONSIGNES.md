@@ -65,6 +65,8 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   autres MAR sont posés de préférence les jours où le moins de MAR sont déjà absents.
 - **Congés 32 jours**, **formation 10 jours**, **pas de RTT** — par ETP, proratisés à la quotité,
   posés sur des jours hors bloc.
+- **Récupération pour les gardes au-delà d'un seuil** (option, désactivée par défaut) : par exemple 1 jour par garde au-delà de
+  40 gardes par an (seuil au prorata de la quotité de garde ; demi-garde ½) ; jours pris hors poste, comptés 0 h.
 - **Récupération** : 1 jour par **samedi de garde**, **½ jour par demi-garde** du samedi (jour 8h-20h ou nuit seule) ; **1 jour pour 4 jours finis à 18h** (bloc long). Option : 1 jour par **dimanche de garde** (½ pour une demi-garde), désactivée par défaut (onglet Équipe et règles, « Récupération par dimanche de garde »).
 - Option « récupération posée dans la semaine de bloc » : ce jour est placé dans le tableau dès que les 4 jours
   sont atteints (premier jour libre hors garde, dans la même semaine si possible) ; un collègue couvre le poste.

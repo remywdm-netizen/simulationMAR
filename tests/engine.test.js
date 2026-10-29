@@ -435,3 +435,15 @@ test('projection : ratio de récupération des journées 18h propre aux 60 ans e
   const eq = E.equipeAnnee(cfg, 2038, false), r = E.generate(Object.assign({}, cfg, { equipe: eq }), true);
   r.stats.parMar.forEach((m, i) => { if (eq[i].plus60) assert.equal(m.recupFin18, 0); });
 });
+
+test('récupération pour les gardes au-delà d\'un seuil annuel', () => {
+  const cfg = baseCfg(); cfg.params.seuilGardesRecup = 30;
+  const r = E.generate(cfg);
+  assert.deepEqual(E.verify(r), []);
+  r.stats.parMar.forEach(m => {
+    const att = m.qg > 0 ? Math.max(0, m.gardes + m.demi / 2 - 30 * Math.min(m.qg, 1)) : 0;
+    assert.ok(Math.abs(m.recupGardesSup - att) < 1e-9, m.code);
+  });
+  const p = r.stats.parMar.find(m => m.q === 1 && m.qg === 1);
+  assert.ok(p.recupGardesSup > 0 && p.hSemAvecGarde < S.parMar.find(x => x.code === p.code).hSemAvecGarde);
+});

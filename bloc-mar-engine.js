@@ -69,7 +69,9 @@
     params: {
       conges: 32, rtt: 0, formation: 10,         // jours ouvrés par ETP (proratisés à la quotité)
       recupSamedi: 1,                            // jours de récupération par samedi de garde (demi-garde : la moitié)
-      recupDimanche: 0,                          // jours de récupération par dimanche de garde (0 = non ; demi-garde : la moitié)
+      recupDimanche: 0,
+      seuilGardesRecup: 0,                       // récupération au-delà de N gardes par an (0 = non ; seuil au prorata de la quotité de garde)
+      recupParGardeSup: 1,                       // jours de récupération par garde au-delà du seuil                          // jours de récupération par dimanche de garde (0 = non ; demi-garde : la moitié)
       joursFin18ParRecup: 4,                     // 1 jour de récupération pour N jours finis à 18h
       recupDansSemaineBloc: false,               // poser cette récupération dans le tableau, juste après les jours finis à 18h
       plafond: 48,                               // h / semaine en moyenne, gardes comprises
@@ -652,7 +654,7 @@
         return [g, { n: L.length, etp: q, bloc: parEtp(m => m.bloc), rea: parEtp(m => m.rea), consult: parEtp(m => m.consult),
           gardes: parEtp(m => m.gardes), demi: parEtp(m => m.demi), gardesWE: parEtp(m => m.gardesWE), gardesSamDim: parEtp(m => m.gardesSamDim), nuits: parEtp(m => m.nuits),
           journeesWE: parEtp(m => m.gardesWE - m.nuits + m.demi), weekends: parEtp(m => m.weekends), heuresWE: parEtp(m => m.heuresWE),
-          recup: parEtp(m => m.recup), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18),
+          recup: parEtp(m => m.recup), recupGardesSup: parEtp(m => m.recupGardesSup || 0), libres: parEtp(m => m.hbDisponible), fin18: parEtp(m => m.fin18),
           tousLes: (() => { const g = L.filter(m => m.gardeTousLes); return g.length ? g.reduce((x, m) => x + m.gardeTousLes, 0) / g.length : 0; })(),
           weTousLes: (() => { const g = L.filter(m => m.weTousLes); return g.length ? g.reduce((x, m) => x + m.weTousLes, 0) / g.length : 0; })(),
           gardesWEMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); return g.length ? g.reduce((x, m) => x + m.gardesWEParMois, 0) / g.length : 0; })(),
@@ -739,11 +741,13 @@
       const n18 = m.joursFin18ParRecup !== undefined && m.joursFin18ParRecup !== null ? +m.joursFin18ParRecup : PR.joursFin18ParRecup;   // ratio propre au MAR (0 = pas de récupération)
       s.recupFin18 = n18 > 0 ? s.fin18 / n18 : 0;
       s.recupReaUn = R1 && R1.joursParRecup > 0 ? s.reaUn / R1.joursParRecup : 0;
-      s.recup = s.recupSamedis + s.recupDimanches + s.recupFin18 + s.recupRea + s.recupReaUn;
+      // récupération pour les gardes au-delà du seuil (demi-garde : ½), seuil au prorata de la quotité de garde
+      s.recupGardesSup = PR.seuilGardesRecup > 0 && m.qg > 0 ? Math.max(0, s.gardes + s.demi / 2 - PR.seuilGardesRecup * Math.min(m.qg, 1)) * (PR.recupParGardeSup || 0) : 0;
+      s.recup = s.recupSamedis + s.recupDimanches + s.recupFin18 + s.recupRea + s.recupReaUn + s.recupGardesSup;
       s.absences = s.conges + s.rtt + s.formation + s.recup + s.tp;   // jours ouvrés hors service (repos de sécurité à part)
       // Absences prises sur les jours sans poste. Temps de travail : formation comptée 8 h, récupérations 0 h (elles font
       // baisser le temps de travail) ; congés et RTT comptés 8 h, semaines de l'année hors fériés et jours de TP.
-      const recupHB = s.recupSamedis + s.recupDimanches + s.recupReaUn + Math.max(s.recupFin18 - s.rc, 0);
+      const recupHB = s.recupSamedis + s.recupDimanches + s.recupReaUn + s.recupGardesSup + Math.max(s.recupFin18 - s.rc, 0);
       const absHB = s.conges + s.rtt + recupHB;
       s.heuresSansGarde = s.heuresJour - recupHB * cfg.hb.heures;   // congés et formation : 8 h ; récupérations : 0 h
       s.semainesPresence = m.q > 0 ? (nOpen - s.tp) / (5 * m.q) : 0;   // semaines de l'année (hors fériés et jours de TP)
@@ -778,7 +782,7 @@
       marAuDessusPlafond: per.filter(s => s.ecartPlafond > 0).length, plafond: PR.plafond,
       materniteTotal: sum(s => s.mater),
       congesTotal: sum(s => s.conges), rttTotal: sum(s => s.rtt), formationTotal: sum(s => s.formation),
-      recupSamedisTotal: sum(s => s.recupSamedis), recupDimanchesTotal: sum(s => s.recupDimanches), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), recupReaUnTotal: sum(s => s.recupReaUn), tpTotal: sum(s => s.tp),
+      recupSamedisTotal: sum(s => s.recupSamedis), recupDimanchesTotal: sum(s => s.recupDimanches), recupGardesSupTotal: sum(s => s.recupGardesSup), recupFin18Total: sum(s => s.recupFin18), recupReaTotal: sum(s => s.recupRea), recupReaUnTotal: sum(s => s.recupReaUn), tpTotal: sum(s => s.tp),
       absencesTotal: sum(s => s.absences), absentsParJour: sum(s => s.absences) / nOpen,
       congesTempsPlein: PR.conges, recupTempsPlein: avg(pleins, s => s.recup),
     };
@@ -932,7 +936,8 @@
     const reaUn = R1 ? open.length : 0, recupReaUn = R1 && R1.joursParRecup > 0 ? reaUn / R1.joursParRecup : 0;
     const hRea = rea * cfg.rea.heures + reaUn * (R1 ? R1.heures - cfg.rea.heures : 0) + mat * MAT.heures + cons * CS.heuresJour, hGarde = gSem * G.heuresSemaine + gWE * G.heuresWE;
     return etps.map(N => {
-      const recup = (samedis * PR.recupSamedi + dimanches * (PR.recupDimanche || 0) + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N;
+      const gSup = PR.seuilGardesRecup > 0 ? Math.max(0, (gSem + gWE) / N - PR.seuilGardesRecup) * (PR.recupParGardeSup || 0) : 0;   // gardes au-delà du seuil
+      const recup = (samedis * PR.recupSamedi + dimanches * (PR.recupDimanche || 0) + fin18 / PR.joursFin18ParRecup + recupRea + recupReaUn) / N + gSup;
       const jt = nOuvres - nFeries - PR.conges - PR.rtt - PR.formation - recup;
       const reste = N * jt - (bloc + rea + mat + cons + repos);
       // congés, RTT et formation : 8 h ; récupérations : 0 h ; semaines de l'année hors fériés
