@@ -42,6 +42,7 @@
     // heures = lun..ven ; apres16 = heures au-delà de 16h (retirées un jour de garde) ; fin18 = finit à 18h.
     versionHoraires: 2,
     versionDemi: 1,
+    versionConsult: 1,
     postes: [
       { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 5, 5, 5], apres16: 0, fin18: false, unParSalle: false, actif: true },
       { code: 'B', bloc: 'Bloc court (4ᵉ)', salles: 'Endo Inter 2 + Scanner 8 Inter', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
@@ -91,7 +92,7 @@
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
-    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 7, parJourSemaine: [null, null, 2, null, null], rea1ProrataBloc: true,
+    consultations: { parAn: 13000, marMin: 2, marMax: 3, parMarJour: 25, heuresJour: 8, parJourSemaine: [null, null, 2, null, null], rea1ProrataBloc: true,
       // option : roulement consultation → bloc ; le MAR voit les patients qu'il endormira, opérés à partir de « delai » jours
       // calendaires plus tard, sur « joursBloc » jours ouvrés consécutifs, sur le même poste
       suivi: { actif: false, delai: 7, joursBloc: 2 } },
@@ -132,6 +133,9 @@
       if (String(m.code).trim() === 'MAR 05' && m.demiWE) { m.demiWE = false; if (/demi-gardes de WE uniquement/.test(m.note || '')) m.note = ''; }
     });
     out.versionDemi = 1;
+    // Journée de consultation passée à 8 h : une seule fois pour les configurations enregistrées avec l'ancienne valeur (7 h)
+    if (cfg.versionConsult !== 1 && out.consultations.heuresJour === 7) out.consultations.heuresJour = 8;
+    out.versionConsult = 1;
     // Équipes enregistrées avant l'ajout des années de naissance : année par défaut pour les codes MAR 01… sans ce champ
     (out.equipe || []).forEach(m => {
       if (m.naissance !== undefined) return;

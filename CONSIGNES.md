@@ -85,7 +85,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
   réglementation applicable).
 
 ## Consultations
-- **25 consultations par MAR** et par jour (journée de 7 h), **13 000 par an** → 520 journées de MAR.
+- **25 consultations par MAR** et par jour (journée de 8 h), **13 000 par an** → 520 journées de MAR.
 - **Mercredi : 2 MAR en consultation** (jamais de 3ᵉ ce jour-là).
 - Autres jours : **2 MAR**, et un **3ᵉ MAR** juste le nombre de jours nécessaire pour atteindre le volume
   (jours à 3 MAR répartis du lundi au vendredi hors mercredi), répartis régulièrement.
