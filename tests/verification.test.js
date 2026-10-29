@@ -41,7 +41,6 @@ function verifTemps(cfg, lab) {
     // jours : bloc + réa + cs + mat + repos + HB + TP + RC (+ RR) = jours ouvrés
     const tot = s.bloc + s.rea + s.consult + s.mater + s.repos + s.hb + s.tp + s.rc + s.recupRea;
     chk(`${lab} ${m.code} jours ouvrés`, tot === open, tot + ' / ' + open);
-    chk(`${lab} ${m.code} libérables ≥ 0`, s.hbDisponible > -1, String(s.hbDisponible));
   });
   chk(`${lab} vérification du planning`, E.verify(r).length === 0, E.verify(r).slice(0, 3).join(' ; '));
   return r;

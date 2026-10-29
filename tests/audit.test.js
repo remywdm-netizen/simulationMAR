@@ -4,7 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../bloc-mar-engine.js');
 test('audit complet des données (organisation par défaut)', () => {
-const r = E.generate(), c = r.cfg, S = r.stats, s = S.synthese, P = r.equipe, PM = S.parMar;
+const base = E.mergeConfig(); base.equipe[4].demiWE = true;   // demi-gardes de week-end de MAR 05 (décochées par défaut)
+const r = E.generate(base), c = r.cfg, S = r.stats, s = S.synthese, P = r.equipe, PM = S.parMar;
 const out = []; let ko = 0;
 const chk = (lab, ok, det = '') => { out.push(`${ok ? 'OK ' : 'KO '} ${lab}${det ? ' — ' + det : ''}`); if (!ok) ko++; };
 const near = (a, b, t = 1e-6) => Math.abs(a - b) <= t;

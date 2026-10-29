@@ -54,7 +54,7 @@ modifiables dans l'onglet **⚙️ Règles** de la page.
 - **Repos de sécurité** le lendemain de chaque garde, pour les 2 MAR.
 - Au moins 5 jours entre deux gardes d'un même MAR.
 - Quotité de garde 0 : pas de garde. « Pas de garde de WE » : gardes de semaine uniquement.
-- **Demi-garde de WE** : le MAR concerné assure le jour (8h-20h) le samedi **et** le dimanche d'un même
+- **Demi-garde de WE** (case par MAR dans l'équipe, **décochée par défaut**, y compris pour MAR 05) : le MAR concerné assure le jour (8h-20h) le samedi **et** le dimanche d'un même
   week-end ; l'un des deux MAR de garde ne fait alors que la nuit (20h-8h, avec repos le lendemain).
   Nombre de week-ends : automatique (autant de journées de week-end qu'un temps plein en garde) ou fixé.
 

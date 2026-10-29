@@ -4,7 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../bloc-mar-engine.js');
 
-const R = E.generate();
+// Configuration de test : équipe par défaut avec les demi-gardes de week-end de MAR 05 (option décochée par défaut)
+const baseCfg = () => { const c = E.mergeConfig(); c.equipe[4].demiWE = true; return c; };
+const R = E.generate(baseCfg());
 const S = R.stats;
 const idx = code => R.equipe.findIndex(m => m.code === code);
 
@@ -90,7 +92,7 @@ test('simulation ETP : plus d\'ETP, plus de MAR disponibles et moins d\'heures',
 });
 
 test('configuration modifiée : 1 garde par jour, pas de demi-gardes', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.gardes.parJour = 1;
   cfg.equipe.forEach(m => { m.demiWE = false; });
   const r = E.generate(cfg);
@@ -106,7 +108,7 @@ test('part financière : CA 1 200 000 € et 15 parts', () => {
   const tp = S.parMar.find(m => m.q === 0.5);
   const plein = S.parMar.find(m => m.q === 1);
   assert.ok(Math.abs(tp.revenu - plein.revenu / 2) < 1e-6);
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.finance = { ca: 1500000, parts: 12 };
   cfg.equipe.forEach((m, i) => { m.parts = i < 12 ? 1 : 0; });
   const r = E.generate(cfg);
@@ -140,7 +142,7 @@ test('demi-garde du samedi : demi-récupération (jour et nuit seule)', () => {
 });
 
 test('maternité : 1 MAR détaché en journée, hors bloc et hors réa', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.maternite.actif = true;
   cfg.maternite.jours = [true, true, false, true, true];                   // pas le mercredi
   cfg.equipe[3].mater = false;
@@ -164,12 +166,12 @@ test('effectif pour 48 h : congés et formation 8 h, récupérations 0 h', () =>
   assert.ok(s.etpPlafondCharge > 18 && s.etpPlafondCharge <= 24, String(s.etpPlafondCharge));          // congés et formation 8 h, récupérations 0 h, jours libérables travaillés
   const sim = E.simulateETP(R, [s.etpPlafondCharge - 0.1, s.etpPlafondCharge]);
   assert.ok(sim[0].hSemAvecGarde > 48 && sim[1].hSemAvecGarde <= 48);
-  const cfg = E.mergeConfig(); cfg.gardes.heuresWE = 26;                         // plus d'heures de garde : plus d'ETP
+  const cfg = baseCfg(); cfg.gardes.heuresWE = 26;                         // plus d'heures de garde : plus d'ETP
   assert.ok(E.generate(cfg).stats.synthese.etpPlafondCharge > s.etpPlafondCharge);
 });
 
 test('récupération 18h posée dans la semaine de bloc', () => {
-  const cfg = E.mergeConfig(); cfg.params.recupDansSemaineBloc = true;
+  const cfg = baseCfg(); cfg.params.recupDansSemaineBloc = true;
   const r = E.generate(cfg);
   assert.deepEqual(E.verify(r), []);
   const P = r.stats.parMar;
@@ -197,7 +199,7 @@ test('consultations : 2 MAR le mercredi, 2 ou 3 les autres jours, 13 000 par an'
   assert.ok(mer.consultations === 50);                                         // 2 MAR × 25 le mercredi
   const plein = S.parMar.find((m, i) => m.q === 1 && m.qg === 1 && !R.equipe[i].rea1), demi = S.parMar.find(m => m.q === 0.5);
   assert.ok(Math.abs(demi.consult - plein.consult / 2) <= 2, `${demi.consult} / ${plein.consult}`);
-  const cfg = E.mergeConfig(); cfg.consultations.marMin = 3; cfg.consultations.parJourSemaine = [null, null, null, null, null];
+  const cfg = baseCfg(); cfg.consultations.marMin = 3; cfg.consultations.parJourSemaine = [null, null, null, null, null];
   const r3 = E.generate(cfg);
   assert.deepEqual(E.verify(r3), []);
   assert.equal(r3.stats.synthese.capaciteConsultAn, 75 * 251);
@@ -206,12 +208,12 @@ test('récupération libérable : jours libres moins la réserve', () => {
   const s = S.synthese;
   assert.ok(Math.abs(s.recupLiberableAn - Math.max(s.joursLibresAn - 0.5 * 251, 0)) < 1e-6);
   assert.ok(Math.abs(s.recupTotaleTempsPlein - (s.recupReglementaireTempsPlein + s.recupLiberableParEtp)) < 1e-9);
-  const cfg = E.mergeConfig(); cfg.rea.nombre = 2;                             // un levier libère des jours
+  const cfg = baseCfg(); cfg.rea.nombre = 2;                             // un levier libère des jours
   assert.ok(E.generate(cfg).stats.synthese.recupTotaleTempsPlein > s.recupTotaleTempsPlein + 5);
 });
 
 test('option Réa 1 jusqu\'à 17h : 9 h et 1 jour de récupération pour 8 jours', () => {
-  const cfg = E.mergeConfig(); cfg.rea.reaUn.actif = true;
+  const cfg = baseCfg(); cfg.rea.reaUn.actif = true;
   const r = E.generate(cfg);
   assert.deepEqual(E.verify(r), []);
   const P = r.stats.parMar, g = r.equipe.map((m, i) => i).filter(i => r.equipe[i].rea1);
@@ -224,7 +226,7 @@ test('option Réa 1 jusqu\'à 17h : 9 h et 1 jour de récupération pour 8 jours
 
 test('option récupération par dimanche de garde', () => {
   assert.equal(S.synthese.recupDimanchesTotal, 0);                              // désactivée par défaut
-  const cfg = E.mergeConfig(); cfg.params.recupDimanche = 1;
+  const cfg = baseCfg(); cfg.params.recupDimanche = 1;
   const r = E.generate(cfg), s = r.stats.synthese;
   assert.deepEqual(E.verify(r), []);
   r.stats.parMar.forEach(m => assert.equal(m.recupDimanches, m.dimanches + m.dimanchesDemi / 2));
@@ -235,7 +237,7 @@ test('option récupération par dimanche de garde', () => {
 });
 
 test('option 1 MAR par salle sur une salle de 8h', () => {
-  const cfg = E.mergeConfig(); cfg.postes.find(p => p.code === 'B').unParSalle = true;
+  const cfg = baseCfg(); cfg.postes.find(p => p.code === 'B').unParSalle = true;
   cfg.postes.find(p => p.code === 'F').unParSalle = true;                       // bloc long : sans effet
   const r = E.generate(cfg);
   assert.deepEqual(r.postes.map(p => p.code), ['A', 'B1', 'B2', 'C', 'D', 'E', 'F', 'G', 'H']);
@@ -246,7 +248,7 @@ test('option 1 MAR par salle sur une salle de 8h', () => {
 
 test('option roulement consultation → bloc : le MAR endort les patients qu\'il a vus', () => {
   assert.equal(S.synthese.suiviActif, false);
-  const cfg = E.mergeConfig(); cfg.consultations.suivi.actif = true;
+  const cfg = baseCfg(); cfg.consultations.suivi.actif = true;
   const r = E.generate(cfg), s = r.stats.synthese;
   assert.deepEqual(E.verify(r), []);
   assert.ok(s.suiviTaux > 0.9 && s.suiviTauxJours > 0.9, s.suiviTaux + ' / ' + s.suiviTauxJours);
@@ -260,7 +262,7 @@ test('option roulement consultation → bloc : le MAR endort les patients qu\'il
 });
 
 test('projection : vieillissement, retraite remplacée, fin des gardes à 60 ans, demi-gardes', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });                   // années fictives
   cfg.projection.ageRetraite = 65;
   cfg.projection.mouvements = [{ type: 'retrait', annee: 2030, code: 'MAR 23' }, { type: 'ajout', annee: 2031, code: 'Nouveau', q: 1, qg: 1, naissance: 1996 }];
@@ -281,7 +283,7 @@ test('projection : vieillissement, retraite remplacée, fin des gardes à 60 ans
 });
 
 test('projection : option continuer les gardes après 60 ans', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });
   const g = pct => { cfg.projection.gardesApresPct = pct; return E.equipeAnnee(cfg, 2030, false).find(m => m.code === 'MAR 02'); };
   assert.equal(g(0).qg, 0); assert.equal(g(50).qg, 0.5); assert.equal(g(100).qg, 1);
@@ -292,7 +294,7 @@ test('projection : option continuer les gardes après 60 ans', () => {
 });
 
 test('projection : rotation des gardes de Noël et du Nouvel An sur les années', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1975 + (i % 15); });
   const h = {}, vus = new Set(); let prec = null;
   for (let y = 2027; y <= 2031; y++) {
@@ -311,7 +313,7 @@ test('projection : rotation des gardes de Noël et du Nouvel An sur les années'
 });
 
 test('projection : gardes forcées pour un praticien de 60 ans et plus', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1965 + i; });
   cfg.equipe[1].gardesApres = 100;                                               // MAR 02 continue ses gardes
   cfg.equipe[2].gardesApres = 50;                                                // MAR 03 garde à moitié
@@ -328,7 +330,7 @@ test('projection : gardes forcées pour un praticien de 60 ans et plus', () => {
 });
 
 test('projection : demi-gardes des fêtes (jours fériés ou de week-end)', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });                     // plusieurs MAR de 60 ans et plus
   const h = {};
   for (let y = 2027; y <= 2030; y++) {
@@ -343,7 +345,7 @@ test('projection : demi-gardes des fêtes (jours fériés ou de week-end)', () =
 });
 
 test('option nuits enchaînées : demi-garde samedi et dimanche, le même MAR fait les deux nuits', () => {
-  const cfg = E.mergeConfig(); cfg.gardes.nuitsEnchainees = true;
+  const cfg = baseCfg(); cfg.gardes.nuitsEnchainees = true;
   const r = E.generate(cfg);
   assert.deepEqual(E.verify(r), []);
   let we = 0, ok = 0;
@@ -354,7 +356,7 @@ test('option nuits enchaînées : demi-garde samedi et dimanche, le même MAR fa
 });
 
 test('projection : plafond de 12 jours de week-end par an pour les 60 ans et plus', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });
   for (const [pct, demi] of [[100, false], [0, true]]) {
     cfg.projection.gardesApresPct = pct; cfg.projection.plafondJoursWE60 = 12;
@@ -369,7 +371,7 @@ test('projection : plafond de 12 jours de week-end par an pour les 60 ans et plu
 });
 
 test('projection : demi-garde des 60 ans et plus le samedi ou le dimanche', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.equipe.forEach((m, i) => { m.naissance = 1962 + i; });
   cfg.projection.plafondJoursWE60 = 12;
   const eq = E.equipeAnnee(cfg, 2027, true), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
@@ -383,7 +385,7 @@ test('projection : demi-garde des 60 ans et plus le samedi ou le dimanche', () =
 });
 
 test('projection : leviers réduction des 60 ans et plus, surplus de garde, médecin extérieur', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   cfg.projection.reductionQ60 = 20;
   const eq = E.equipeAnnee(cfg, 2038, false), rec = eq.filter(m => m.recrue);
   const libere = eq.filter(m => m.plus60 && m.qL).reduce((a, m) => a + m.qL - m.q, 0);
@@ -402,7 +404,7 @@ test('projection : leviers réduction des 60 ans et plus, surplus de garde, méd
 });
 
 test('projection : plafond de week-ends travaillés par an pour les 60 ans et plus', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   Object.assign(cfg.projection, { gardesApresPct: 100, plafondWE60: 6 });
   const eq = E.equipeAnnee(cfg, 2038, false), r = E.generate(Object.assign({}, cfg, { equipe: eq }));
   assert.deepEqual(E.verify(r), []);
@@ -412,7 +414,7 @@ test('projection : plafond de week-ends travaillés par an pour les 60 ans et pl
 });
 
 test('projection : plus de journées finies à 18h pour les 60 ans et plus', () => {
-  const cfg = E.mergeConfig();
+  const cfg = baseCfg();
   const a = E.projectionAnnee(cfg, 2038, false, null, true);
   cfg.projection.quotite18h60 = 200;
   const b = E.projectionAnnee(cfg, 2038, false, null, true);
@@ -421,7 +423,7 @@ test('projection : plus de journées finies à 18h pour les 60 ans et plus', () 
 });
 
 test('projection : ratio de récupération des journées 18h propre aux 60 ans et plus', () => {
-  const cfg = E.mergeConfig(); cfg.projection.quotite18h60 = 200;
+  const cfg = baseCfg(); cfg.projection.quotite18h60 = 200;
   const a = E.projectionAnnee(cfg, 2038, false, null, true);
   cfg.projection.recup18h60 = 8;
   const b = E.projectionAnnee(cfg, 2038, false, null, true);

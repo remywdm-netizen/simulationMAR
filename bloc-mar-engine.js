@@ -14,7 +14,7 @@
   // Années de naissance (même ordre que l'équipe ; sans identité)
   const NAISSANCES = [1977, 1977, 1975, 1975, 1964, 1974, 1992, 1991, 1978, 1969, 1987, 1981, 1967, 1982, 1992, 1976, 1990, 1986, 1961, 1993, 1986, 1991, 1986];
   const EQUIPE_DEFAUT = [
-    [1, 1, false], [1, 1], [1, 1], [0.6, 0], [1, 0, true, true], [0.8, 1], [1, 1], [0.5, 0.5], [0.9, 0.9], [1, 1],
+    [1, 1, false], [1, 1], [1, 1], [0.6, 0], [1, 0], [0.8, 1], [1, 1], [0.5, 0.5], [0.9, 0.9], [1, 1],
     [0.9, 0.9], [0.9, 0.9], [0.9, 0.9], [1, 1], [1, 1], [1, 1], [1, 1], [0.8, 0.8], [1, 1], [1, 1],
     [0.9, 0.9], [0.9, 1], [1, 1],
   ].map(([q, qg, we, demi], i) => ({
@@ -41,6 +41,7 @@
     // Blocs courts : B à E 8h-16h, A lun-mar 8h-16h et mer-ven 8h-13h ; bloc long (F, G, H) : 8h-18h.
     // heures = lun..ven ; apres16 = heures au-delà de 16h (retirées un jour de garde) ; fin18 = finit à 18h.
     versionHoraires: 2,
+    versionDemi: 1,
     postes: [
       { code: 'A', bloc: 'Bloc court (4ᵉ)', salles: 'Endo 6 + Endo 5', heures: [8, 8, 5, 5, 5], apres16: 0, fin18: false, unParSalle: false, actif: true },
       { code: 'B', bloc: 'Bloc court (4ᵉ)', salles: 'Endo Inter 2 + Scanner 8 Inter', heures: [8, 8, 8, 8, 8], apres16: 0, fin18: false, unParSalle: false, actif: true },
@@ -124,6 +125,11 @@
       });
     }
     out.versionHoraires = 2;
+    // Demi-gardes de week-end de MAR 05 décochées par défaut : une seule fois pour les configurations enregistrées
+    if (cfg.versionDemi !== 1) (out.equipe || []).forEach(m => {
+      if (String(m.code).trim() === 'MAR 05' && m.demiWE) { m.demiWE = false; if (/demi-gardes de WE uniquement/.test(m.note || '')) m.note = ''; }
+    });
+    out.versionDemi = 1;
     // Équipes enregistrées avant l'ajout des années de naissance : année par défaut pour les codes MAR 01… sans ce champ
     (out.equipe || []).forEach(m => {
       if (m.naissance !== undefined) return;
