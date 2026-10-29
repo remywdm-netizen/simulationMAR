@@ -149,6 +149,9 @@ gardes assurées.
     rester jusqu'à 18h ; les plus jeunes en font moins (et ont moins de récupérations 18h) ;
     **ratio de récupération propre aux 60 ans et plus** (1 jour pour 2 à 12 journées à 18h, ou aucune ; règle générale :
     1 pour 4) ;
+  - **temps de travail cible des 60 ans et plus** (33 à 48 h / semaine pour un temps plein, au prorata pour un temps
+    partiel) : en dessous, demi-gardes de jour le week-end (12 h, sans repos) ; au-dessus, moins de demi-gardes puis
+    quotité de travail réduite (ETP libérés : recrues qui gardent) ; postes à jours fixes non modifiés ;
   - **médecin extérieur** pour les gardes : nombre de gardes par an en semaine et / ou le week-end et les jours fériés,
     réparties régulièrement sur l'année (gardes seules, pas de journée au bloc, hors rotation des fêtes).
 - **Impact des leviers** (onglet Projection) : chaque levier part des réglages actuels et recalcule les plannings ; tableau

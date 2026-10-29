@@ -447,3 +447,12 @@ test('récupération pour les gardes au-delà d\'un seuil annuel', () => {
   const p = r.stats.parMar.find(m => m.q === 1 && m.qg === 1);
   assert.ok(p.recupGardesSup > 0 && p.hSemAvecGarde < S.parMar.find(x => x.code === p.code).hSemAvecGarde);
 });
+
+test('projection : temps de travail cible des 60 ans et plus', () => {
+  for (const [cible, pct] of [[40, 0], [44, 0], [36, 0], [40, 100]]) {
+    const cfg = baseCfg(); Object.assign(cfg.projection, { cible60: cible, gardesApresPct: pct });
+    const eq = E.ajusterCible60(cfg, E.equipeAnnee(cfg, 2038, false), 2038, true), r = E.generate(Object.assign({}, cfg, { equipe: eq }), true);
+    assert.deepEqual(E.verify(r), []);
+    eq.forEach((m, i) => { if (m.plus60 && m.q === 1) assert.ok(Math.abs(r.stats.parMar[i].hSemAvecGarde - cible) < 1.5, `${cible} ${m.code} ${r.stats.parMar[i].hSemAvecGarde}`); });
+  }
+});

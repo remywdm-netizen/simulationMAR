@@ -87,7 +87,7 @@
     // forçable par MAR (champ gardesApres de l'équipe, en %) ;
     // mouvements = ajouts / retraits à partir d'une année.
     projection: { fin: 2050, ageRetraite: 67, ageFinGardes: 60, gardesApresPct: 0, demi60: false, demiUnJour: true, plafondJoursWE60: 0, plafondWE60: 0,
-      reductionQ60: 0, recruterLibere: true, quotite18h60: 100, recup18h60: 0, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
+      reductionQ60: 0, recruterLibere: true, quotite18h60: 100, recup18h60: 0, cible60: 0, surplusGardeJeunes: 0, exterieurSemaine: 0, exterieurWE: 0, remplacement: true, remplacantTempsPlein: true, ageRemplacant: 35, mouvements: [] },
     // Consultations d'anesthésie : entre marMin et marMax MAR chaque jour ouvré, ajusté au volume annuel
     // (jours à marMax répartis régulièrement) ; chaque MAR assure parMarJour consultations.
     // parJourSemaine : nombre imposé de MAR un jour de la semaine (lun..ven), null = ajusté entre marMin et marMax.
@@ -258,6 +258,7 @@
           ? Math.max(1, Math.round(avgWE / 2 * Q[i])) : Math.max(0, +G.demiWeekends);
         const un = !!P[i].demiUnJour;                     // un seul jour par week-end (samedi ou dimanche)
         let nj = un ? 2 * nb : nb;                          // demi-gardes (jours) ou week-ends à placer
+        if (P[i].demiJours > 0) nj = un ? Math.round(P[i].demiJours) : Math.round(P[i].demiJours / 2);   // nombre imposé (temps de travail cible)
         if (P[i].maxJoursWE > 0) nj = Math.min(nj, Math.max(0, Math.floor((P[i].maxJoursWE - weJours[i]) / (un ? 1 : 2))));   // plafond de jours de WE
         if (P[i].maxWE > 0) nj = Math.min(nj, Math.max(0, P[i].maxWE - weSet[i].size));   // plafond de week-ends
         demiWeekends += un ? nj / 2 : nj;
@@ -591,8 +592,41 @@
     return { gardes: out, demi };
   }
 
+  // Temps de travail cible des 60 ans et plus (h / semaine pour un temps plein) : un premier planning mesure leurs heures ;
+  // en dessous de la cible, demi-gardes de jour le week-end (12 h, sans repos) ; au-dessus, quotité de travail réduite
+  // (ETP libérés : recrues qui gardent, si l'option est cochée). Les postes à jours fixes ne sont pas modifiés.
+  function ajusterCible60(cfg, equipe, annee, rapide) {
+    const PJ = cfg.projection, cible = +PJ.cible60, r0 = generate(Object.assign({}, cfg, { equipe }), rapide);
+    const out = equipe.map(m => Object.assign({}, m));
+    let libere = 0;
+    out.forEach((m, i) => {
+      if (!m.plus60 || !(m.q > 0) || m.exterieur || (Array.isArray(m.joursFixes) && m.joursFixes.some(x => !x))) return;
+      const s = r0.stats.parMar[i], h = s.hSemAvecGarde, delta = cible * m.q - h;   // h / semaine réelles (temps partiel : cible × quotité)
+      m.hAvantCible = h;
+      const nDemi = Math.round(delta * s.semainesPresence / cfg.gardes.heuresDemiJour);   // demi-gardes (12 h) équivalentes
+      if (delta > 0.5 && !(m.qg > 0)) {                    // demi-gardes de jour pour atteindre la cible
+        m.demiWE = true; m.demiJours = Math.min(52, (s.demi || 0) + nDemi);
+      } else if (delta < -0.5 && s.demi > 0 && s.demi + nDemi >= 0) {   // au-dessus : moins de demi-gardes d'abord
+        m.demiJours = s.demi + nDemi; if (!m.demiJours) m.demiWE = false;
+      } else if (delta < -0.5) {                           // plus de demi-garde, puis quotité réduite (heures réelles ∝ quotité)
+        const hD = s.demi ? s.demi * cfg.gardes.heuresDemiJour / s.semainesPresence : 0;
+        if (s.demi) { m.demiWE = false; delete m.demiJours; }
+        const q = Math.max(0.3, Math.round(m.q * cible * m.q / Math.max(h - hD, 1) * 20) / 20);
+        if (q < m.q) { libere += m.q - q; m.qL = m.qL || m.q; m.q = q; if (m.qg > q) m.qg = q; if (m.demiJours) delete m.demiJours; }
+      }
+    });
+    if (PJ.recruterLibere !== false) for (let k = 1; libere > 0.049; k++) {
+      const q = Math.min(1, Math.round(libere * 20) / 20);
+      out.push({ code: 'Recrue (cible 60 ans et +) ' + k, q, qg: q, we: true, demiWE: false, rea: true, rea1: false, consult: true, mater: true,
+        joursFixes: null, naissance: annee - PJ.ageRemplacant, age: PJ.ageRemplacant, recrue: true });
+      libere -= q;
+    }
+    return out;
+  }
+
   function projectionAnnee(cfg, annee, demi60, histoNoel, rapide) {
-    const equipe = equipeAnnee(cfg, annee, demi60);
+    let equipe = equipeAnnee(cfg, annee, demi60);
+    if (+cfg.projection.cible60 > 0) equipe = ajusterCible60(cfg, equipe, annee, rapide);
     const fetes = histoNoel ? fetesAnnee(cfg, equipe, histoNoel, annee) : null;
     const gardes = fetes ? Object.assign({}, cfg.gardes, { imposees: Object.assign({}, cfg.gardes.imposees || {}, fetes.gardes),
       demiImposees: Object.assign({}, cfg.gardes.demiImposees || {}, fetes.demi) }) : cfg.gardes;
@@ -659,6 +693,7 @@
           weTousLes: (() => { const g = L.filter(m => m.weTousLes); return g.length ? g.reduce((x, m) => x + m.weTousLes, 0) / g.length : 0; })(),
           gardesWEMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); return g.length ? g.reduce((x, m) => x + m.gardesWEParMois, 0) / g.length : 0; })(),
           gardesMois: (() => { const g = L.filter(m => m.gardes + m.demi > 0); const qq = g.reduce((x, m) => x + m.qg, 0); return qq ? g.reduce((x, m) => x + m.gardesParMois, 0) / g.length : 0; })(), heuresAn: parEtp(m => m.heuresSansGarde + m.heuresGarde),
+          hReel: L.length ? L.reduce((x, m) => x + m.hSemAvecGarde, 0) / L.length : null,   // h / semaine réelles (temps partiels compris)
           hAvec: q ? L.reduce((x, m) => x + m.hSemAvecGarde, 0) / q : null, hSans: q ? L.reduce((x, m) => x + m.hSemSansGarde, 0) / q : null }];   // équivalent temps plein
       })),
       membres: M.map((m, i) => ({ code: m.code, age: equipe[i].age, q: m.q, qg: m.qg, plus60: !!equipe[i].plus60, gardes: m.gardes, demi: m.demi,
@@ -982,7 +1017,7 @@
     }));
   }
 
-  const api = { DEFAULT_CONFIG, JOURS, generate, equipeAnnee, projectionAnnee, verify, stats, simulateETP, simulateFinance, etpPourPlafond, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
+  const api = { DEFAULT_CONFIG, JOURS, generate, equipeAnnee, projectionAnnee, ajusterCible60, verify, stats, simulateETP, simulateFinance, etpPourPlafond, activite, codeActivite, mergeConfig, addDays, dow, isoWeek, labelFR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BlocMarEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
