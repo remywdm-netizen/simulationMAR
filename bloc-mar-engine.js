@@ -124,6 +124,12 @@
       });
     }
     out.versionHoraires = 2;
+    // Équipes enregistrées avant l'ajout des années de naissance : année par défaut pour les codes MAR 01… sans ce champ
+    (out.equipe || []).forEach(m => {
+      if (m.naissance !== undefined) return;
+      const d = DEFAULT_CONFIG.equipe.find(x => x.code === m.code);
+      if (d && d.naissance) m.naissance = d.naissance;
+    });
     delete out.rea.recupSemaine2;   // option retirée (pas de récupération propre à la semaine de Réa 2)
     out.consultations.suivi = Object.assign(clone(DEFAULT_CONFIG.consultations.suivi), clone(((cfg || {}).consultations || {}).suivi || {}));
     out.rea.reaUn = Object.assign(clone(DEFAULT_CONFIG.rea.reaUn), clone(((cfg || {}).rea || {}).reaUn || {}));

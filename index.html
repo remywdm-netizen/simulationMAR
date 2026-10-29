@@ -190,6 +190,7 @@ body.locked .bar,body.locked .wrap{display:none}
   <!-- ── PROJECTION DANS LE TEMPS ── -->
   <div class="view" id="view-projection">
     <label class="pj-top"><input type="checkbox" id="pj-demi60" onchange="setDemi60(this.checked)"/> <span><b>Demi-gardes de jour le week-end pour les plus de 60 ans</b> (règle générale) : 8h-20h, le collègue de garde ne fait que la nuit. Les indicateurs, l'équipe de l'année et les fêtes suivent ce choix ; les graphiques montrent les deux cas (pointillés = avec demi-gardes).</span></label>
+    <div class="ok info" id="pj-sansnaiss" style="display:none;margin-bottom:12px"></div>
     <div class="pj-kpis" id="pj-kpi"></div>
     <div class="pj-panel">
       <div class="pj-ctrls" id="pj-ctrls"></div>
@@ -317,6 +318,9 @@ function renderProjectionForm(){
 }
 function renderPjCtrls(){
   const p = cfg.projection;
+  const sans = cfg.equipe.filter(m => !m.naissance), el = document.getElementById('pj-sansnaiss');
+  el.style.display = sans.length ? '' : 'none';
+  el.innerHTML = sans.length ? `⚠ <b>${sans.length} MAR sur ${cfg.equipe.length} sans année de naissance</b> (${sans.slice(0, 8).map(m => esc(m.code)).join(', ')}${sans.length > 8 ? '…' : ''}) : ils ne vieillissent pas dans la projection. Renseignez-les (colonne « Naissance » de l'onglet Équipe et règles, ou « Données » plus bas)${cfg.equipe.some(m => /^MAR \d\d$/.test(m.code)) ? ', ou cliquez sur « ↺ Équipe par défaut »' : ''}.` : '';
   pjChart = p.demi60 ? 'avec' : 'sans'; document.getElementById('pj-demi60').checked = !!p.demi60;
   const rng = (k, lab, min, max, step, fmt) => `<div class="pj-c"><label>${lab} <b>${fmt(p[k])}</b></label><input type="range" min="${min}" max="${max}" step="${step}" value="${p[k]}" oninput="this.previousElementSibling.querySelector('b').textContent=(${fmt.toString()})(+this.value)" onchange="setPJ('${k}',+this.value)"/></div>`;
   const tog = (k, lab) => `<label class="pj-t"><input type="checkbox" ${p[k]?'checked':''} onchange="setPJ('${k}',this.checked)"/> ${lab}</label>`;
